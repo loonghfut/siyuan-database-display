@@ -279,6 +279,13 @@ export async function setBlockAttrs(id: BlockId, attrs: { [key: string]: string 
     return request(url, data);
 }
 
+export async function getAttributeViewKeys(id: BlockId) {
+    const data = {
+        id: id
+    }
+    const url = '/api/av/getAttributeViewKeys';
+    return request(url, data);
+}
 
 export async function getBlockAttrs(id: BlockId): Promise<{ [key: string]: string }> {
     let data = {

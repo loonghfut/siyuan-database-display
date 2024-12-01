@@ -1,20 +1,5 @@
 
-# 使用 vite + svelte 的思源笔记插件示例
-
 [English](./README.md)
-
-
-> 本例同 [siyuan/plugin-sample](https://github.com/siyuan-note/plugin-sample) [v0.3.5](https://github.com/siyuan-note/plugin-sample/tree/v0.3.5)
-
-1. 使用 vite 打包
-2. 使用符号链接、而不是把项目放到插件目录下的模式进行开发
-3. 内置对 svelte 框架的支持
-  
-   > **如果不想要 svelte，请移步这个模板:** [frostime/plugin-sample-vite](https://github.com/frostime/plugin-sample-vite)
-   >
-   > **这里还提供了一个 vite+solidjs 的模板**: [frostime/plugin-sample-vite-solidjs](https://github.com/frostime/plugin-sample-vite-solidjs)
-
-4. 提供一个github action 模板，能自动生成package.zip并上传到新版本中
 
 ## 开始
 
