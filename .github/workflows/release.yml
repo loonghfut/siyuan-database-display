@@ -1,4 +1,4 @@
-name: Create Release on Push to Main
+name: Tag and Release on Push to Main
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  release:
+  tag_and_release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
