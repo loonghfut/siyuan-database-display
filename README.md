@@ -1,1 +1,1 @@
-目前自用
+The functionality is not yet complete. I am using it myself for now, and uploading it to the marketplace will make future updates easier, as well as facilitate testing with the Docker version of SiYuan.
