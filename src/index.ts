@@ -32,10 +32,11 @@ export default class DatabaseDisplay extends Plugin {
     }
 
 
-    
+
     
     async showdata() {
 
+        
         console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
         const contents1 = extractContents(viewKeys);
