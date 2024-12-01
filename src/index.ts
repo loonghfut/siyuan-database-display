@@ -27,6 +27,7 @@ export default class DatabaseDisplay extends Plugin {
             await this.showdata();
         });
         
+        
         // this.eventBus.on("click-editorcontent", this.handleSelectionChange);
     }
 
