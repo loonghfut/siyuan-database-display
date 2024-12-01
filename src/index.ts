@@ -33,6 +33,7 @@ export default class DatabaseDisplay extends Plugin {
 
 
     
+    
     async showdata() {
 
         console.log("showdata2");
