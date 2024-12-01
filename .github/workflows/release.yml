@@ -43,6 +43,7 @@ jobs:
 
   release:
     needs: tag
+    if: needs.tag.outputs.tag_name != ''
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
