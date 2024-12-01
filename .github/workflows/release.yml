@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  tag_and_release:
+  tag:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -36,6 +36,13 @@ jobs:
           NEW_TAG=$(echo ${{ steps.check_message.outputs.tag_message }} | grep -o 'v[^ ]*')
           git tag -a $NEW_TAG -m "${{ steps.check_message.outputs.tag_message }}"
           git push origin $NEW_TAG
+
+  release:
+    needs: tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Install Node.js
         uses: actions/setup-node@v3
