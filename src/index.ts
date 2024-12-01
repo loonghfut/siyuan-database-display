@@ -12,7 +12,6 @@ import {
 
 } from "siyuan";
 import "@/index.scss";
-
 import { getAttributeViewKeys } from "./api";
 
 
@@ -27,9 +26,12 @@ export default class DatabaseDisplay extends Plugin {
             currentDocId =  event.detail.protyle.block.id;
             await this.showdata();
         });
+        
         // this.eventBus.on("click-editorcontent", this.handleSelectionChange);
     }
 
+
+    
     async showdata() {
 
         console.log("showdata2");
@@ -41,49 +43,7 @@ export default class DatabaseDisplay extends Plugin {
         // const contents = ['内容1', '较长的内容2', '内容3', '非常非常长的内容4', '内容5', '内容6', '内容7', '内容8', '内容9', '内容10']; // 示例内容数组
 
         // 动态生成 my__block 类的样式
-        const style = document.createElement('style');
-        style.innerHTML = `
-        .my__block-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-end; /* 右对齐 */
-            overflow-y: scroll;
-            position: absolute;
-            max-height: calc(2 * 18px); /* 假设每行高度为14px，显示三行 */
-            top: 10px;
-            right: 0;
-            width: 33.33%; /* 宽度为父容器的1/3 */
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
         
-        .my__block-container::-webkit-scrollbar {
-            display: none; /* Chrome, Safari, Opera */
-        }
-        
-        .my__block {
-            color: var(--b3-theme-on-surface);
-            border: 1px solid var(--b3-theme-border);
-            font-size: 12px;
-            font-weight: normal;
-            padding: 1px;
-            margin: 1px; /* 调整间隔 */
-            display: inline-block;
-            white-space: nowrap; /* 防止换行 */
-            box-sizing: border-box;
-            border-radius: 4px; /* 圆角 */
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 卡片阴影效果 */
-            background-color: var(--b3-toolbar-hover); /* 背景颜色 */
-        }
-        `;
-        //判断是否已经添加样式
-        const styleExist = document.querySelector('style');
-        if (styleExist) {
-            styleExist.remove();
-            console.log("已删除原有样式");
-        }
-        document.getElementsByTagName('head')[0].appendChild(style);
-        console.log("样式已添加到 head");
         
         // 找到所有可能的父元素
         const parentElements = document.querySelectorAll('.protyle-title');

@@ -1,8 +1,8 @@
 {
-  "name": "plugin-sample-vite-svelte",
-  "author": "frostime",
+  "name": "siyuan-database-display",
+  "author": "steve",
   "url": "https://github.com/siyuan-note/plugin-sample-vite-svelte",
-  "version": "0.3.6",
+  "version": "0.0.1",
   "minAppVersion": "3.0.12",
   "backends": [
     "windows",
@@ -20,12 +20,12 @@
     "desktop-window"
   ],
   "displayName": {
-    "en_US": "Plugin sample with vite and svelte",
-    "zh_CN": "插件样例 vite + svelte 版"
+    "en_US": "Database Display",
+    "zh_CN": "数据展示"
   },
   "description": {
-    "en_US": "SiYuan plugin sample with vite and svelte",
-    "zh_CN": "使用 vite 和 svelte 开发的思源插件样例"
+    "en_US": "Display data in the database to the left of the document block",
+    "zh_CN": "展示数据库中的数据到文档块的左边"
   },
   "readme": {
     "en_US": "README.md",
@@ -38,7 +38,7 @@
   },
   "keywords": [
     "plugin",
-    "sample",
-    "插件样例"
+    "show",
+    "database"
   ]
 }
