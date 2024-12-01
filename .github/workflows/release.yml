@@ -1,42 +1,71 @@
-name: Create Release on Tag Push
+name: Tag and Release on Push
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
 
 jobs:
-  build:
+  tag_and_release:
     runs-on: ubuntu-latest
     steps:
-      # Checkout
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Install Node.js
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Check commit message for tag
+        id: check_message
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+            if [[ "$COMMIT_MESSAGE" == *"v"* ]]; then
+              echo "::set-output name=tag_message::$COMMIT_MESSAGE"
+            else
+              echo "No tag found in commit message"
+              exit 0
+            fi
+          fi
+
+      - name: Create new tag
+        if: steps.check_message.outputs.tag_message
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_TAG=$(echo ${{ steps.check_message.outputs.tag_message }} | grep -o 'v[^ ]*')
+          curl -X POST -H "Authorization: token $GITHUB_TOKEN" \
+            -d "{\"tag_name\": \"$NEW_TAG\", \"target_commitish\": \"main\", \"name\": \"$NEW_TAG\", \"body\": \"${{ steps.check_message.outputs.tag_message }}\", \"draft\": false, \"prerelease\": false}" \
+            https://api.github.com/repos/${{ github.repository }}/releases
+
       - name: Install Node.js
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/setup-node@v3
         with:
           node-version: 20
           registry-url: "https://registry.npmjs.org"
 
-        # Install pnpm
       - name: Install pnpm
+        if: startsWith(github.ref, 'refs/tags/')
         uses: pnpm/action-setup@v4
         id: pnpm-install
         with:
           version: 8
           run_install: false
 
-      # Get pnpm store directory
       - name: Get pnpm store directory
+        if: startsWith(github.ref, 'refs/tags/')
         id: pnpm-cache
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
-      # Setup pnpm cache
       - name: Setup pnpm cache
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/cache@v3
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
@@ -44,15 +73,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      # Install dependencies
       - name: Install dependencies
+        if: startsWith(github.ref, 'refs/tags/')
         run: pnpm install
 
-      # Build for production, 这一步会生成一个 package.zip
       - name: Build for production
+        if: startsWith(github.ref, 'refs/tags/')
         run: pnpm build
 
       - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
