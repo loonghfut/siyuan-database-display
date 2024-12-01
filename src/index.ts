@@ -16,8 +16,8 @@ import { getAttributeViewKeys } from "./api";
 
 
 let currentDocId = null;
-// let currentDocId2 = null;
-// let clickId = null;
+let currentDocId2 = null;
+let clickId = null;
 
 export default class DatabaseDisplay extends Plugin {
 
@@ -94,17 +94,17 @@ export default class DatabaseDisplay extends Plugin {
 
 
 
-    // async handleSelectionChange() {
-    //     // console.log("handleSelectionChange");
-    //     const blockId = getCursorBlockId();
-    //     if (blockId) {
-    //         // showMessage(`光标所在的块ID: ${blockId}`);
-    //         console.log(`光标所在的块ID: ${blockId}`);
-    //         clickId = blockId;
-    //     } else {
-    //         console.log("无法获取光标所在的块ID");
-    //     }
-    // }
+    async handleSelectionChange() {
+        // console.log("handleSelectionChange");
+        const blockId = getCursorBlockId();
+        if (blockId) {
+            // showMessage(`光标所在的块ID: ${blockId}`);
+            console.log(`光标所在的块ID: ${blockId}`);
+            clickId = blockId;
+        } else {
+            console.log("无法获取光标所在的块ID");
+        }
+    }
 
 
 

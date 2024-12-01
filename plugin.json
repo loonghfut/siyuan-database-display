@@ -1,8 +1,8 @@
 {
   "name": "siyuan-database-display",
   "author": "steve",
-  "url": "https://github.com/siyuan-note/plugin-sample-vite-svelte",
-  "version": "0.0.1",
+  "url": "",
+  "version": "0.0.2",
   "minAppVersion": "3.0.12",
   "backends": [
     "windows",
