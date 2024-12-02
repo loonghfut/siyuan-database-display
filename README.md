@@ -1,8 +1,8 @@
-> Display data from the database to the right side of document blocks
 
 #### Purpose:
+
 To display data from the database in a smaller area (currently only supports document blocks)
-![image.png](https://pic.zcl.me/i/2024/12/02/674d143d27d4a.png)
+![alt text](image.png)
 
 #### Completed:
 
