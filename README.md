@@ -1,1 +1,16 @@
-The functionality is not yet complete. I am using it myself for now, and uploading it to the marketplace will make future updates easier, as well as facilitate testing with the Docker version of SiYuan.
+> Display data from the database to the right side of document blocks
+
+#### Purpose:
+To display data from the database in a smaller area (currently only supports document blocks)
+![image.png](https://pic.zcl.me/i/2024/12/02/674d143d27d4a.png)
+
+#### Completed:
+
+- Basic effect has been achieved
+
+#### Pending:
+
+- eautify display
+- Support for custom beautification settings
+- Support for displaying regular blocks
+

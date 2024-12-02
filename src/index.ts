@@ -37,10 +37,10 @@ export default class DatabaseDisplay extends Plugin {
     async showdata() {
 
         
-        console.log("showdata2");
+        //console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
         const contents1 = extractContents(viewKeys);
-        console.log(contents1);
+        //console.log(contents1);
         const contents = contents1.filter(element => element !== '' && element !== null && element !== undefined);
         // 创建并设置新元素
         // const contents = ['内容1', '较长的内容2', '内容3', '非常非常长的内容4', '内容5', '内容6', '内容7', '内容8', '内容9', '内容10']; // 示例内容数组
@@ -60,10 +60,10 @@ export default class DatabaseDisplay extends Plugin {
         });
         
         if (!parentElement) {
-            console.log("无法找到不包含 'fn__none' 类且 id 匹配的父元素");
+            //console.log("无法找到不包含 'fn__none' 类且 id 匹配的父元素");
             return;
         }
-        console.log("找到不包含 'fn__none' 类且 id 匹配的父元素 .protyle-title");
+        //console.log("找到不包含 'fn__none' 类且 id 匹配的父元素 .protyle-title");
         
         // 检查是否已经存在 .my__block-container 元素
         let container = document.querySelector('.my__block-container');
@@ -71,13 +71,13 @@ export default class DatabaseDisplay extends Plugin {
             // 创建一个容器元素
             container = document.createElement('div');
             container.className = 'my__block-container';
-            console.log("创建 .my__block-container 元素");
+            //console.log("创建 .my__block-container 元素");
         } else {
             // 删除原有的内容，再重新添加
             while (container.firstChild) {
                 container.removeChild(container.firstChild);
             }
-            console.log(".my__block-container 元素已存在，内容已清空");
+            //console.log(".my__block-container 元素已存在，内容已清空");
         }
         
         // 将每个内容项添加到容器中
@@ -86,26 +86,26 @@ export default class DatabaseDisplay extends Plugin {
             newSpan.className = 'my__block';
             newSpan.textContent = content; // 将内容项设置为 span 的文本内容
             container.appendChild(newSpan);
-            console.log(`添加内容项: ${content}`);
+            //console.log(`添加内容项: ${content}`);
         });
         
         // 将容器添加到父元素中
         parentElement.appendChild(container);
-        console.log(".my__block-container 已添加到父元素");
+        //console.log(".my__block-container 已添加到父元素");
     }
 
 
 
 
     async handleSelectionChange() {
-        // console.log("handleSelectionChange");
+        // //console.log("handleSelectionChange");
         const blockId = getCursorBlockId();
         if (blockId) {
             // showMessage(`光标所在的块ID: ${blockId}`);
-            console.log(`光标所在的块ID: ${blockId}`);
+            //console.log(`光标所在的块ID: ${blockId}`);
             clickId = blockId;
         } else {
-            console.log("无法获取光标所在的块ID");
+            //console.log("无法获取光标所在的块ID");
         }
     }
 
@@ -124,12 +124,12 @@ export default class DatabaseDisplay extends Plugin {
 
     uninstall() {
         this.eventBus.off("switch-protyle", this.showdata);
-        console.log("uninstall");
+        //console.log("uninstall");
     }
 }
 
 function getCursorBlockId() {
-    console.log("getCursorBlockId");
+    //console.log("getCursorBlockId");
     const selection = window.getSelection();
     if (!selection || !selection.rangeCount) return null;
 
