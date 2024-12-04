@@ -14,7 +14,7 @@ import {
 import "@/index.scss";
 import { getAttributeViewKeys } from "./api";
 
-
+let isoutLog = true;
 let currentDocId = null;
 let currentDocId2 = null;
 let clickId = null;
@@ -23,48 +23,48 @@ export default class DatabaseDisplay extends Plugin {
 
     async onload() {
         this.eventBus.on("switch-protyle", async (event) => {
-            currentDocId =  event.detail.protyle.block.id;
+            currentDocId = event.detail.protyle.block.id;
             await this.showdata();
         });
-        
-        
+
+
         // this.eventBus.on("click-editorcontent", this.handleSelectionChange);
     }
 
 
 
-    
+
     async showdata() {
 
-        
+
         //console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
         const contents1 = extractContents(viewKeys);
-        //console.log(contents1);
+        console.log(contents1);
         const contents = contents1.filter(element => element !== '' && element !== null && element !== undefined);
         // 创建并设置新元素
         // const contents = ['内容1', '较长的内容2', '内容3', '非常非常长的内容4', '内容5', '内容6', '内容7', '内容8', '内容9', '内容10']; // 示例内容数组
 
         // 动态生成 my__block 类的样式
-        
-        
+
+
         // 找到所有可能的父元素
         const parentElements = document.querySelectorAll('.protyle-title');
         let parentElement = null;
-        
+
         // 遍历父元素，找到不包含 'fn__none' 类且 id 匹配的元素
         parentElements.forEach(element => {
             if (!element.classList.contains('fn__none') && element.getAttribute('data-node-id') === currentDocId) {
                 parentElement = element;
             }
         });
-        
+
         if (!parentElement) {
             //console.log("无法找到不包含 'fn__none' 类且 id 匹配的父元素");
             return;
         }
         //console.log("找到不包含 'fn__none' 类且 id 匹配的父元素 .protyle-title");
-        
+
         // 检查是否已经存在 .my__block-container 元素
         let container = document.querySelector('.my__block-container');
         if (!container) {
@@ -79,7 +79,7 @@ export default class DatabaseDisplay extends Plugin {
             }
             //console.log(".my__block-container 元素已存在，内容已清空");
         }
-        
+
         // 将每个内容项添加到容器中
         contents.forEach(content => {
             const newSpan = document.createElement('span');
@@ -88,7 +88,7 @@ export default class DatabaseDisplay extends Plugin {
             container.appendChild(newSpan);
             //console.log(`添加内容项: ${content}`);
         });
-        
+
         // 将容器添加到父元素中
         parentElement.appendChild(container);
         //console.log(".my__block-container 已添加到父元素");
@@ -162,31 +162,40 @@ function extractContents(data) {
         item.keyValues.forEach(keyValue => {
             keyValue.values.forEach(value => {
                 if (value.mSelect) {
+                    outLog("mSelect");
                     value.mSelect.forEach(select => {
                         contents.push(select.content);
                     });
-                } else if (value.block) {
+                } else if (value.block?.content) {
                     // contents.push(value.block.content);
-                } else if (value.number) {
+                } else if (value.number?.content) {
+                    outLog("number");
                     contents.push(value.number.content);
-                } else if (value.date) {
+                } else if (value.date?.content) {
+                    outLog("date");
                     const date = new Date(value.date.content);
                     date.setDate(date.getDate() + 1); // 手动增加一天
                     const formattedDate = date.toISOString().split('T')[0];
                     contents.push(formattedDate);
-                } else if (value.text) {
+                } else if (value.text?.content) {
+                    outLog("text");
                     contents.push(value.text.content);
                 } else if (value.mAsset) {
-                    // value.mAsset.forEach(asset => {
-                    //     // contents.push(asset.content);
-                    // });
+                    outLog("mAsset");
+                    value.mAsset.forEach(asset => {
+                        contents.push(asset.name);
+                    });
                 } else if (value.checkbox) {
+                    outLog("checkbox");
                     contents.push(value.checkbox.checked);
-                } else if (value.phone) {
+                } else if (value.phone?.content) {
+                    outLog("phone");
                     contents.push(value.phone.content);
-                } else if (value.url) {
+                } else if (value.url?.content) {
+                    outLog("url");
                     contents.push(value.url.content);
-                } else if (value.email) {
+                } else if (value.email?.content) {
+                    outLog("email");
                     contents.push(value.email.content);
                 }
             });
@@ -196,3 +205,10 @@ function extractContents(data) {
     return contents;
 }
 
+
+// 
+function outLog(any) {
+    if (isoutLog) {
+        console.log(any);
+    }
+}
