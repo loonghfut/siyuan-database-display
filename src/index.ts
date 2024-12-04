@@ -13,30 +13,41 @@ import {
 } from "siyuan";
 import "@/index.scss";
 import { getAttributeViewKeys } from "./api";
+import { extractContents } from './handleKey';
+import { SettingUtils } from "./libs/setting-utils";
+import { addSettings } from './settings';
 
 let isoutLog = true;
 let currentDocId = null;
 let currentDocId2 = null;
 let clickId = null;
+export let isShow = null;
 
 export default class DatabaseDisplay extends Plugin {
+    private settingUtils: SettingUtils;
 
     async onload() {
         this.eventBus.on("switch-protyle", async (event) => {
             currentDocId = event.detail.protyle.block.id;
             await this.showdata();
         });
-
-
         // this.eventBus.on("click-editorcontent", this.handleSelectionChange);
+        this.settingUtils = new SettingUtils({
+            plugin: this, name: "DatabaseDisplay"
+        });
+        addSettings(this.settingUtils);
+
+        try {
+            this.settingUtils.load();
+        } catch (error) {
+            console.error("Error loading settings storage, probably empty config json:", error);
+        }
     }
 
 
 
 
     async showdata() {
-
-
         //console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
         const contents1 = extractContents(viewKeys);
@@ -95,8 +106,6 @@ export default class DatabaseDisplay extends Plugin {
     }
 
 
-
-
     async handleSelectionChange() {
         // //console.log("handleSelectionChange");
         const blockId = getCursorBlockId();
@@ -109,13 +118,18 @@ export default class DatabaseDisplay extends Plugin {
         }
     }
 
-
-
     onLayoutReady() {
+        this.settingUtils.load();
+        console.log(this.settingUtils.get("Check-mSelect"),'1');
+        console.log(this.settingUtils.get("Check-number"),'2');
+        console.log(this.settingUtils.get("Check-date"));
+        console.log(this.settingUtils.get("Check-text"));
+        console.log(this.settingUtils.get("Check-mAsset"));
+        console.log(this.settingUtils.get("Check-checkbox"));
+        console.log(this.settingUtils.get("Check-phone"));
+        console.log(this.settingUtils.get("Check-url"));
+        console.log(this.settingUtils.get("Check-email"),'9');
         // this.loadData(STORAGE_NAME);
-
-
-
     }
 
     async onunload() {
@@ -155,59 +169,12 @@ function getCursorBlockId() {
     }
 }
 
-function extractContents(data) {
-    const contents = [];
 
-    data.forEach(item => {
-        item.keyValues.forEach(keyValue => {
-            keyValue.values.forEach(value => {
-                if (value.mSelect) {
-                    outLog("mSelect");
-                    value.mSelect.forEach(select => {
-                        contents.push(select.content);
-                    });
-                } else if (value.block?.content) {
-                    // contents.push(value.block.content);
-                } else if (value.number?.content) {
-                    outLog("number");
-                    contents.push(value.number.content);
-                } else if (value.date?.content) {
-                    outLog("date");
-                    const date = new Date(value.date.content);
-                    date.setDate(date.getDate() + 1); // 手动增加一天
-                    const formattedDate = date.toISOString().split('T')[0];
-                    contents.push(formattedDate);
-                } else if (value.text?.content) {
-                    outLog("text");
-                    contents.push(value.text.content);
-                } else if (value.mAsset) {
-                    outLog("mAsset");
-                    value.mAsset.forEach(asset => {
-                        contents.push(asset.name);
-                    });
-                } else if (value.checkbox) {
-                    outLog("checkbox");
-                    contents.push(value.checkbox.checked);
-                } else if (value.phone?.content) {
-                    outLog("phone");
-                    contents.push(value.phone.content);
-                } else if (value.url?.content) {
-                    outLog("url");
-                    contents.push(value.url.content);
-                } else if (value.email?.content) {
-                    outLog("email");
-                    contents.push(value.email.content);
-                }
-            });
-        });
-    });
 
-    return contents;
-}
 
 
 // 
-function outLog(any) {
+export function outLog(any) {
     if (isoutLog) {
         console.log(any);
     }
