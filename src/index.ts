@@ -17,6 +17,7 @@ import { extractContents } from './handleKey';
 import { SettingUtils } from "./libs/setting-utils";
 import { addSettings } from './settings';
 
+let disShow = null;
 let isoutLog = true;
 let currentDocId = null;
 let currentDocId2 = null;
@@ -50,7 +51,12 @@ export default class DatabaseDisplay extends Plugin {
     async showdata() {
         //console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
-        const contents1 = extractContents(viewKeys);
+        let contents1 = [];
+        if (disShow) {
+            contents1 = extractContents(viewKeys, disShow.split(','));
+        } else {
+            contents1 = extractContents(viewKeys);
+        }
         console.log(contents1);
         const contents = contents1.filter(element => element !== '' && element !== null && element !== undefined);
         // 创建并设置新元素
@@ -120,15 +126,8 @@ export default class DatabaseDisplay extends Plugin {
 
     onLayoutReady() {
         this.settingUtils.load();
-        console.log(this.settingUtils.get("Check-mSelect"),'1');
-        console.log(this.settingUtils.get("Check-number"),'2');
-        console.log(this.settingUtils.get("Check-date"));
-        console.log(this.settingUtils.get("Check-text"));
-        console.log(this.settingUtils.get("Check-mAsset"));
-        console.log(this.settingUtils.get("Check-checkbox"));
-        console.log(this.settingUtils.get("Check-phone"));
-        console.log(this.settingUtils.get("Check-url"));
-        console.log(this.settingUtils.get("Check-email"),'9');
+        // console.log(this.settingUtils.get("dis-show"), '1');
+        disShow = this.settingUtils.get("dis-show");
         // this.loadData(STORAGE_NAME);
     }
 
