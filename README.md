@@ -14,3 +14,6 @@ To display data from the database in a smaller area (currently only supports doc
 - Support for custom beautification settings
 - Support for displaying regular blocks
 
+#### Update Log:
+
+- Please check the code commit record
