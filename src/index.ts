@@ -16,13 +16,13 @@ import { getAttributeViewKeys } from "./api";
 import { extractContents } from './handleKey';
 import { SettingUtils } from "./libs/setting-utils";
 import { addSettings } from './settings';
-import { getCursorBlockId } from "./block";
+import { getCursorBlockId, getAVreferenceid } from "./block";
 
 let disShow_doc = null;
 let disShow_block = null;
-let isoutLog = true;
+let isoutLog = false;
 let currentDocId = null;
-let currentDocId2 = null;
+let currentDocId_block = null;
 let clickId = null;
 export let isShow = null;
 
@@ -34,8 +34,14 @@ export default class DatabaseDisplay extends Plugin {
         this.eventBus.on("switch-protyle", async (event) => {
             currentDocId = event.detail.protyle.block.id;
             await this.showdata_doc();
+            currentDocId_block = await getAVreferenceid(currentDocId);
+            //遍历currentDocId_block执行showdata_block
+            for (let i = 0; i < currentDocId_block.length; i++) {
+                clickId = currentDocId_block[i];
+                await this.showdata_block();
+            }
         });
-        this.eventBus.on("click-editorcontent", this.handleSelectionChange.bind(this));
+        // this.eventBus.on("click-editorcontent", this.handleSelectionChange.bind(this));
 
         this.settingUtils = new SettingUtils({
             plugin: this, name: "DatabaseDisplay"
@@ -55,7 +61,8 @@ export default class DatabaseDisplay extends Plugin {
         const blockId = getCursorBlockId();
         if (blockId) {
             clickId = blockId;
-            // showMessage(`光标所在的块ID: ${clickId}`);
+
+            showMessage(`光标所在的块ID: ${clickId}`);
             await this.showdata_block();
         } else {
             //console.log("无法获取光标所在的块ID");
@@ -152,13 +159,15 @@ export default class DatabaseDisplay extends Plugin {
         }
 
         const contents = contents1
-        .filter(element => element !== '' && element !== null && element !== undefined)
-        .map(element => String(element)); // 将所有元素转换为字符串
-    
-        const parentElements = document.querySelectorAll('.p');
-        let parentElement = null;
+            .filter(element => element !== '' && element !== null && element !== undefined)
+            .map(element => String(element)); // 将所有元素转换为字符串
 
+        const parentElements = document.querySelectorAll('.p[custom-avs]');//TODO:目前暂时只支持段落块
+        let parentElement = null;
+        outLog(parentElements);
         parentElements.forEach(element => {
+            // console.log(element.getAttribute('data-node-id'), currentDocId);
+            // console.log(element.getAttribute('data-node-id'), "currentDocId");
             if (element.getAttribute('data-node-id') === currentDocId) {
                 parentElement = element;
             }
@@ -183,7 +192,7 @@ export default class DatabaseDisplay extends Plugin {
                 return spanText.localeCompare(contentText, undefined, { numeric: true }) === 0;
             });
             if (existingElement) {
-                console.log(`内容项 "${content}" 已存在`);
+                outLog(`内容项 "${content}" 已存在`);
                 return;
             }
 
