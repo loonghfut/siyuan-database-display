@@ -41,7 +41,7 @@ export default class DatabaseDisplay extends Plugin {
                 await this.showdata_block();
             }
         });
-        // this.eventBus.on("click-editorcontent", this.handleSelectionChange.bind(this));
+        this.eventBus.on("loaded-protyle-dynamic", this.loaded.bind(this));
 
         this.settingUtils = new SettingUtils({
             plugin: this, name: "DatabaseDisplay"
@@ -55,6 +55,18 @@ export default class DatabaseDisplay extends Plugin {
         }
     }
 
+    async loaded() {
+        console.log("loaded");
+        if (currentDocId) {
+            await this.showdata_doc();
+            currentDocId_block = await getAVreferenceid(currentDocId);
+            //遍历currentDocId_block执行showdata_block
+            for (let i = 0; i < currentDocId_block.length; i++) {
+                clickId = currentDocId_block[i];
+                await this.showdata_block();
+            }
+        }
+    }
 
     async handleSelectionChange() {
         // //console.log("handleSelectionChange");
@@ -77,6 +89,7 @@ export default class DatabaseDisplay extends Plugin {
         // console.log(this.settingUtils.get("dis-show"), '1');
         disShow_doc = this.settingUtils.get("dis-show");
         disShow_block = this.settingUtils.get("dis-show-block");
+
         // this.loadData(STORAGE_NAME);
     }
     async onunload() {
