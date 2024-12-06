@@ -18,7 +18,8 @@ import { SettingUtils } from "./libs/setting-utils";
 import { addSettings } from './settings';
 import { getCursorBlockId } from "./block";
 
-let disShow = null;
+let disShow_doc = null;
+let disShow_block = null;
 let isoutLog = true;
 let currentDocId = null;
 let currentDocId2 = null;
@@ -30,12 +31,12 @@ export default class DatabaseDisplay extends Plugin {
 
     async onload() {
         //记得取消注释
-        // this.eventBus.on("switch-protyle", async (event) => {
-        //     currentDocId = event.detail.protyle.block.id;
-        //     await this.showdata_doc();
-        // });
-
+        this.eventBus.on("switch-protyle", async (event) => {
+            currentDocId = event.detail.protyle.block.id;
+            await this.showdata_doc();
+        });
         this.eventBus.on("click-editorcontent", this.handleSelectionChange.bind(this));
+
         this.settingUtils = new SettingUtils({
             plugin: this, name: "DatabaseDisplay"
         });
@@ -54,8 +55,8 @@ export default class DatabaseDisplay extends Plugin {
         const blockId = getCursorBlockId();
         if (blockId) {
             clickId = blockId;
-            showMessage(`光标所在的块ID: ${clickId}`);
-            await this.insertCustomBlock();
+            // showMessage(`光标所在的块ID: ${clickId}`);
+            await this.showdata_block();
         } else {
             //console.log("无法获取光标所在的块ID");
         }
@@ -67,16 +68,17 @@ export default class DatabaseDisplay extends Plugin {
     onLayoutReady() {
         this.settingUtils.load();
         // console.log(this.settingUtils.get("dis-show"), '1');
-        disShow = this.settingUtils.get("dis-show");
+        disShow_doc = this.settingUtils.get("dis-show");
+        disShow_block = this.settingUtils.get("dis-show-block");
         // this.loadData(STORAGE_NAME);
     }
-
     async onunload() {
         this.eventBus.off("switch-protyle", this.showdata_doc);
+        this.eventBus.off("click-editorcontent", this.handleSelectionChange.bind(this));
     }
-
     uninstall() {
         this.eventBus.off("switch-protyle", this.showdata_doc);
+        this.eventBus.off("click-editorcontent", this.handleSelectionChange.bind(this));
         //console.log("uninstall");
     }
 
@@ -84,8 +86,8 @@ export default class DatabaseDisplay extends Plugin {
         //console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
         let contents1 = [];
-        if (disShow) {
-            contents1 = extractContents(viewKeys, disShow.split(','));
+        if (disShow_doc) {
+            contents1 = extractContents(viewKeys, disShow_doc.split(','));
         } else {
             contents1 = extractContents(viewKeys);
         }
@@ -139,12 +141,12 @@ export default class DatabaseDisplay extends Plugin {
         //console.log(".my__block-container 已添加到父元素");
     }
 
-    async insertCustomBlock() {
+    async showdata_block() {
         const currentDocId = clickId; // 替换为实际的 currentDocId
         const viewKeys = await getAttributeViewKeys(currentDocId);
         let contents1 = [];
-        if (disShow) {
-            contents1 = extractContents(viewKeys, disShow.split(','));
+        if (disShow_block) {
+            contents1 = extractContents(viewKeys, disShow_block.split(','));
         } else {
             contents1 = extractContents(viewKeys);
         }
@@ -200,7 +202,7 @@ export default class DatabaseDisplay extends Plugin {
             attrContainer.insertBefore(newDiv, attrContainer.firstChild);
         });
 
-        console.log(".protyle-attr 元素已添加到父元素");
+        // console.log(".protyle-attr 元素已添加到父元素");
     }
 
     // 调用函数
