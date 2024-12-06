@@ -1,6 +1,6 @@
 import {
     Plugin,
-    // showMessage,
+    showMessage,
     // confirm,
     // Dialog,
     // Menu,
@@ -16,6 +16,7 @@ import { getAttributeViewKeys } from "./api";
 import { extractContents } from './handleKey';
 import { SettingUtils } from "./libs/setting-utils";
 import { addSettings } from './settings';
+import { getCursorBlockId } from "./block";
 
 let disShow = null;
 let isoutLog = true;
@@ -28,11 +29,13 @@ export default class DatabaseDisplay extends Plugin {
     private settingUtils: SettingUtils;
 
     async onload() {
-        this.eventBus.on("switch-protyle", async (event) => {
-            currentDocId = event.detail.protyle.block.id;
-            await this.showdata();
-        });
-        // this.eventBus.on("click-editorcontent", this.handleSelectionChange);
+        //记得取消注释
+        // this.eventBus.on("switch-protyle", async (event) => {
+        //     currentDocId = event.detail.protyle.block.id;
+        //     await this.showdata_doc();
+        // });
+
+        this.eventBus.on("click-editorcontent", this.handleSelectionChange.bind(this));
         this.settingUtils = new SettingUtils({
             plugin: this, name: "DatabaseDisplay"
         });
@@ -46,9 +49,38 @@ export default class DatabaseDisplay extends Plugin {
     }
 
 
+    async handleSelectionChange() {
+        // //console.log("handleSelectionChange");
+        const blockId = getCursorBlockId();
+        if (blockId) {
+            clickId = blockId;
+            showMessage(`光标所在的块ID: ${clickId}`);
+            await this.insertCustomBlock();
+        } else {
+            //console.log("无法获取光标所在的块ID");
+        }
+    }
 
 
-    async showdata() {
+
+
+    onLayoutReady() {
+        this.settingUtils.load();
+        // console.log(this.settingUtils.get("dis-show"), '1');
+        disShow = this.settingUtils.get("dis-show");
+        // this.loadData(STORAGE_NAME);
+    }
+
+    async onunload() {
+        this.eventBus.off("switch-protyle", this.showdata_doc);
+    }
+
+    uninstall() {
+        this.eventBus.off("switch-protyle", this.showdata_doc);
+        //console.log("uninstall");
+    }
+
+    async showdata_doc() {
         //console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
         let contents1 = [];
@@ -57,18 +89,14 @@ export default class DatabaseDisplay extends Plugin {
         } else {
             contents1 = extractContents(viewKeys);
         }
-        console.log(contents1);
+        // console.log(contents1);
         const contents = contents1.filter(element => element !== '' && element !== null && element !== undefined);
         // 创建并设置新元素
         // const contents = ['内容1', '较长的内容2', '内容3', '非常非常长的内容4', '内容5', '内容6', '内容7', '内容8', '内容9', '内容10']; // 示例内容数组
-
         // 动态生成 my__block 类的样式
-
-
         // 找到所有可能的父元素
         const parentElements = document.querySelectorAll('.protyle-title');
         let parentElement = null;
-
         // 遍历父元素，找到不包含 'fn__none' 类且 id 匹配的元素
         parentElements.forEach(element => {
             if (!element.classList.contains('fn__none') && element.getAttribute('data-node-id') === currentDocId) {
@@ -111,62 +139,75 @@ export default class DatabaseDisplay extends Plugin {
         //console.log(".my__block-container 已添加到父元素");
     }
 
-
-    async handleSelectionChange() {
-        // //console.log("handleSelectionChange");
-        const blockId = getCursorBlockId();
-        if (blockId) {
-            // showMessage(`光标所在的块ID: ${blockId}`);
-            //console.log(`光标所在的块ID: ${blockId}`);
-            clickId = blockId;
+    async insertCustomBlock() {
+        const currentDocId = clickId; // 替换为实际的 currentDocId
+        const viewKeys = await getAttributeViewKeys(currentDocId);
+        let contents1 = [];
+        if (disShow) {
+            contents1 = extractContents(viewKeys, disShow.split(','));
         } else {
-            //console.log("无法获取光标所在的块ID");
+            contents1 = extractContents(viewKeys);
         }
+
+        const contents = contents1
+        .filter(element => element !== '' && element !== null && element !== undefined)
+        .map(element => String(element)); // 将所有元素转换为字符串
+    
+        const parentElements = document.querySelectorAll('.p');
+        let parentElement = null;
+
+        parentElements.forEach(element => {
+            if (element.getAttribute('data-node-id') === currentDocId) {
+                parentElement = element;
+            }
+        });
+
+        if (!parentElement) {
+            console.log("无法找到 id 匹配的父元素");
+            return;
+        }
+
+        const attrContainer = parentElement.querySelector('.protyle-attr');
+        if (!attrContainer) {
+            console.log("无法找到 .protyle-attr 元素");
+            return;
+        }
+
+        contents.forEach(content => {
+            // 检查是否已经存在相同内容的元素
+            const existingElement = Array.from(attrContainer.querySelectorAll('.popover__block')).find((span: HTMLElement) => {
+                const spanText = typeof span.textContent === 'string' ? span.textContent.trim() : '';
+                const contentText = typeof content === 'string' ? content.trim() : '';
+                return spanText.localeCompare(contentText, undefined, { numeric: true }) === 0;
+            });
+            if (existingElement) {
+                console.log(`内容项 "${content}" 已存在`);
+                return;
+            }
+
+            const newDiv = document.createElement('div');
+            newDiv.className = 'protyle-attr--av';
+            const newUse = document.createElement('use');
+            newUse.setAttribute('xlink:href', '#iconDatabase');
+
+            const newSpan = document.createElement('span');
+            newSpan.className = 'popover__block';
+            newSpan.setAttribute('data-av-id', `${currentDocId}`); // 替换为实际的 data-av-id
+            newSpan.setAttribute('data-popover-url', '/api/av/getMirrorDatabaseBlocks'); // 替换为实际的 data-popover-url
+            newSpan.textContent = content;
+
+            newDiv.appendChild(newSpan);
+            attrContainer.insertBefore(newDiv, attrContainer.firstChild);
+        });
+
+        console.log(".protyle-attr 元素已添加到父元素");
     }
 
-    onLayoutReady() {
-        this.settingUtils.load();
-        // console.log(this.settingUtils.get("dis-show"), '1');
-        disShow = this.settingUtils.get("dis-show");
-        // this.loadData(STORAGE_NAME);
-    }
+    // 调用函数
 
-    async onunload() {
-        this.eventBus.off("switch-protyle", this.showdata);
-    }
 
-    uninstall() {
-        this.eventBus.off("switch-protyle", this.showdata);
-        //console.log("uninstall");
-    }
 }
 
-function getCursorBlockId() {
-    //console.log("getCursorBlockId");
-    const selection = window.getSelection();
-    if (!selection || !selection.rangeCount) return null;
-
-    const range = selection.getRangeAt(0);
-    let container = range.startContainer;
-
-    // 如果 startContainer 是文本节点，则获取其父元素
-    if (container.nodeType === Node.TEXT_NODE) {
-        container = container.parentElement;
-    }
-
-    // 确保 container 是一个元素节点
-    if (!(container instanceof Element)) {
-        return null;
-    }
-
-    const blockElement = container.closest('.protyle-wysiwyg [data-node-id]');
-
-    if (blockElement) {
-        return blockElement.getAttribute('data-node-id');
-    } else {
-        return null;
-    }
-}
 
 
 
