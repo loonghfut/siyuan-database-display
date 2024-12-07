@@ -2,7 +2,7 @@
   "name": "siyuan-database-display",
   "author": "steve",
   "url": "https://github.com/loonghfut/siyuan-database-display",
-  "version": "0.3.0",
+  "version": "0.3.5",
   "minAppVersion": "3.0.12",
   "backends": [
     "windows",
@@ -24,8 +24,8 @@
     "zh_CN": "数据展示"
   },
   "description": {
-    "en_US": "Display data in the database to the right of the document block",
-    "zh_CN": "展示数据库中的数据到文档块的右边"
+    "en_US": "Display the database properties of the block, support 99% of the blocks!",
+    "zh_CN": "显示块的数据库属性值，支持99%的块！"
   },
   "readme": {
     "en_US": "README.md",

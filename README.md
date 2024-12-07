@@ -1,7 +1,7 @@
 
 #### Purpose:
 
-To display data from the database in a smaller area (currently only supports document blocks)
+Display the database attribute values of blocks, supporting 99% of blocks!
 ![alt text](image.png)
 
 #### Completed:

@@ -16,7 +16,7 @@ import { getAttributeViewKeys } from "./api";
 import { extractContents } from './handleKey';
 import { SettingUtils } from "./libs/setting-utils";
 import { addSettings } from './settings';
-import { getCursorBlockId, getAVreferenceid } from "./block";
+import { getCursorBlockId, getAVreferenceid, reConfirmedDocId } from "./block";
 
 let disShow_doc = null;
 let disShow_block = null;
@@ -32,7 +32,10 @@ export default class DatabaseDisplay extends Plugin {
     async onload() {
         //记得取消注释
         this.eventBus.on("switch-protyle", async (event) => {
-            currentDocId = event.detail.protyle.block.id;
+            const currentDocId2 = event.detail.protyle.block.id;
+            currentDocId = await reConfirmedDocId(currentDocId2);
+            // console.log(currentDocId, "currentDocId");
+
             await this.showdata_doc();
             currentDocId_block = await getAVreferenceid(currentDocId);
             //遍历currentDocId_block执行showdata_block
@@ -42,6 +45,7 @@ export default class DatabaseDisplay extends Plugin {
             }
         });
         this.eventBus.on("loaded-protyle-dynamic", this.loaded.bind(this));
+        this.eventBus.on("loaded-protyle-static", this.loaded.bind(this));
 
         this.settingUtils = new SettingUtils({
             plugin: this, name: "DatabaseDisplay"
@@ -95,10 +99,14 @@ export default class DatabaseDisplay extends Plugin {
     async onunload() {
         this.eventBus.off("switch-protyle", this.showdata_doc);
         this.eventBus.off("click-editorcontent", this.handleSelectionChange.bind(this));
+        this.eventBus.off("loaded-protyle-static", this.loaded.bind(this));
+        this.eventBus.off("loaded-protyle-dynamic", this.loaded.bind(this));
     }
     uninstall() {
         this.eventBus.off("switch-protyle", this.showdata_doc);
         this.eventBus.off("click-editorcontent", this.handleSelectionChange.bind(this));
+        this.eventBus.off("loaded-protyle-static", this.loaded.bind(this));
+        this.eventBus.off("loaded-protyle-dynamic", this.loaded.bind(this));
         //console.log("uninstall");
     }
 
@@ -113,52 +121,49 @@ export default class DatabaseDisplay extends Plugin {
         }
         // console.log(contents1);
         const contents = contents1.filter(element => element !== '' && element !== null && element !== undefined);
-        // 创建并设置新元素
-        // const contents = ['内容1', '较长的内容2', '内容3', '非常非常长的内容4', '内容5', '内容6', '内容7', '内容8', '内容9', '内容10']; // 示例内容数组
-        // 动态生成 my__block 类的样式
-        // 找到所有可能的父元素
+
         const parentElements = document.querySelectorAll('.protyle-title');
-        let parentElement = null;
+        let parentElementsArray = [];
         // 遍历父元素，找到不包含 'fn__none' 类且 id 匹配的元素
         parentElements.forEach(element => {
             if (!element.classList.contains('fn__none') && element.getAttribute('data-node-id') === currentDocId) {
-                parentElement = element;
+                parentElementsArray.push(element);
             }
         });
-
-        if (!parentElement) {
-            //console.log("无法找到不包含 'fn__none' 类且 id 匹配的父元素");
+        if (parentElementsArray.length === 0) {
+            console.log("无法找到不包含 'fn__none' 类且 id 匹配的父元素");
             return;
         }
         //console.log("找到不包含 'fn__none' 类且 id 匹配的父元素 .protyle-title");
+        parentElementsArray.forEach(parentElement => {
+            // 检查是否已经存在 .my__block-container 元素
+            let container = parentElement.querySelector('.my__block-container');
+            if (!container) {
+                // 创建一个容器元素
+                container = document.createElement('div');
+                container.className = 'my__block-container';
+                //console.log("创建 .my__block-container 元素");
+            } else {
+                // 删除原有的内容，再重新添加
+                while (container.firstChild) {
+                    container.removeChild(container.firstChild);
+                }
 
-        // 检查是否已经存在 .my__block-container 元素
-        let container = document.querySelector('.my__block-container');
-        if (!container) {
-            // 创建一个容器元素
-            container = document.createElement('div');
-            container.className = 'my__block-container';
-            //console.log("创建 .my__block-container 元素");
-        } else {
-            // 删除原有的内容，再重新添加
-            while (container.firstChild) {
-                container.removeChild(container.firstChild);
+                //console.log(".my__block-container 元素已存在，内容已清空");
             }
-            //console.log(".my__block-container 元素已存在，内容已清空");
-        }
 
-        // 将每个内容项添加到容器中
-        contents.forEach(content => {
-            const newSpan = document.createElement('span');
-            newSpan.className = 'my__block';
-            newSpan.textContent = content; // 将内容项设置为 span 的文本内容
-            container.appendChild(newSpan);
-            //console.log(`添加内容项: ${content}`);
+            // 将每个内容项添加到容器中
+            contents.forEach(content => {
+                const newSpan = document.createElement('span');
+                newSpan.className = 'my__block';
+                newSpan.textContent = content; // 将内容项设置为 span 的文本内容
+                container.appendChild(newSpan);
+                //console.log(`添加内容项: ${content}`);
+            });
+            // 将容器添加到父元素中
+            parentElement.appendChild(container);
+            //console.log(".my__block-container 已添加到父元素");
         });
-
-        // 将容器添加到父元素中
-        parentElement.appendChild(container);
-        //console.log(".my__block-container 已添加到父元素");
     }
 
     async showdata_block() {
@@ -176,53 +181,55 @@ export default class DatabaseDisplay extends Plugin {
             .map(element => String(element)); // 将所有元素转换为字符串
 
         const parentElements = document.querySelectorAll('[custom-avs]');//TODO:目前暂时只支持段落块
-        let parentElement = null;
+        let parentElementsArray = [];
         outLog(parentElements);
         parentElements.forEach(element => {
             // console.log(element.getAttribute('data-node-id'), currentDocId);
             // console.log(element.getAttribute('data-node-id'), "currentDocId");
             if (element.getAttribute('data-node-id') === currentDocId) {
                 outLog(currentDocId, "cunr");
-                parentElement = element;
+                parentElementsArray.push(element);
             }
         });
 
-        if (!parentElement) {
+        if (parentElementsArray.length === 0) {
             console.log("无法找到 id 匹配的父元素");
             return;
         }
 
-        const attrContainer = Array.from(parentElement.children).find((child: Element) => child.classList.contains('protyle-attr')) as Element;
-        if (!attrContainer) {
-            console.log("无法找到 .protyle-attr 元素");
-            return;
-        }
-
-        contents.forEach(content => {
-            // 检查是否已经存在相同内容的元素
-            const existingElement = Array.from(attrContainer.querySelectorAll('.popover__block')).find((span: HTMLElement) => {
-                const spanText = typeof span.textContent === 'string' ? span.textContent.trim() : '';
-                const contentText = typeof content === 'string' ? content.trim() : '';
-                return spanText.localeCompare(contentText, undefined, { numeric: true }) === 0;
-            });
-            if (existingElement) {
-                outLog(`内容项 "${content}" 已存在`);
+        parentElementsArray.forEach(parentElement => {
+            const attrContainer = Array.from(parentElement.children).find((child: Element) => child.classList.contains('protyle-attr')) as Element;
+            if (!attrContainer) {
+                console.log("无法找到 .protyle-attr 元素");
                 return;
             }
 
-            const newDiv = document.createElement('div');
-            newDiv.className = 'protyle-attr--av';
+            contents.forEach(content => {
+                // 检查是否已经存在相同内容的元素
+                const existingElement = Array.from(attrContainer.querySelectorAll('.popover__block')).find((span: HTMLElement) => {
+                    const spanText = typeof span.textContent === 'string' ? span.textContent.trim() : '';
+                    const contentText = typeof content === 'string' ? content.trim() : '';
+                    return spanText.localeCompare(contentText, undefined, { numeric: true }) === 0;
+                });
+                if (existingElement) {
+                    outLog(`内容项 "${content}" 已存在`);
+                    return;
+                }
 
-            const newSpan = document.createElement('span');
-            newSpan.className = 'popover__block';
+                const newDiv = document.createElement('div');
+                newDiv.className = 'protyle-attr--av';
 
-            newSpan.textContent = content;
+                const newSpan = document.createElement('span');
+                newSpan.className = 'popover__block';
 
-            newDiv.appendChild(newSpan);
-            attrContainer.insertBefore(newDiv, attrContainer.firstChild);
+                newSpan.textContent = content;
+
+                newDiv.appendChild(newSpan);
+                attrContainer.insertBefore(newDiv, attrContainer.firstChild);
+            });
+
+            // console.log(".protyle-attr 元素已添加到父元素");
         });
-
-        // console.log(".protyle-attr 元素已添加到父元素");
     }
 
     // 调用函数

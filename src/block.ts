@@ -29,7 +29,7 @@ export function getCursorBlockId() {
     }
 }
 
-export async function getAVreferenceid(currentDocId) {//暂时先这样，只查询段落块
+export async function getAVreferenceid(currentDocId) {//获取当前文档的被数据库引用的块id
     const sqlStr = `SELECT id
     FROM blocks
     WHERE root_id = '${currentDocId}'
@@ -39,4 +39,14 @@ export async function getAVreferenceid(currentDocId) {//暂时先这样，只查
     const res = await sql(sqlStr);
     // console.log(res.map(item => item.id));
     return res.map(item => item.id);
+}
+
+export async function reConfirmedDocId(DocId) {//兼容通过数据库点击后获取id会获取到聚焦块的id
+    const sqlStr = `SELECT root_id
+    FROM blocks
+    WHERE id = '${DocId}'
+    `;
+    const res = await sql(sqlStr);
+    // console.log(res[0].root_id, "reConfirmedDocId");
+    return res[0].root_id;
 }
