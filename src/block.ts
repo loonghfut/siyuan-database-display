@@ -33,8 +33,8 @@ export async function getAVreferenceid(currentDocId) {//暂时先这样，只查
     const sqlStr = `SELECT id
     FROM blocks
     WHERE root_id = '${currentDocId}'
-    // AND id != '${currentDocId}'
-    AND type = 'p'
+    AND id != '${currentDocId}'
+    // AND type = 'p'
     AND ial LIKE '%custom-avs%';`;
     const res = await sql(sqlStr);
     // console.log(res.map(item => item.id));

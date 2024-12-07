@@ -7,7 +7,8 @@ To display data from the database in a smaller area (currently only supports doc
 #### Completed:
 
 - Basic effect has been achieved
-- Preliminary support for displaying regular blocks (paragraph blocks)
+- The database attribute display that theoretically supports 99% of blocks (please report if you find any bugs).
+
 
 #### Pending:
 

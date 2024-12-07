@@ -175,13 +175,14 @@ export default class DatabaseDisplay extends Plugin {
             .filter(element => element !== '' && element !== null && element !== undefined)
             .map(element => String(element)); // 将所有元素转换为字符串
 
-        const parentElements = document.querySelectorAll('.p[custom-avs]');//TODO:目前暂时只支持段落块
+        const parentElements = document.querySelectorAll('[custom-avs]');//TODO:目前暂时只支持段落块
         let parentElement = null;
         outLog(parentElements);
         parentElements.forEach(element => {
             // console.log(element.getAttribute('data-node-id'), currentDocId);
             // console.log(element.getAttribute('data-node-id'), "currentDocId");
             if (element.getAttribute('data-node-id') === currentDocId) {
+                outLog(currentDocId, "cunr");
                 parentElement = element;
             }
         });
@@ -191,7 +192,7 @@ export default class DatabaseDisplay extends Plugin {
             return;
         }
 
-        const attrContainer = parentElement.querySelector('.protyle-attr');
+        const attrContainer = Array.from(parentElement.children).find((child: Element) => child.classList.contains('protyle-attr')) as Element;
         if (!attrContainer) {
             console.log("无法找到 .protyle-attr 元素");
             return;
@@ -211,13 +212,10 @@ export default class DatabaseDisplay extends Plugin {
 
             const newDiv = document.createElement('div');
             newDiv.className = 'protyle-attr--av';
-            const newUse = document.createElement('use');
-            newUse.setAttribute('xlink:href', '#iconDatabase');
 
             const newSpan = document.createElement('span');
             newSpan.className = 'popover__block';
-            newSpan.setAttribute('data-av-id', `${currentDocId}`); // 替换为实际的 data-av-id
-            newSpan.setAttribute('data-popover-url', '/api/av/getMirrorDatabaseBlocks'); // 替换为实际的 data-popover-url
+
             newSpan.textContent = content;
 
             newDiv.appendChild(newSpan);
@@ -238,8 +236,8 @@ export default class DatabaseDisplay extends Plugin {
 
 
 // 
-export function outLog(any) {
+export function outLog(any, str = "") {
     if (isoutLog) {
-        console.log(any);
+        console.log(any, str);
     }
 }
