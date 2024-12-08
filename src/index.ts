@@ -61,6 +61,13 @@ export default class DatabaseDisplay extends Plugin {
 
     async loaded() {
         console.log("loaded");
+        setTimeout(async () => {//缓解乱显示bug
+           await this.loaded_run();
+        }, 10);
+    }
+
+    async loaded_run() {
+        console.log("loaded_run");
         if (currentDocId) {
             await this.showdata_doc();
             currentDocId_block = await getAVreferenceid(currentDocId);
@@ -71,7 +78,6 @@ export default class DatabaseDisplay extends Plugin {
             }
         }
     }
-
     async handleSelectionChange() {
         // //console.log("handleSelectionChange");
         const blockId = getCursorBlockId();
