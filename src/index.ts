@@ -94,6 +94,12 @@ export default class DatabaseDisplay extends Plugin {
         disShow_doc = this.settingUtils.get("dis-show");
         disShow_block = this.settingUtils.get("dis-show-block");
 
+        // 监听dom变化
+        const targetNode = document.body;
+        const config = { childList: true, subtree: true };
+        const observer = new MutationObserver(callback); // 监听点击数据库按键的弹窗变化
+        observer.observe(targetNode, config);
+
         // this.loadData(STORAGE_NAME);
     }
     async onunload() {
@@ -204,20 +210,33 @@ export default class DatabaseDisplay extends Plugin {
                 return;
             }
 
+            const existingElements = Array.from(attrContainer.querySelectorAll('.my-protyle-attr--av .popover__block'));
+            existingElements.forEach((span: HTMLElement) => {
+                const spanText = typeof span.textContent === 'string' ? span.textContent.trim() : '';
+                const isInContents = contents.some(content => {
+                    const contentText = typeof content === 'string' ? content.trim() : '';
+                    return spanText.localeCompare(contentText, undefined, { numeric: true }) === 0;
+                });
+                if (!isInContents) {
+                    span.parentElement?.remove();
+                }
+            });
             contents.forEach(content => {
                 // 检查是否已经存在相同内容的元素
-                const existingElement = Array.from(attrContainer.querySelectorAll('.popover__block')).find((span: HTMLElement) => {
+                const existingElement = Array.from(attrContainer.querySelectorAll('.my-protyle-attr--av .popover__block')).find((span: HTMLElement) => {
                     const spanText = typeof span.textContent === 'string' ? span.textContent.trim() : '';
                     const contentText = typeof content === 'string' ? content.trim() : '';
                     return spanText.localeCompare(contentText, undefined, { numeric: true }) === 0;
                 });
                 if (existingElement) {
                     outLog(`内容项 "${content}" 已存在`);
+                    // console.log(`内容项 "${content}" 已存在`);
                     return;
                 }
 
                 const newDiv = document.createElement('div');
-                newDiv.className = 'protyle-attr--av';
+                // newDiv.className = 'protyle-attr--av';//兼容性让步
+                newDiv.className = 'my-protyle-attr--av';
 
                 const newSpan = document.createElement('span');
                 newSpan.className = 'popover__block';
@@ -225,6 +244,8 @@ export default class DatabaseDisplay extends Plugin {
                 newSpan.textContent = content;
 
                 newDiv.appendChild(newSpan);
+                //换一个插入方式
+                // attrContainer.appendChild(newDiv);
                 attrContainer.insertBefore(newDiv, attrContainer.firstChild);
             });
 
@@ -238,7 +259,19 @@ export default class DatabaseDisplay extends Plugin {
 }
 
 
-
+const callback = (mutationsList: MutationRecord[]) => {
+    for (const mutation of mutationsList) {
+        if (mutation.type === 'childList') {
+            mutation.removedNodes.forEach((node) => {
+                if (node instanceof HTMLElement && node.matches('div[data-key="dialog-attr"].b3-dialog--open')) {
+                    console.log('Dialog closed');
+                    // 在这里添加你的代码
+                    DatabaseDisplay.prototype.loaded();
+                }
+            });
+        }
+    }
+};
 
 
 
