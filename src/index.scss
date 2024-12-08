@@ -15,6 +15,25 @@
     /* IE and Edge */
     scrollbar-width: none;
     /* Firefox */
+    > *:nth-child(4n + 4) {
+        color: var(--b3-card-error-color);
+        background-color: var(--b3-card-error-background);
+    }
+
+    > *:nth-child(4n + 3) {
+        color: var(--b3-card-warning-color);
+        background-color: var(--b3-card-warning-background);
+    }
+
+    > *:nth-child(4n + 2) {
+        color: var(--b3-card-info-color);
+        background-color: var(--b3-card-info-background);
+    }
+
+    > *:nth-child(4n + 1) {
+        color: var(--b3-card-success-color);
+        background-color: var(--b3-card-success-background);
+    }
 }
 
 .my__block-container::-webkit-scrollbar {
@@ -42,3 +61,27 @@
     /* 背景颜色 */
 }
 
+.my-protyle-attr--av > span {
+    padding: 0 0.5em;
+    border-radius: 0.5em;
+
+    &:nth-child(4n + 4) {
+        color: var(--b3-card-error-color);
+        background-color: var(--b3-card-error-background);
+    }
+
+    &:nth-child(4n + 3) {
+        color: var(--b3-card-warning-color);
+        background-color: var(--b3-card-warning-background);
+    }
+
+    &:nth-child(4n + 2) {
+        color: var(--b3-card-info-color);
+        background-color: var(--b3-card-info-background);
+    }
+
+    &:nth-child(4n + 1) {
+        color: var(--b3-card-success-color);
+        background-color: var(--b3-card-success-background);
+    }
+}

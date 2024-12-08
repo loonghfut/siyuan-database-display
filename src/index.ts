@@ -85,9 +85,6 @@ export default class DatabaseDisplay extends Plugin {
         }
     }
 
-
-
-
     onLayoutReady() {
         this.settingUtils.load();
         // console.log(this.settingUtils.get("dis-show"), '1');
@@ -102,12 +99,14 @@ export default class DatabaseDisplay extends Plugin {
 
         // this.loadData(STORAGE_NAME);
     }
+
     async onunload() {
         this.eventBus.off("switch-protyle", this.showdata_doc);
         this.eventBus.off("click-editorcontent", this.handleSelectionChange.bind(this));
         this.eventBus.off("loaded-protyle-static", this.loaded.bind(this));
         this.eventBus.off("loaded-protyle-dynamic", this.loaded.bind(this));
     }
+
     uninstall() {
         this.eventBus.off("switch-protyle", this.showdata_doc);
         this.eventBus.off("click-editorcontent", this.handleSelectionChange.bind(this));
@@ -181,83 +180,60 @@ export default class DatabaseDisplay extends Plugin {
         } else {
             contents1 = extractContents(viewKeys);
         }
-
+    
         const contents = contents1
             .filter(element => element !== '' && element !== null && element !== undefined)
             .map(element => String(element)); // 将所有元素转换为字符串
-
-        const parentElements = document.querySelectorAll('[custom-avs]');//TODO:目前暂时只支持段落块
+    
+        const parentElements = document.querySelectorAll('[custom-avs]');
         let parentElementsArray = [];
         outLog(parentElements);
         parentElements.forEach(element => {
-            // console.log(element.getAttribute('data-node-id'), currentDocId);
-            // console.log(element.getAttribute('data-node-id'), "currentDocId");
             if (element.getAttribute('data-node-id') === currentDocId) {
                 outLog(currentDocId, "cunr");
                 parentElementsArray.push(element);
             }
         });
-
+    
         if (parentElementsArray.length === 0) {
             console.log("无法找到 id 匹配的父元素");
             return;
         }
-
+    
         parentElementsArray.forEach(parentElement => {
             const attrContainer = Array.from(parentElement.children).find((child: Element) => child.classList.contains('protyle-attr')) as Element;
             if (!attrContainer) {
                 console.log("无法找到 .protyle-attr 元素");
                 return;
             }
-
-            const existingElements = Array.from(attrContainer.querySelectorAll('.my-protyle-attr--av .popover__block'));
-            existingElements.forEach((span: HTMLElement) => {
-                const spanText = typeof span.textContent === 'string' ? span.textContent.trim() : '';
-                const isInContents = contents.some(content => {
-                    const contentText = typeof content === 'string' ? content.trim() : '';
-                    return spanText.localeCompare(contentText, undefined, { numeric: true }) === 0;
-                });
-                if (!isInContents) {
-                    span.parentElement?.remove();
-                }
+    
+            // 清空现有的 .my-protyle-attr--av 元素
+            const existingElements = Array.from(attrContainer.querySelectorAll('.my-protyle-attr--av'));
+            existingElements.forEach((div: HTMLElement) => {
+                div.remove();
             });
+    
+            // 创建新的 div 元素
+            const newDiv = document.createElement('div');
+            newDiv.className = 'my-protyle-attr--av';
+    
+            // 将所有 content 作为 span 元素添加到 newDiv 中
             contents.forEach(content => {
-                // 检查是否已经存在相同内容的元素
-                const existingElement = Array.from(attrContainer.querySelectorAll('.my-protyle-attr--av .popover__block')).find((span: HTMLElement) => {
-                    const spanText = typeof span.textContent === 'string' ? span.textContent.trim() : '';
-                    const contentText = typeof content === 'string' ? content.trim() : '';
-                    return spanText.localeCompare(contentText, undefined, { numeric: true }) === 0;
-                });
-                if (existingElement) {
-                    outLog(`内容项 "${content}" 已存在`);
-                    // console.log(`内容项 "${content}" 已存在`);
-                    return;
-                }
-
-                const newDiv = document.createElement('div');
-                // newDiv.className = 'protyle-attr--av';//兼容性让步
-                newDiv.className = 'my-protyle-attr--av';
-
                 const newSpan = document.createElement('span');
                 newSpan.className = 'popover__block';
-
                 newSpan.textContent = content;
-
                 newDiv.appendChild(newSpan);
-                //换一个插入方式
-                // attrContainer.appendChild(newDiv);
-                attrContainer.insertBefore(newDiv, attrContainer.firstChild);
             });
-
+    
+            // 将 newDiv 插入到 attrContainer 中
+            attrContainer.insertBefore(newDiv, attrContainer.firstChild);
+    
             // console.log(".protyle-attr 元素已添加到父元素");
         });
     }
 
     // 调用函数
-
-
 }
-
 
 const callback = (mutationsList: MutationRecord[]) => {
     for (const mutation of mutationsList) {
@@ -272,8 +248,6 @@ const callback = (mutationsList: MutationRecord[]) => {
         }
     }
 };
-
-
 
 // 
 export function outLog(any, str = "") {
