@@ -121,7 +121,7 @@ export default class DatabaseDisplay extends Plugin {
         //console.log("uninstall");
     }
 
-    async showdata_doc() {
+    async showdata_doc() { //TODO:以后合成一个函数
         //console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
         let contents1 = [];
@@ -147,33 +147,34 @@ export default class DatabaseDisplay extends Plugin {
         }
         //console.log("找到不包含 'fn__none' 类且 id 匹配的父元素 .protyle-title");
         parentElementsArray.forEach(parentElement => {
-            // 检查是否已经存在 .my__block-container 元素
-            let container = parentElement.querySelector('.my__block-container');
-            if (!container) {
-                // 创建一个容器元素
-                container = document.createElement('div');
-                container.className = 'my__block-container';
-                //console.log("创建 .my__block-container 元素");
-            } else {
-                // 删除原有的内容，再重新添加
-                while (container.firstChild) {
-                    container.removeChild(container.firstChild);
-                }
-
-                //console.log(".my__block-container 元素已存在，内容已清空");
+            const attrContainer = Array.from(parentElement.children).find((child: Element) => child.classList.contains('protyle-attr')) as Element;
+            if (!attrContainer) {
+                console.log("无法找到 .protyle-attr 元素");
+                return;
             }
-
-            // 将每个内容项添加到容器中
+        
+            // 清空现有的 .my-protyle-attr--av 元素
+            const existingElements = Array.from(attrContainer.querySelectorAll('.my-protyle-attr--av'));
+            existingElements.forEach((div: HTMLElement) => {
+                div.remove();
+            });
+        
+            // 创建新的 div 元素
+            const newDiv = document.createElement('div');
+            newDiv.className = 'my-protyle-attr--av';
+        
+            // 将所有 content 作为 span 元素添加到 newDiv 中
             contents.forEach(content => {
                 const newSpan = document.createElement('span');
-                newSpan.className = 'my__block';
-                newSpan.textContent = content; // 将内容项设置为 span 的文本内容
-                container.appendChild(newSpan);
-                //console.log(`添加内容项: ${content}`);
+                newSpan.className = 'popover__block';
+                newSpan.textContent = content;
+                newDiv.appendChild(newSpan);
             });
-            // 将容器添加到父元素中
-            parentElement.appendChild(container);
-            //console.log(".my__block-container 已添加到父元素");
+        
+            // 将 newDiv 插入到 attrContainer 中
+            attrContainer.insertBefore(newDiv, attrContainer.firstChild);
+        
+            // console.log(".protyle-attr 元素已添加到父元素");
         });
     }
 

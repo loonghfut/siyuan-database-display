@@ -2,7 +2,7 @@
   "name": "siyuan-database-display",
   "author": "steve",
   "url": "https://github.com/loonghfut/siyuan-database-display",
-  "version": "0.4.1",
+  "version": "0.4.5",
   "minAppVersion": "3.0.12",
   "backends": [
     "windows",
@@ -21,7 +21,7 @@
   ],
   "displayName": {
     "en_US": "Database Display",
-    "zh_CN": "数据展示"
+    "zh_CN": "数据库数据展示"
   },
   "description": {
     "en_US": "Display the database properties of the block, support 99% of the blocks!",

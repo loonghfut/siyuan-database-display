@@ -1,20 +1,20 @@
 .my__block-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    /* 右对齐 */
-    overflow-y: scroll;
-    position: absolute;
-    max-height: calc(2 * 18px);
-    /* 假设每行高度为14px，显示三行 */
-    top: 10px;
-    right: 0;
-    width: 33.33%;
-    /* 宽度为父容器的1/3 */
-    -ms-overflow-style: none;
-    /* IE and Edge */
-    scrollbar-width: none;
-    /* Firefox */
+    // display: flex;
+    // flex-wrap: wrap;
+    // justify-content: flex-end;
+    // /* 右对齐 */
+    // overflow-y: scroll;
+    // position: absolute;
+    // max-height: calc(2 * 18px);
+    // /* 假设每行高度为14px，显示三行 */
+    // top: 10px;
+    // right: 0;
+    // width: 33.33%;
+    // /* 宽度为父容器的1/3 */
+    // -ms-overflow-style: none;
+    // /* IE and Edge */
+    // scrollbar-width: none;
+    // /* Firefox */
     > *:nth-child(4n + 4) {
         color: var(--b3-card-error-color);
         background-color: var(--b3-card-error-background);
