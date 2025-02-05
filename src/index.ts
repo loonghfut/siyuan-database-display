@@ -96,7 +96,15 @@ export default class DatabaseDisplay extends Plugin {
         // console.log(this.settingUtils.get("dis-show"), '1');
         disShow_doc = this.settingUtils.get("dis-show");
         disShow_block = this.settingUtils.get("dis-show-block");
-
+        window.siyuan.ws.ws.addEventListener('message', async (e) => {
+            const msg = JSON.parse(e.data);
+            if (msg.cmd === "transactions") {
+                // console.log(msg);
+                if (msg.data[0].doOperations[0].action === "updateAttrViewCell") {
+                    this.loaded();
+                }
+            }
+        });
         // 监听dom变化
         const targetNode = document.body;
         const config = { childList: true, subtree: true };
