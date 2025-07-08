@@ -8,7 +8,7 @@ export function addSettings(settingUtils) {
         value: "",
         type: "textarea",
         title: "文档块展示的字段(不填默认展示所有支持的字段)",
-        description: "输入展示的字段(mSelect,number,date,text,mAsset,checkbox,phone,url,email)",
+        description: "输入展示的字段(mSelect,number,date,text,mAsset,checkbox,phone,url,email,created,updated)",
         action: {
             // Called when focus is lost and content changes
             callback: () => {
@@ -21,7 +21,7 @@ export function addSettings(settingUtils) {
         value: "mSelect,text",
         type: "textarea",
         title: "普通块展示的字段(不填默认展示所有支持的字段)",
-        description: "输入展示的字段(mSelect,number,date,text,mAsset,checkbox,phone,url,email)",
+        description: "输入展示的字段(mSelect,number,date,text,mAsset,checkbox,phone,url,email,created,updated)",
         action: {
             // Called when focus is lost and content changes
             callback: () => {
@@ -111,6 +111,20 @@ export function addSettings(settingUtils) {
             callback: () => {
                 settingUtils.takeAndSave("checkbox-style");
                 console.log(`复选框样式已更新为: ${settingUtils.get("checkbox-style")}`);
+            }
+        }
+    });
+    settingUtils.addItem({
+        key: "show-timestamps",
+        value: true,
+        type: "checkbox",
+        title: "显示时间戳字段",
+        description: "是否显示创建时间(created)和更新时间(updated)字段。关闭后这些字段将被自动过滤。",
+        action: {
+            callback: () => {
+                settingUtils.takeAndSave("show-timestamps");
+                const showTimestamps = settingUtils.get("show-timestamps");
+                console.log(`时间戳字段显示已${showTimestamps ? '开启' : '关闭'}`);
             }
         }
     });

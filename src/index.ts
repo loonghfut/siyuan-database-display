@@ -24,6 +24,7 @@ let hiddenFields = null;
 let dateFormat = null;
 let includeTime = null;
 let checkboxStyle = null;
+let showTimestamps = null;
 let isoutLog = false;
 let currentDocId = null;
 let currentDocId_block = null;
@@ -49,6 +50,17 @@ export function getCheckboxOptions() {
     return {
         style: checkboxStyle || 'emoji'
     };
+}
+
+export function getFilteredConditions(baseConditions: string[]): string[] {
+    let conditions = [...baseConditions];
+    
+    // 如果用户关闭了时间戳显示，则过滤掉 created 和 updated 字段
+    if (showTimestamps === false) {
+        conditions = conditions.filter(condition => condition !== 'created' && condition !== 'updated');
+    }
+    
+    return conditions;
 }
 
 export default class DatabaseDisplay extends Plugin {
@@ -125,6 +137,7 @@ export default class DatabaseDisplay extends Plugin {
         dateFormat = this.settingUtils.get("date-format");
         includeTime = this.settingUtils.get("include-time");
         checkboxStyle = this.settingUtils.get("checkbox-style");
+        showTimestamps = this.settingUtils.get("show-timestamps");
         window.siyuan.ws.ws.addEventListener('message', async (e) => {
             const msg = JSON.parse(e.data);
             if (msg.cmd === "transactions") {
@@ -166,9 +179,13 @@ export default class DatabaseDisplay extends Plugin {
         const dateOptions = getDateFormatOptions();
         const checkboxOptions = getCheckboxOptions();
         if (disShow_doc) {
-            contents1 = extractContents(viewKeys, disShow_doc.split(','), hiddenFieldsList, dateOptions, checkboxOptions);
+            const baseConditions = disShow_doc.split(',');
+            const filteredConditions = getFilteredConditions(baseConditions);
+            contents1 = extractContents(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
         } else {
-            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList, dateOptions, checkboxOptions);
+            const defaultConditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
+            const filteredConditions = getFilteredConditions(defaultConditions);
+            contents1 = extractContents(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
         }
         // console.log(contents1);
         const contents = contents1.filter(element => element !== '' && element !== null && element !== undefined);
@@ -226,9 +243,13 @@ export default class DatabaseDisplay extends Plugin {
         const dateOptions = getDateFormatOptions();
         const checkboxOptions = getCheckboxOptions();
         if (disShow_block) {
-            contents1 = extractContents(viewKeys, disShow_block.split(','), hiddenFieldsList, dateOptions, checkboxOptions);
+            const baseConditions = disShow_block.split(',');
+            const filteredConditions = getFilteredConditions(baseConditions);
+            contents1 = extractContents(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
         } else {
-            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList, dateOptions, checkboxOptions);
+            const defaultConditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
+            const filteredConditions = getFilteredConditions(defaultConditions);
+            contents1 = extractContents(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
         }
     
         const contents = contents1

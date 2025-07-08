@@ -103,7 +103,7 @@ export function createContentExtractor(
     dateOptions?: DateFormatOptions,
     checkboxOptions?: { style?: 'emoji' | 'symbol' | 'text' }
 ) {
-    return function(data, conditions: string[] = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email']) {
+    return function(data, conditions: string[] = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated']) {
         return extractContents(data, conditions, hiddenFields, dateOptions, checkboxOptions);
     };
 }
@@ -120,7 +120,7 @@ export function isFieldHidden(fieldName: string, hiddenFields: string[]): boolea
 
 export function extractContents(
     data, 
-    conditions: string[] = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email'], 
+    conditions: string[] = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'], 
     hiddenFields: string[] = [],
     dateOptions?: DateFormatOptions,
     checkboxOptions?: { style?: 'emoji' | 'symbol' | 'text' }
@@ -174,6 +174,12 @@ export function handleCondition(value, condition, contents, dateOptions?: DateFo
             break;
         case 'email':
             handleEmail(value, contents);
+            break;
+        case 'created':
+            handleCreated(value, contents, dateOptions);
+            break;
+        case 'updated':
+            handleUpdated(value, contents, dateOptions);
             break;
         default:
             break;
@@ -253,6 +259,26 @@ export function handleEmail(value, contents) {
     if (value.email?.content) {
         outLog("email");
         contents.push(value.email.content);
+    }
+}
+
+export function handleCreated(value, contents, options: DateFormatOptions = {}) {
+    if (value.created?.content) {
+        outLog("created");
+        const timestamp = value.created.content;
+        const formattedDate = formatDate(timestamp, options);
+        contents.push(formattedDate);
+        outLog(`创建时间格式化: ${timestamp} -> ${formattedDate}`);
+    }
+}
+
+export function handleUpdated(value, contents, options: DateFormatOptions = {}) {
+    if (value.updated?.content) {
+        outLog("updated");
+        const timestamp = value.updated.content;
+        const formattedDate = formatDate(timestamp, options);
+        contents.push(formattedDate);
+        outLog(`更新时间格式化: ${timestamp} -> ${formattedDate}`);
     }
 }
 
@@ -345,11 +371,16 @@ export function getCheckboxIcon(isChecked: boolean, style: 'emoji' | 'symbol' | 
  * const checkboxOptions = { style: 'symbol' }; // ☑ / ☐
  * const contentsWithSymbols = extractContents(data, undefined, [], undefined, checkboxOptions);
  * 
+ * // 包含时间戳字段的使用
+ * const conditions = ['mSelect', 'text', 'date', 'created', 'updated'];
+ * const contentsWithTimestamps = extractContents(data, conditions, []);
+ * 
  * // 组合使用多种选项
  * const dateOptions = { format: 'YYYY-MM-DD', includeTime: false };
  * const checkboxOptions = { style: 'emoji' }; // ✅ / ❌
  * const hiddenFields = ['密码'];
- * const contents = extractContents(data, undefined, hiddenFields, dateOptions, checkboxOptions);
+ * const allConditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
+ * const contents = extractContents(data, allConditions, hiddenFields, dateOptions, checkboxOptions);
  * 
  * // 检查字段是否被隐藏
  * if (isFieldHidden('密码', hiddenFields)) {
