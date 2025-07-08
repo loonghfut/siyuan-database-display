@@ -20,11 +20,20 @@ import { getCursorBlockId, getAVreferenceid, reConfirmedDocId } from "./block";
 
 let disShow_doc = null;
 let disShow_block = null;
+let hiddenFields = null;
 let isoutLog = false;
 let currentDocId = null;
 let currentDocId_block = null;
 let clickId = null;
 export let isShow = null;
+export function getHiddenFields(): string[] {
+    if (!hiddenFields) return [];
+    return hiddenFields.split(',').map(field => field.trim()).filter(field => field.length > 0);
+}
+
+export function updateHiddenFields(newHiddenFields: string) {
+    hiddenFields = newHiddenFields;
+}
 
 export default class DatabaseDisplay extends Plugin {
     private settingUtils: SettingUtils;
@@ -96,6 +105,7 @@ export default class DatabaseDisplay extends Plugin {
         // console.log(this.settingUtils.get("dis-show"), '1');
         disShow_doc = this.settingUtils.get("dis-show");
         disShow_block = this.settingUtils.get("dis-show-block");
+        hiddenFields = this.settingUtils.get("hidden-fields");
         window.siyuan.ws.ws.addEventListener('message', async (e) => {
             const msg = JSON.parse(e.data);
             if (msg.cmd === "transactions") {
@@ -133,10 +143,11 @@ export default class DatabaseDisplay extends Plugin {
         //console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
         let contents1 = [];
+        const hiddenFieldsList = getHiddenFields();
         if (disShow_doc) {
-            contents1 = extractContents(viewKeys, disShow_doc.split(','));
+            contents1 = extractContents(viewKeys, disShow_doc.split(','), hiddenFieldsList);
         } else {
-            contents1 = extractContents(viewKeys);
+            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList);
         }
         // console.log(contents1);
         const contents = contents1.filter(element => element !== '' && element !== null && element !== undefined);
@@ -190,10 +201,11 @@ export default class DatabaseDisplay extends Plugin {
         const currentDocId = clickId; // 替换为实际的 currentDocId
         const viewKeys = await getAttributeViewKeys(currentDocId);
         let contents1 = [];
+        const hiddenFieldsList = getHiddenFields();
         if (disShow_block) {
-            contents1 = extractContents(viewKeys, disShow_block.split(','));
+            contents1 = extractContents(viewKeys, disShow_block.split(','), hiddenFieldsList);
         } else {
-            contents1 = extractContents(viewKeys);
+            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList);
         }
     
         const contents = contents1
