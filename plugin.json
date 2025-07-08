@@ -24,8 +24,8 @@
     "zh_CN": "数据库数据展示"
   },
   "description": {
-    "en_US": "Display the database properties of the block, support 99% of the blocks!",
-    "zh_CN": "显示块的数据库属性值，支持99%的块！"
+    "en_US": "Advanced database attribute display plugin with field hiding, date formatting, checkbox beautification, and customizable settings. Supports 99% of blocks!",
+    "zh_CN": "数据库属性显示插件，支持字段隐藏、日期格式化、复选框美化和可自定义设置。支持99%的块！"
   },
   "readme": {
     "en_US": "README.md",
@@ -38,7 +38,16 @@
   },
   "keywords": [
     "plugin",
-    "show",
-    "database"
+    "database",
+    "display",
+    "attribute",
+    "field",
+    "format",
+    "hide",
+    "checkbox",
+    "date",
+    "beautify",
+    "customizable",
+    "settings"
   ]
 }
