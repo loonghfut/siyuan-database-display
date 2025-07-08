@@ -61,4 +61,39 @@ export function addSettings(settingUtils) {
             }
         }
     });
+    settingUtils.addItem({
+        key: "date-format",
+        value: "YYYY-MM-DD",
+        type: "select",
+        title: "日期显示格式",
+        description: "选择日期字段的显示格式",
+        options: {
+            "YYYY-MM-DD": "YYYY-MM-DD (2023-12-25)",
+            "YYYY/MM/DD": "YYYY/MM/DD (2023/12/25)",
+            "MM/DD/YYYY": "MM/DD/YYYY (12/25/2023)",
+            "DD/MM/YYYY": "DD/MM/YYYY (25/12/2023)",
+            "full": "完整格式 (2023年12月25日星期一)",
+            "relative": "相对时间 (3天前, 明天)"
+        },
+        action: {
+            callback: () => {
+                settingUtils.takeAndSave("date-format");
+                console.log(`日期格式已更新为: ${settingUtils.get("date-format")}`);
+            }
+        }
+    });
+    settingUtils.addItem({
+        key: "include-time",
+        value: false,
+        type: "checkbox",
+        title: "显示时间",
+        description: "是否在日期中包含具体时间 (小时:分钟:秒)",
+        action: {
+            callback: () => {
+                settingUtils.takeAndSave("include-time");
+                const includeTime = settingUtils.get("include-time");
+                console.log(`时间显示已${includeTime ? '开启' : '关闭'}`);
+            }
+        }
+    });
 }

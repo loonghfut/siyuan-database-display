@@ -21,6 +21,8 @@ import { getCursorBlockId, getAVreferenceid, reConfirmedDocId } from "./block";
 let disShow_doc = null;
 let disShow_block = null;
 let hiddenFields = null;
+let dateFormat = null;
+let includeTime = null;
 let isoutLog = false;
 let currentDocId = null;
 let currentDocId_block = null;
@@ -33,6 +35,13 @@ export function getHiddenFields(): string[] {
 
 export function updateHiddenFields(newHiddenFields: string) {
     hiddenFields = newHiddenFields;
+}
+
+export function getDateFormatOptions() {
+    return {
+        format: dateFormat || 'YYYY-MM-DD',
+        includeTime: includeTime || false
+    };
 }
 
 export default class DatabaseDisplay extends Plugin {
@@ -106,6 +115,8 @@ export default class DatabaseDisplay extends Plugin {
         disShow_doc = this.settingUtils.get("dis-show");
         disShow_block = this.settingUtils.get("dis-show-block");
         hiddenFields = this.settingUtils.get("hidden-fields");
+        dateFormat = this.settingUtils.get("date-format");
+        includeTime = this.settingUtils.get("include-time");
         window.siyuan.ws.ws.addEventListener('message', async (e) => {
             const msg = JSON.parse(e.data);
             if (msg.cmd === "transactions") {
@@ -144,10 +155,11 @@ export default class DatabaseDisplay extends Plugin {
         const viewKeys = await getAttributeViewKeys(currentDocId);
         let contents1 = [];
         const hiddenFieldsList = getHiddenFields();
+        const dateOptions = getDateFormatOptions();
         if (disShow_doc) {
-            contents1 = extractContents(viewKeys, disShow_doc.split(','), hiddenFieldsList);
+            contents1 = extractContents(viewKeys, disShow_doc.split(','), hiddenFieldsList, dateOptions);
         } else {
-            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList);
+            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList, dateOptions);
         }
         // console.log(contents1);
         const contents = contents1.filter(element => element !== '' && element !== null && element !== undefined);
@@ -202,10 +214,11 @@ export default class DatabaseDisplay extends Plugin {
         const viewKeys = await getAttributeViewKeys(currentDocId);
         let contents1 = [];
         const hiddenFieldsList = getHiddenFields();
+        const dateOptions = getDateFormatOptions();
         if (disShow_block) {
-            contents1 = extractContents(viewKeys, disShow_block.split(','), hiddenFieldsList);
+            contents1 = extractContents(viewKeys, disShow_block.split(','), hiddenFieldsList, dateOptions);
         } else {
-            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList);
+            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList, dateOptions);
         }
     
         const contents = contents1

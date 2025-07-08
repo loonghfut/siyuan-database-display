@@ -1,13 +1,105 @@
 import { outLog } from "./index";
 
 /**
+ * 日期格式化选项
+ */
+export interface DateFormatOptions {
+    format?: 'YYYY-MM-DD' | 'YYYY/MM/DD' | 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'full' | 'relative';
+    includeTime?: boolean;
+    locale?: string;
+}
+
+/**
+ * 格式化日期的辅助函数
+ * @param timestamp 时间戳（秒或毫秒）
+ * @param options 格式化选项
+ * @returns 格式化后的日期字符串
+ */
+export function formatDate(timestamp: number, options: DateFormatOptions = {}): string {
+    const {
+        format = 'YYYY-MM-DD',
+        includeTime = false,
+        locale = 'zh-CN'
+    } = options;
+
+    try {
+        // 判断时间戳的类型（秒或毫秒）
+        const date = new Date(timestamp > 10000000000 ? timestamp : timestamp * 1000);
+        
+        // 检查日期是否有效
+        if (isNaN(date.getTime())) {
+            return `无效日期: ${timestamp}`;
+        }
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+
+        let dateStr = '';
+        switch (format) {
+            case 'YYYY-MM-DD':
+                dateStr = `${year}-${month}-${day}`;
+                break;
+            case 'YYYY/MM/DD':
+                dateStr = `${year}/${month}/${day}`;
+                break;
+            case 'MM/DD/YYYY':
+                dateStr = `${month}/${day}/${year}`;
+                break;
+            case 'DD/MM/YYYY':
+                dateStr = `${day}/${month}/${year}`;
+                break;
+            case 'full':
+                dateStr = date.toLocaleDateString(locale, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long'
+                });
+                break;
+            case 'relative':
+                const now = new Date();
+                const diffMs = now.getTime() - date.getTime();
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 0) {
+                    dateStr = '今天';
+                } else if (diffDays === 1) {
+                    dateStr = '昨天';
+                } else if (diffDays === -1) {
+                    dateStr = '明天';
+                } else if (diffDays > 0) {
+                    dateStr = `${diffDays} 天前`;
+                } else {
+                    dateStr = `${Math.abs(diffDays)} 天后`;
+                }
+                break;
+            default:
+                dateStr = `${year}-${month}-${day}`;
+        }
+
+        if (includeTime && format !== 'relative') {
+            dateStr += ` ${hours}:${minutes}:${seconds}`;
+        }
+
+        return dateStr;
+    } catch (error) {
+        return `日期错误: ${timestamp}`;
+    }
+}
+
+/**
  * 创建一个带有隐藏字段功能的内容提取器
  * @param hiddenFields 要隐藏的字段名称数组
+ * @param dateOptions 日期格式化选项
  * @returns 返回一个配置好的提取函数
  */
-export function createContentExtractor(hiddenFields: string[] = []) {
+export function createContentExtractor(hiddenFields: string[] = [], dateOptions?: DateFormatOptions) {
     return function(data, conditions: string[] = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email']) {
-        return extractContents(data, conditions, hiddenFields);
+        return extractContents(data, conditions, hiddenFields, dateOptions);
     };
 }
 
@@ -21,7 +113,12 @@ export function isFieldHidden(fieldName: string, hiddenFields: string[]): boolea
     return hiddenFields.includes(fieldName);
 }
 
-export function extractContents(data, conditions: string[] = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email'], hiddenFields: string[] = []) {
+export function extractContents(
+    data, 
+    conditions: string[] = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email'], 
+    hiddenFields: string[] = [],
+    dateOptions?: DateFormatOptions
+) {
     const contents = [];
 
     data.forEach(item => {
@@ -34,7 +131,7 @@ export function extractContents(data, conditions: string[] = ['mSelect', 'number
 
             keyValue.values.forEach(value => {
                 conditions.forEach(condition => {
-                    handleCondition(value, condition, contents);
+                    handleCondition(value, condition, contents, dateOptions);
                 });
             });
         });
@@ -43,7 +140,7 @@ export function extractContents(data, conditions: string[] = ['mSelect', 'number
     return contents;
 }
 
-export function handleCondition(value, condition, contents) {
+export function handleCondition(value, condition, contents, dateOptions?: DateFormatOptions) {
     switch (condition) {
         case 'mSelect':
             handleMSelect(value, contents);
@@ -52,7 +149,7 @@ export function handleCondition(value, condition, contents) {
             handleNumber(value, contents);
             break;
         case 'date':
-            handleDate(value, contents);
+            handleDate(value, contents, dateOptions);
             break;
         case 'text':
             handleText(value, contents);
@@ -94,13 +191,13 @@ export function handleNumber(value, contents) {
     }
 }
 
-export function handleDate(value, contents) {
+export function handleDate(value, contents, options: DateFormatOptions = {}) {
     if (value.date?.content) {
         outLog("date");
-        const date = new Date(value.date.content);
-        date.setDate(date.getDate() + 1); // 手动增加一天
-        const formattedDate = date.toISOString().split('T')[0];
+        const timestamp = value.date.content;
+        const formattedDate = formatDate(timestamp, options);
         contents.push(formattedDate);
+        outLog(`日期格式化: ${timestamp} -> ${formattedDate}`);
     }
 }
 
@@ -206,6 +303,14 @@ export function validateHiddenFields(hiddenFieldsString: string): {
  * const extractor = createContentExtractor(['密码', '私人信息']);
  * const contents = extractor(data);
  * 
+ * // 使用自定义日期格式
+ * const dateOptions = { format: 'YYYY/MM/DD', includeTime: true };
+ * const contentsWithTime = extractContents(data, undefined, [], dateOptions);
+ * 
+ * // 使用相对时间格式
+ * const relativeOptions = { format: 'relative' };
+ * const contentsRelative = extractContents(data, undefined, [], relativeOptions);
+ * 
  * // 检查字段是否被隐藏
  * if (isFieldHidden('密码', hiddenFields)) {
  *     console.log('该字段已被隐藏');
@@ -218,4 +323,8 @@ export function validateHiddenFields(hiddenFieldsString: string): {
  * } else {
  *     console.error('隐藏字段设置错误:', validation.errors);
  * }
+ * 
+ * // 直接格式化日期
+ * const formattedDate = formatDate(1672531200000, { format: 'full', locale: 'zh-CN' });
+ * console.log(formattedDate); // 输出：2023年1月1日星期日
  */
