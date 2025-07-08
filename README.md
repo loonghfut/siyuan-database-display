@@ -3,8 +3,6 @@
 
 Display database attribute values of blocks, supporting 99% of blocks!
 
-![Preview](preview.png)
-
 ## ✨ Features
 
 ### 📊 Database Field Display
