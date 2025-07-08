@@ -96,4 +96,22 @@ export function addSettings(settingUtils) {
             }
         }
     });
+    settingUtils.addItem({
+        key: "checkbox-style",
+        value: "emoji",
+        type: "select",
+        title: "复选框显示样式",
+        description: "选择复选框字段的显示样式",
+        options: {
+            "emoji": "表情符号 (✅ / ❌)",
+            "symbol": "符号样式 (☑ / ☐)",
+            "text": "文字描述 (已选中 / 未选中)"
+        },
+        action: {
+            callback: () => {
+                settingUtils.takeAndSave("checkbox-style");
+                console.log(`复选框样式已更新为: ${settingUtils.get("checkbox-style")}`);
+            }
+        }
+    });
 }

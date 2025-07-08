@@ -95,11 +95,16 @@ export function formatDate(timestamp: number, options: DateFormatOptions = {}): 
  * 创建一个带有隐藏字段功能的内容提取器
  * @param hiddenFields 要隐藏的字段名称数组
  * @param dateOptions 日期格式化选项
+ * @param checkboxOptions 复选框显示选项
  * @returns 返回一个配置好的提取函数
  */
-export function createContentExtractor(hiddenFields: string[] = [], dateOptions?: DateFormatOptions) {
+export function createContentExtractor(
+    hiddenFields: string[] = [], 
+    dateOptions?: DateFormatOptions,
+    checkboxOptions?: { style?: 'emoji' | 'symbol' | 'text' }
+) {
     return function(data, conditions: string[] = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email']) {
-        return extractContents(data, conditions, hiddenFields, dateOptions);
+        return extractContents(data, conditions, hiddenFields, dateOptions, checkboxOptions);
     };
 }
 
@@ -117,7 +122,8 @@ export function extractContents(
     data, 
     conditions: string[] = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email'], 
     hiddenFields: string[] = [],
-    dateOptions?: DateFormatOptions
+    dateOptions?: DateFormatOptions,
+    checkboxOptions?: { style?: 'emoji' | 'symbol' | 'text' }
 ) {
     const contents = [];
 
@@ -131,7 +137,7 @@ export function extractContents(
 
             keyValue.values.forEach(value => {
                 conditions.forEach(condition => {
-                    handleCondition(value, condition, contents, dateOptions);
+                    handleCondition(value, condition, contents, dateOptions, checkboxOptions);
                 });
             });
         });
@@ -140,7 +146,7 @@ export function extractContents(
     return contents;
 }
 
-export function handleCondition(value, condition, contents, dateOptions?: DateFormatOptions) {
+export function handleCondition(value, condition, contents, dateOptions?: DateFormatOptions, checkboxOptions?: { style?: 'emoji' | 'symbol' | 'text' }) {
     switch (condition) {
         case 'mSelect':
             handleMSelect(value, contents);
@@ -158,7 +164,7 @@ export function handleCondition(value, condition, contents, dateOptions?: DateFo
             handleMAsset(value, contents);
             break;
         case 'checkbox':
-            handleCheckbox(value, contents);
+            handleCheckbox(value, contents, checkboxOptions);
             break;
         case 'phone':
             handlePhone(value, contents);
@@ -217,10 +223,15 @@ export function handleMAsset(value, contents) {
     }
 }
 
-export function handleCheckbox(value, contents) {
+export function handleCheckbox(value, contents, options: { style?: 'emoji' | 'symbol' | 'text' } = {}) {
     if (value.checkbox) {
         outLog("checkbox");
-        contents.push(value.checkbox.checked);
+        const isChecked = value.checkbox.checked;
+        const style = options.style || 'emoji';
+        const displayValue = getCheckboxIcon(isChecked, style);
+        
+        contents.push(displayValue);
+        outLog(`复选框状态: ${isChecked} -> ${displayValue}`);
     }
 }
 
@@ -292,6 +303,25 @@ export function validateHiddenFields(hiddenFieldsString: string): {
 }
 
 /**
+ * 获取复选框图标
+ * @param isChecked 是否选中
+ * @param style 显示样式
+ * @returns 对应的图标或文字
+ */
+export function getCheckboxIcon(isChecked: boolean, style: 'emoji' | 'symbol' | 'text' = 'emoji'): string {
+    switch (style) {
+        case 'emoji':
+            return isChecked ? '✅' : '❌';
+        case 'symbol':
+            return isChecked ? '☑' : '☐';
+        case 'text':
+            return isChecked ? '已选中' : '未选中';
+        default:
+            return isChecked ? '✅' : '❌';
+    }
+}
+
+/**
  * 使用示例：
  * 
  * // 基本使用 - 隐藏特定字段
@@ -310,6 +340,16 @@ export function validateHiddenFields(hiddenFieldsString: string): {
  * // 使用相对时间格式
  * const relativeOptions = { format: 'relative' };
  * const contentsRelative = extractContents(data, undefined, [], relativeOptions);
+ * 
+ * // 使用自定义复选框样式
+ * const checkboxOptions = { style: 'symbol' }; // ☑ / ☐
+ * const contentsWithSymbols = extractContents(data, undefined, [], undefined, checkboxOptions);
+ * 
+ * // 组合使用多种选项
+ * const dateOptions = { format: 'YYYY-MM-DD', includeTime: false };
+ * const checkboxOptions = { style: 'emoji' }; // ✅ / ❌
+ * const hiddenFields = ['密码'];
+ * const contents = extractContents(data, undefined, hiddenFields, dateOptions, checkboxOptions);
  * 
  * // 检查字段是否被隐藏
  * if (isFieldHidden('密码', hiddenFields)) {

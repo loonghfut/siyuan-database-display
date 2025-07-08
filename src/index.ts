@@ -23,6 +23,7 @@ let disShow_block = null;
 let hiddenFields = null;
 let dateFormat = null;
 let includeTime = null;
+let checkboxStyle = null;
 let isoutLog = false;
 let currentDocId = null;
 let currentDocId_block = null;
@@ -41,6 +42,12 @@ export function getDateFormatOptions() {
     return {
         format: dateFormat || 'YYYY-MM-DD',
         includeTime: includeTime || false
+    };
+}
+
+export function getCheckboxOptions() {
+    return {
+        style: checkboxStyle || 'emoji'
     };
 }
 
@@ -117,6 +124,7 @@ export default class DatabaseDisplay extends Plugin {
         hiddenFields = this.settingUtils.get("hidden-fields");
         dateFormat = this.settingUtils.get("date-format");
         includeTime = this.settingUtils.get("include-time");
+        checkboxStyle = this.settingUtils.get("checkbox-style");
         window.siyuan.ws.ws.addEventListener('message', async (e) => {
             const msg = JSON.parse(e.data);
             if (msg.cmd === "transactions") {
@@ -156,10 +164,11 @@ export default class DatabaseDisplay extends Plugin {
         let contents1 = [];
         const hiddenFieldsList = getHiddenFields();
         const dateOptions = getDateFormatOptions();
+        const checkboxOptions = getCheckboxOptions();
         if (disShow_doc) {
-            contents1 = extractContents(viewKeys, disShow_doc.split(','), hiddenFieldsList, dateOptions);
+            contents1 = extractContents(viewKeys, disShow_doc.split(','), hiddenFieldsList, dateOptions, checkboxOptions);
         } else {
-            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList, dateOptions);
+            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList, dateOptions, checkboxOptions);
         }
         // console.log(contents1);
         const contents = contents1.filter(element => element !== '' && element !== null && element !== undefined);
@@ -215,10 +224,11 @@ export default class DatabaseDisplay extends Plugin {
         let contents1 = [];
         const hiddenFieldsList = getHiddenFields();
         const dateOptions = getDateFormatOptions();
+        const checkboxOptions = getCheckboxOptions();
         if (disShow_block) {
-            contents1 = extractContents(viewKeys, disShow_block.split(','), hiddenFieldsList, dateOptions);
+            contents1 = extractContents(viewKeys, disShow_block.split(','), hiddenFieldsList, dateOptions, checkboxOptions);
         } else {
-            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList, dateOptions);
+            contents1 = extractContents(viewKeys, undefined, hiddenFieldsList, dateOptions, checkboxOptions);
         }
     
         const contents = contents1
