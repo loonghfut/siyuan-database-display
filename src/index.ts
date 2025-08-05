@@ -25,6 +25,7 @@ let dateFormat = null;
 let includeTime = null;
 let checkboxStyle = null;
 let showTimestamps = null;
+let maxDisplayLength = null;
 let isoutLog = false;
 let currentDocId = null;
 let currentDocId_block = null;
@@ -50,6 +51,10 @@ export function getCheckboxOptions() {
     return {
         style: checkboxStyle || 'emoji'
     };
+}
+
+export function getMaxDisplayLength(): number {
+    return maxDisplayLength || 30;
 }
 
 export function getFilteredConditions(baseConditions: string[]): string[] {
@@ -138,6 +143,7 @@ export default class DatabaseDisplay extends Plugin {
         includeTime = this.settingUtils.get("include-time");
         checkboxStyle = this.settingUtils.get("checkbox-style");
         showTimestamps = this.settingUtils.get("show-timestamps");
+        maxDisplayLength = this.settingUtils.get("max-display-length");
         window.siyuan.ws.ws.addEventListener('message', async (e) => {
             const msg = JSON.parse(e.data);
             if (msg.cmd === "transactions") {
@@ -223,8 +229,20 @@ export default class DatabaseDisplay extends Plugin {
             // 将所有 content 作为 span 元素添加到 newDiv 中
             contents.forEach(content => {
                 const newSpan = document.createElement('span');
-                newSpan.className = 'popover__block';
-                newSpan.textContent = content;
+                newSpan.className = 'popover__block ariaLabel';
+                
+                // 设置长度限制
+                const maxLength = getMaxDisplayLength();
+                const contentStr = String(content);
+                if (contentStr.length > maxLength) {
+                    newSpan.textContent = contentStr.substring(0, maxLength) + '...';
+                    newSpan.setAttribute('aria-label', contentStr); // 使用aria-label显示完整内容
+                    // newSpan.title = contentStr; // 保留title作为备用
+                    // newSpan.style.cursor = 'help';
+                } else {
+                    newSpan.textContent = contentStr;
+                }
+                
                 newDiv.appendChild(newSpan);
             });
         
@@ -291,8 +309,20 @@ export default class DatabaseDisplay extends Plugin {
             // 将所有 content 作为 span 元素添加到 newDiv 中
             contents.forEach(content => {
                 const newSpan = document.createElement('span');
-                newSpan.className = 'popover__block';
-                newSpan.textContent = content;
+                newSpan.className = 'popover__block ariaLabel';
+                
+                // 设置长度限制
+                const maxLength = getMaxDisplayLength();
+                const contentStr = String(content);
+                if (contentStr.length > maxLength) {
+                    newSpan.textContent = contentStr.substring(0, maxLength) + '...';
+                    newSpan.setAttribute('aria-label', contentStr); // 使用aria-label显示完整内容
+                    // newSpan.title = contentStr; // 保留title作为备用
+                    // newSpan.style.cursor = 'help';
+                } else {
+                    newSpan.textContent = contentStr;
+                }
+                
                 newDiv.appendChild(newSpan);
             });
     

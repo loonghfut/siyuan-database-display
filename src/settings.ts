@@ -1,6 +1,7 @@
 // settings.ts
 import { updateHiddenFields } from './index';
 import { validateHiddenFields } from './handleKey';
+import { showMessage } from 'siyuan';
 
 export function addSettings(settingUtils) {
     settingUtils.addItem({
@@ -125,6 +126,25 @@ export function addSettings(settingUtils) {
                 settingUtils.takeAndSave("show-timestamps");
                 const showTimestamps = settingUtils.get("show-timestamps");
                 console.log(`时间戳字段显示已${showTimestamps ? '开启' : '关闭'}`);
+            }
+        }
+    });
+    settingUtils.addItem({
+        key: "max-display-length",
+        value: 30,
+        type: "number",
+        title: "最大显示长度",
+        description: "设置字段内容的最大显示字符数，超出部分将显示为省略号。范围：10-200字符。",
+        action: {
+            callback: () => {
+                const maxLength = parseInt(settingUtils.get("max-display-length"));
+                // 验证输入范围
+                if (maxLength < 10 || maxLength > 200) {
+                    showMessage("最大显示长度应在10-200字符之间，已重置为默认值30");
+                    settingUtils.set("max-display-length", 30);
+                }
+                settingUtils.takeAndSave("max-display-length");
+                console.log(`最大显示长度已更新为: ${settingUtils.get("max-display-length")} 字符`);
             }
         }
     });
