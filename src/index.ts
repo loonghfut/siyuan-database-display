@@ -31,6 +31,11 @@ let currentDocId = null;
 let currentDocId_block = null;
 let clickId = null;
 export let isShow = null;
+
+// 自动刷新相关（仅此文件内使用，保持简单维护）
+// interval: 用户配置的秒；runCount: 连续自动执行次数；sleeping: 是否休眠
+// 当自动执行达到阈值（10 次）且期间没有外部 loaded 触发，则进入休眠；外部触发后恢复
+
 export function getHiddenFields(): string[] {
     if (!hiddenFields) return [];
     return hiddenFields.split(',').map(field => field.trim()).filter(field => field.length > 0);
@@ -59,17 +64,23 @@ export function getMaxDisplayLength(): number {
 
 export function getFilteredConditions(baseConditions: string[]): string[] {
     let conditions = [...baseConditions];
-    
+
     // 如果用户关闭了时间戳显示，则过滤掉 created 和 updated 字段
     if (showTimestamps === false) {
         conditions = conditions.filter(condition => condition !== 'created' && condition !== 'updated');
     }
-    
+
     return conditions;
 }
 
 export default class DatabaseDisplay extends Plugin {
     private settingUtils: SettingUtils;
+    private autoTimer: any = null;
+    private autoIntervalSec: number = 0; // 用户设定
+    private autoRunCount: number = 0; // 已连续自动执行次数
+    private readonly autoRunMax: number = 10; // 达到后若无外部触发则休眠
+    private sleeping: boolean = false;
+    private externalTriggerFlag: boolean = false; // 标记外部触发
 
     async onload() {
         //记得取消注释
@@ -104,8 +115,16 @@ export default class DatabaseDisplay extends Plugin {
     async loaded() {
         console.log("loaded");
         setTimeout(async () => {//缓解乱显示bug
-           await this.loaded_run();
+            await this.loaded_run();
         }, 10);
+        // 外部触发唤醒自动刷新
+        if (this.sleeping) {
+            this.externalTriggerFlag = true; // 标记已外部触发
+            this.wakeAuto();
+        } else {
+            // 这是外部触发（事件总线/WS 事务），重置标记
+            this.externalTriggerFlag = true;
+        }
     }
 
     async loaded_run() {
@@ -153,11 +172,13 @@ export default class DatabaseDisplay extends Plugin {
                 }
             }
         });
+        // 初始化自动刷新
+        this.initAutoInterval();
         // 监听dom变化
-        const targetNode = document.body;
-        const config = { childList: true, subtree: true };
-        const observer = new MutationObserver(callback); // 监听点击数据库按键的弹窗变化
-        observer.observe(targetNode, config);
+        // const targetNode = document.body;
+        // const config = { childList: true, subtree: true };
+        // const observer = new MutationObserver(callback); // 监听点击数据库按键的弹窗变化
+        // observer.observe(targetNode, config);
 
         // this.loadData(STORAGE_NAME);
     }
@@ -167,6 +188,7 @@ export default class DatabaseDisplay extends Plugin {
         this.eventBus.off("click-editorcontent", this.handleSelectionChange.bind(this));
         this.eventBus.off("loaded-protyle-static", this.loaded.bind(this));
         this.eventBus.off("loaded-protyle-dynamic", this.loaded.bind(this));
+        this.clearAutoTimer();
     }
 
     uninstall() {
@@ -175,6 +197,7 @@ export default class DatabaseDisplay extends Plugin {
         this.eventBus.off("loaded-protyle-static", this.loaded.bind(this));
         this.eventBus.off("loaded-protyle-dynamic", this.loaded.bind(this));
         //console.log("uninstall");
+        this.clearAutoTimer();
     }
 
     async showdata_doc() { //TODO:以后合成一个函数
@@ -215,22 +238,22 @@ export default class DatabaseDisplay extends Plugin {
                 console.log("无法找到 .protyle-attr 元素");
                 return;
             }
-        
+
             // 清空现有的 .my-protyle-attr--av 元素
             const existingElements = Array.from(attrContainer.querySelectorAll('.my-protyle-attr--av'));
             existingElements.forEach((div: HTMLElement) => {
                 div.remove();
             });
-        
+
             // 创建新的 div 元素
             const newDiv = document.createElement('div');
             newDiv.className = 'my-protyle-attr--av';
-        
+
             // 将所有 content 作为 span 元素添加到 newDiv 中
             contents.forEach(content => {
                 const newSpan = document.createElement('span');
                 newSpan.className = 'popover__block ariaLabel';
-                
+
                 // 设置长度限制
                 const maxLength = getMaxDisplayLength();
                 const contentStr = String(content);
@@ -242,13 +265,13 @@ export default class DatabaseDisplay extends Plugin {
                 } else {
                     newSpan.textContent = contentStr;
                 }
-                
+
                 newDiv.appendChild(newSpan);
             });
-        
+
             // 将 newDiv 插入到 attrContainer 中
             attrContainer.insertBefore(newDiv, attrContainer.firstChild);
-        
+
             // console.log(".protyle-attr 元素已添加到父元素");
         });
     }
@@ -269,11 +292,11 @@ export default class DatabaseDisplay extends Plugin {
             const filteredConditions = getFilteredConditions(defaultConditions);
             contents1 = extractContents(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
         }
-    
+
         const contents = contents1
             .filter(element => element !== '' && element !== null && element !== undefined)
             .map(element => String(element)); // 将所有元素转换为字符串
-    
+
         const parentElements = document.querySelectorAll('[custom-avs]');
         let parentElementsArray = [];
         outLog(parentElements);
@@ -283,34 +306,34 @@ export default class DatabaseDisplay extends Plugin {
                 parentElementsArray.push(element);
             }
         });
-    
+
         if (parentElementsArray.length === 0) {
             console.log("无法找到 id 匹配的父元素");
             return;
         }
-    
+
         parentElementsArray.forEach(parentElement => {
             const attrContainer = Array.from(parentElement.children).find((child: Element) => child.classList.contains('protyle-attr')) as Element;
             if (!attrContainer) {
                 console.log("无法找到 .protyle-attr 元素");
                 return;
             }
-    
+
             // 清空现有的 .my-protyle-attr--av 元素
             const existingElements = Array.from(attrContainer.querySelectorAll('.my-protyle-attr--av'));
             existingElements.forEach((div: HTMLElement) => {
                 div.remove();
             });
-    
+
             // 创建新的 div 元素
             const newDiv = document.createElement('div');
             newDiv.className = 'my-protyle-attr--av';
-    
+
             // 将所有 content 作为 span 元素添加到 newDiv 中
             contents.forEach(content => {
                 const newSpan = document.createElement('span');
                 newSpan.className = 'popover__block ariaLabel';
-                
+
                 // 设置长度限制
                 const maxLength = getMaxDisplayLength();
                 const contentStr = String(content);
@@ -322,33 +345,91 @@ export default class DatabaseDisplay extends Plugin {
                 } else {
                     newSpan.textContent = contentStr;
                 }
-                
+
                 newDiv.appendChild(newSpan);
             });
-    
+
             // 将 newDiv 插入到 attrContainer 中
             attrContainer.insertBefore(newDiv, attrContainer.firstChild);
-    
+
             // console.log(".protyle-attr 元素已添加到父元素");
         });
     }
 
     // 调用函数
-}
 
-const callback = (mutationsList: MutationRecord[]) => {
-    for (const mutation of mutationsList) {
-        if (mutation.type === 'childList') {
-            mutation.removedNodes.forEach((node) => {
-                if (node instanceof HTMLElement && node.matches('div[data-key="dialog-attr"].b3-dialog--open')) {
-                    console.log('Dialog closed');
-                    // 在这里添加你的代码
-                    DatabaseDisplay.prototype.loaded();
-                }
-            });
+    /* ================= 自动刷新相关 ================= */
+    private initAutoInterval() {
+        // 从设置读取（不存在则 0 关闭）
+        this.autoIntervalSec = this.settingUtils.get("auto-loaded-interval") || 0;
+        if (typeof this.autoIntervalSec !== 'number' || isNaN(this.autoIntervalSec) || this.autoIntervalSec < 0) {
+            this.autoIntervalSec = 0;
+        }
+        if (this.autoIntervalSec > 0 && this.autoIntervalSec < 5) {
+            this.autoIntervalSec = 5; // 最小 5 秒
+        }
+        this.startAuto();
+    }
+
+    private startAuto() {
+        this.clearAutoTimer();
+        if (this.autoIntervalSec <= 0) return;
+        this.sleeping = false;
+        this.autoRunCount = 0;
+        this.externalTriggerFlag = false; // 新一轮统计
+        this.autoTimer = setInterval(() => this.autoTick(), this.autoIntervalSec * 1000);
+    }
+
+    private autoTick() {
+        if (this.sleeping) return; // 已休眠不再执行
+        this.autoRunCount++;
+        // 在计数前清除外部触发标记（本次 tick 视为内部触发）
+        this.externalTriggerFlag = false;
+        this.loaded_run();
+        if (this.autoRunCount >= this.autoRunMax && !this.externalTriggerFlag) {
+            // 连续 autoRunMax 次均为内部触发（externalTriggerFlag 未被外部 loaded 期间置 true）-> 进入休眠
+            this.enterSleep();
         }
     }
-};
+
+    private enterSleep() {
+        this.sleeping = true;
+        this.clearAutoTimer();
+        console.log('[DatabaseDisplay] 自动刷新已休眠');
+    }
+
+    private wakeAuto() {
+        if (!this.sleeping) return;
+        console.log('[DatabaseDisplay] 唤醒自动刷新');
+        this.startAuto();
+    }
+
+    private clearAutoTimer() {
+        if (this.autoTimer) {
+            clearInterval(this.autoTimer);
+            this.autoTimer = null;
+        }
+    }
+
+    // 供设置修改后调用的更新接口（未来若在 settings 中添加按钮，即可调用）
+    public updateAutoLoadedInterval() {
+        this.initAutoInterval();
+    }
+}
+
+// const callback = (mutationsList: MutationRecord[]) => {
+//     for (const mutation of mutationsList) {
+//         if (mutation.type === 'childList') {
+//             mutation.removedNodes.forEach((node) => {
+//                 if (node instanceof HTMLElement && node.matches('div[data-key="dialog-attr"].b3-dialog--open')) {
+//                     console.log('Dialog closed');
+//                     // 在这里添加你的代码
+//                     DatabaseDisplay.prototype.loaded();
+//                 }
+//             });
+//         }
+//     }
+// };
 
 // 
 export function outLog(any, str = "") {

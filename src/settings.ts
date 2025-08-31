@@ -148,4 +148,26 @@ export function addSettings(settingUtils) {
             }
         }
     });
+    // 自动刷新间隔设置（若后续实现自动 loaded 逻辑，可直接读取此值）
+    settingUtils.addItem({
+        key: "auto-loaded-interval",
+        value: 0,
+        type: "number",
+        title: "自动刷新间隔(秒)",
+        description: "定时自动执行 loaded() 的间隔；0=关闭；>=5 启用（小于5会自动提升到5）。",
+        action: {
+            callback: () => {
+                let v = parseInt(settingUtils.get("auto-loaded-interval"));
+                if (isNaN(v) || v < 0) v = 0;
+                if (v > 0 && v < 5) v = 5; // 最小 5 秒
+                settingUtils.set("auto-loaded-interval", v);
+                settingUtils.takeAndSave("auto-loaded-interval");
+                const plugin = (window as any).siyuan?.plugins?.find?.(p => p.name === 'DatabaseDisplay');
+                if (plugin && typeof plugin.updateAutoLoadedInterval === 'function') {
+                    plugin.updateAutoLoadedInterval();
+                }
+                showMessage(v === 0 ? '自动刷新已关闭' : `自动刷新每 ${v} 秒`);
+            }
+        }
+    });
 }
