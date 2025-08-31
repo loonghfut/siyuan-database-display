@@ -28,6 +28,7 @@ let showTimestamps = null;
 let maxDisplayLength = null;
 let fieldColorMap: Record<string, string> = {};
 let fieldBgColorMap: Record<string, string> = {};
+let fieldValueColorMap: Record<string, string | { color?: string; bg?: string }> = {};
 
 function parseFieldColorMap(raw?: string, isBg: boolean = false) {
     if (!raw) return;
@@ -38,6 +39,18 @@ function parseFieldColorMap(raw?: string, isBg: boolean = false) {
         }
     } catch (e) {
         console.warn(isBg ? '解析字段背景颜色 JSON 失败' : '解析字段颜色 JSON 失败', e);
+    }
+}
+
+function parseFieldValueColorMap(raw?: string) {
+    if (!raw) return;
+    try {
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === 'object') {
+            fieldValueColorMap = obj as any;
+        }
+    } catch (e) {
+        console.warn('解析字段值颜色 JSON 失败', e);
     }
 }
 
@@ -58,6 +71,35 @@ function getBgColorForType(type: string): string | undefined {
         return c;
     }
     return undefined;
+}
+
+function applyColors(ele: HTMLElement, type: string, valueText: string) {
+    // 1. 值级别覆盖
+    if (valueText && fieldValueColorMap) {
+        const conf = fieldValueColorMap[valueText];
+        if (conf) {
+            if (typeof conf === 'string') {
+                ele.style.color = conf;
+            } else if (typeof conf === 'object') {
+                if (conf.color) ele.style.color = conf.color;
+                if (conf.bg) {
+                    ele.style.backgroundColor = conf.bg;
+                    ele.style.padding = '2px 4px';
+                    ele.style.borderRadius = '4px';
+                }
+            }
+            return; // 值命中直接返回
+        }
+    }
+    // 2. 类型级别
+    const color = getColorForType(type);
+    const bg = getBgColorForType(type);
+    if (color) ele.style.color = color;
+    if (bg) {
+        ele.style.backgroundColor = bg;
+        ele.style.padding = '2px 4px';
+        ele.style.borderRadius = '4px';
+    }
 }
 let isoutLog = false;
 let currentDocId = null;
@@ -198,6 +240,7 @@ export default class DatabaseDisplay extends Plugin {
         maxDisplayLength = this.settingUtils.get("max-display-length");
     parseFieldColorMap(this.settingUtils.get("field-color-map"));
     parseFieldColorMap(this.settingUtils.get("field-bg-color-map"), true);
+    parseFieldValueColorMap(this.settingUtils.get("field-value-color-map"));
         window.siyuan.ws.ws.addEventListener('message', async (e) => {
             const msg = JSON.parse(e.data);
             if (msg.cmd === "transactions") {
@@ -287,14 +330,7 @@ export default class DatabaseDisplay extends Plugin {
             contents.forEach(contentObj => {
                 const newSpan = document.createElement('span');
                 newSpan.className = 'popover__block ariaLabel';
-                const color = getColorForType(contentObj.type);
-                const bg = getBgColorForType(contentObj.type);
-                if (color) newSpan.style.color = color;
-                if (bg) {
-                    newSpan.style.backgroundColor = bg;
-                    newSpan.style.padding = '2px 4px';
-                    newSpan.style.borderRadius = '4px';
-                }
+                applyColors(newSpan, contentObj.type, contentObj.text);
                 const maxLength = getMaxDisplayLength();
                 const contentStr = contentObj.text;
                 if (contentStr.length > maxLength) {
@@ -368,14 +404,7 @@ export default class DatabaseDisplay extends Plugin {
             contents.forEach(contentObj => {
                 const newSpan = document.createElement('span');
                 newSpan.className = 'popover__block ariaLabel';
-                const color = getColorForType(contentObj.type);
-                const bg = getBgColorForType(contentObj.type);
-                if (color) newSpan.style.color = color;
-                if (bg) {
-                    newSpan.style.backgroundColor = bg;
-                    newSpan.style.padding = '2px 4px';
-                    newSpan.style.borderRadius = '4px';
-                }
+                applyColors(newSpan, contentObj.type, contentObj.text);
                 const maxLength = getMaxDisplayLength();
                 const contentStr = contentObj.text;
                 if (contentStr.length > maxLength) {
