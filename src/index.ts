@@ -13,7 +13,7 @@ import {
 } from "siyuan";
 import "@/index.scss";
 import { getAttributeViewKeys } from "./api";
-import { extractContents } from './handleKey';
+import { extractContentsWithTypes } from './handleKey';
 import { SettingUtils } from "./libs/setting-utils";
 import { addSettings } from './settings';
 import { getCursorBlockId, getAVreferenceid, reConfirmedDocId } from "./block";
@@ -26,6 +26,39 @@ let includeTime = null;
 let checkboxStyle = null;
 let showTimestamps = null;
 let maxDisplayLength = null;
+let fieldColorMap: Record<string, string> = {};
+let fieldBgColorMap: Record<string, string> = {};
+
+function parseFieldColorMap(raw?: string, isBg: boolean = false) {
+    if (!raw) return;
+    try {
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === 'object') {
+            if (isBg) fieldBgColorMap = obj; else fieldColorMap = obj;
+        }
+    } catch (e) {
+        console.warn(isBg ? '解析字段背景颜色 JSON 失败' : '解析字段颜色 JSON 失败', e);
+    }
+}
+
+function getColorForType(type: string): string | undefined {
+    const c = fieldColorMap?.[type];
+    if (!c) return undefined;
+    // 简单校验 hex / rgb / var(--x)
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c) || c.startsWith('rgb') || c.startsWith('var(')) {
+        return c;
+    }
+    return undefined;
+}
+
+function getBgColorForType(type: string): string | undefined {
+    const c = fieldBgColorMap?.[type];
+    if (!c) return undefined;
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c) || c.startsWith('rgb') || c.startsWith('var(')) {
+        return c;
+    }
+    return undefined;
+}
 let isoutLog = false;
 let currentDocId = null;
 let currentDocId_block = null;
@@ -163,6 +196,8 @@ export default class DatabaseDisplay extends Plugin {
         checkboxStyle = this.settingUtils.get("checkbox-style");
         showTimestamps = this.settingUtils.get("show-timestamps");
         maxDisplayLength = this.settingUtils.get("max-display-length");
+    parseFieldColorMap(this.settingUtils.get("field-color-map"));
+    parseFieldColorMap(this.settingUtils.get("field-bg-color-map"), true);
         window.siyuan.ws.ws.addEventListener('message', async (e) => {
             const msg = JSON.parse(e.data);
             if (msg.cmd === "transactions") {
@@ -203,21 +238,20 @@ export default class DatabaseDisplay extends Plugin {
     async showdata_doc() { //TODO:以后合成一个函数
         //console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
-        let contents1 = [];
         const hiddenFieldsList = getHiddenFields();
         const dateOptions = getDateFormatOptions();
         const checkboxOptions = getCheckboxOptions();
+        let contentsTyped: Array<{ type: string; text: string }> = [];
         if (disShow_doc) {
             const baseConditions = disShow_doc.split(',');
             const filteredConditions = getFilteredConditions(baseConditions);
-            contents1 = extractContents(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
+            contentsTyped = extractContentsWithTypes(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
         } else {
             const defaultConditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
             const filteredConditions = getFilteredConditions(defaultConditions);
-            contents1 = extractContents(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
+            contentsTyped = extractContentsWithTypes(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
         }
-        // console.log(contents1);
-        const contents = contents1.filter(element => element !== '' && element !== null && element !== undefined);
+        const contents = contentsTyped.filter(c => c.text).map(c => c);
 
         const parentElements = document.querySelectorAll('.protyle-title');
         let parentElementsArray = [];
@@ -250,24 +284,28 @@ export default class DatabaseDisplay extends Plugin {
             newDiv.className = 'my-protyle-attr--av';
 
             // 将所有 content 作为 span 元素添加到 newDiv 中
-            contents.forEach(content => {
+            contents.forEach(contentObj => {
                 const newSpan = document.createElement('span');
                 newSpan.className = 'popover__block ariaLabel';
-
-                // 设置长度限制
+                const color = getColorForType(contentObj.type);
+                const bg = getBgColorForType(contentObj.type);
+                if (color) newSpan.style.color = color;
+                if (bg) {
+                    newSpan.style.backgroundColor = bg;
+                    newSpan.style.padding = '2px 4px';
+                    newSpan.style.borderRadius = '4px';
+                }
                 const maxLength = getMaxDisplayLength();
-                const contentStr = String(content);
+                const contentStr = contentObj.text;
                 if (contentStr.length > maxLength) {
                     newSpan.textContent = contentStr.substring(0, maxLength) + '...';
-                    newSpan.setAttribute('aria-label', contentStr); // 使用aria-label显示完整内容
-                    // newSpan.title = contentStr; // 保留title作为备用
-                    // newSpan.style.cursor = 'help';
+                    newSpan.setAttribute('aria-label', contentStr);
                 } else {
                     newSpan.textContent = contentStr;
                 }
-
+                newSpan.dataset['fieldType'] = contentObj.type;
                 newDiv.appendChild(newSpan);
-            });
+            })
 
             // 将 newDiv 插入到 attrContainer 中
             attrContainer.insertBefore(newDiv, attrContainer.firstChild);
@@ -279,23 +317,20 @@ export default class DatabaseDisplay extends Plugin {
     async showdata_block() {
         const currentDocId = clickId; // 替换为实际的 currentDocId
         const viewKeys = await getAttributeViewKeys(currentDocId);
-        let contents1 = [];
         const hiddenFieldsList = getHiddenFields();
         const dateOptions = getDateFormatOptions();
         const checkboxOptions = getCheckboxOptions();
+        let contentsTyped: Array<{ type: string; text: string }> = [];
         if (disShow_block) {
             const baseConditions = disShow_block.split(',');
             const filteredConditions = getFilteredConditions(baseConditions);
-            contents1 = extractContents(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
+            contentsTyped = extractContentsWithTypes(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
         } else {
             const defaultConditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
             const filteredConditions = getFilteredConditions(defaultConditions);
-            contents1 = extractContents(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
+            contentsTyped = extractContentsWithTypes(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
         }
-
-        const contents = contents1
-            .filter(element => element !== '' && element !== null && element !== undefined)
-            .map(element => String(element)); // 将所有元素转换为字符串
+        const contents = contentsTyped.filter(c => c.text).map(c => c);
 
         const parentElements = document.querySelectorAll('[custom-avs]');
         let parentElementsArray = [];
@@ -330,22 +365,26 @@ export default class DatabaseDisplay extends Plugin {
             newDiv.className = 'my-protyle-attr--av';
 
             // 将所有 content 作为 span 元素添加到 newDiv 中
-            contents.forEach(content => {
+            contents.forEach(contentObj => {
                 const newSpan = document.createElement('span');
                 newSpan.className = 'popover__block ariaLabel';
-
-                // 设置长度限制
+                const color = getColorForType(contentObj.type);
+                const bg = getBgColorForType(contentObj.type);
+                if (color) newSpan.style.color = color;
+                if (bg) {
+                    newSpan.style.backgroundColor = bg;
+                    newSpan.style.padding = '2px 4px';
+                    newSpan.style.borderRadius = '4px';
+                }
                 const maxLength = getMaxDisplayLength();
-                const contentStr = String(content);
+                const contentStr = contentObj.text;
                 if (contentStr.length > maxLength) {
                     newSpan.textContent = contentStr.substring(0, maxLength) + '...';
-                    newSpan.setAttribute('aria-label', contentStr); // 使用aria-label显示完整内容
-                    // newSpan.title = contentStr; // 保留title作为备用
-                    // newSpan.style.cursor = 'help';
+                    newSpan.setAttribute('aria-label', contentStr);
                 } else {
                     newSpan.textContent = contentStr;
                 }
-
+                newSpan.dataset['fieldType'] = contentObj.type;
                 newDiv.appendChild(newSpan);
             });
 

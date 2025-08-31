@@ -146,6 +146,96 @@ export function extractContents(
     return contents;
 }
 
+/**
+ * 新增：返回包含类型的内容数组，用于渲染时做配色等高级处理
+ * @param data
+ * @param conditions
+ * @param hiddenFields
+ * @param dateOptions
+ * @param checkboxOptions
+ * @returns Array<{type:string,text:string}>
+ */
+export function extractContentsWithTypes(
+    data,
+    conditions: string[] = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'],
+    hiddenFields: string[] = [],
+    dateOptions?: DateFormatOptions,
+    checkboxOptions?: { style?: 'emoji' | 'symbol' | 'text' }
+): Array<{ type: string; text: string }> {
+    const results: Array<{ type: string; text: string }> = [];
+
+    data.forEach(item => {
+        item.keyValues.forEach(keyValue => {
+            if (hiddenFields.includes(keyValue.key?.name)) {
+                return;
+            }
+            keyValue.values.forEach(value => {
+                conditions.forEach(condition => {
+                    const texts = getConditionTexts(value, condition, dateOptions, checkboxOptions);
+                    if (texts && texts.length) {
+                        texts.forEach(t => {
+                            if (t !== undefined && t !== null && t !== '') {
+                                results.push({ type: condition, text: String(t) });
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    });
+
+    return results;
+}
+
+/**
+ * 返回某个 condition 下该 value 产生的全部文本
+ */
+export function getConditionTexts(
+    value,
+    condition: string,
+    dateOptions?: DateFormatOptions,
+    checkboxOptions?: { style?: 'emoji' | 'symbol' | 'text' }
+): string[] {
+    switch (condition) {
+        case 'mSelect':
+            if (value.mSelect) return value.mSelect.map(s => s.content).filter(Boolean);
+            return [];
+        case 'number':
+            return value.number?.content ? [value.number.content] : [];
+        case 'date':
+            if (value.date?.content) {
+                const ts = value.date.content;
+                return [formatDate(ts, dateOptions)];
+            }
+            return [];
+        case 'text':
+            return value.text?.content ? [value.text.content] : [];
+        case 'mAsset':
+            if (value.mAsset) return value.mAsset.map(a => a.name).filter(Boolean);
+            return [];
+        case 'checkbox':
+            if (value.checkbox) {
+                const isChecked = value.checkbox.checked;
+                return [getCheckboxIcon(isChecked, checkboxOptions?.style)];
+            }
+            return [];
+        case 'phone':
+            return value.phone?.content ? [value.phone.content] : [];
+        case 'url':
+            return value.url?.content ? [value.url.content] : [];
+        case 'email':
+            return value.email?.content ? [value.email.content] : [];
+        case 'created':
+            if (value.created?.content) return [formatDate(value.created.content, dateOptions)];
+            return [];
+        case 'updated':
+            if (value.updated?.content) return [formatDate(value.updated.content, dateOptions)];
+            return [];
+        default:
+            return [];
+    }
+}
+
 export function handleCondition(value, condition, contents, dateOptions?: DateFormatOptions, checkboxOptions?: { style?: 'emoji' | 'symbol' | 'text' }) {
     switch (condition) {
         case 'mSelect':
