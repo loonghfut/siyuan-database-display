@@ -673,17 +673,6 @@ function createNumberInput(value: any): HTMLInputElement {
  * 设置输入元素样式
  */
 function styleInputElement(element: HTMLInputElement | HTMLSelectElement, keyType?: string) {
-    element.style.width = '100%';
-    element.style.minWidth = '200px';
-    element.style.border = '1px solid var(--b3-border-color)';
-    element.style.outline = 'none';
-    element.style.backgroundColor = 'var(--b3-theme-background)';
-    element.style.fontSize = '14px';
-    element.style.fontFamily = 'inherit';
-    element.style.color = 'var(--b3-theme-on-background)';
-    element.style.padding = '6px 10px';
-    element.style.borderRadius = '4px';
-    
     // 复选框特殊处理
     if (keyType === 'checkbox') {
         element.style.width = 'auto';

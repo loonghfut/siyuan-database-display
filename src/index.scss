@@ -147,7 +147,7 @@
     
     input,
     select {
-        width: 100%;
+        width: 90%;
         min-width: 200px;
         border: 1px solid var(--b3-border-color);
         outline: none;
@@ -233,7 +233,7 @@
 
 // 旧的直接编辑样式（已废弃，保留以防需要）
 .inline-edit-input {
-    width: 100%;
+    width: 90%;
     min-width: 140px;
     min-height: 24px;
     border: none;
@@ -403,7 +403,7 @@ span[style*="outline: 2px solid"] {
 }
 
 .inline-edit-datepicker-input {
-    width: 100%;
+    width: 90%;
     padding: 8px 12px;
     border: 1px solid var(--b3-border-color);
     border-radius: 4px;
@@ -422,6 +422,7 @@ span[style*="outline: 2px solid"] {
 .inline-edit-datepicker-buttons {
     display: flex;
     gap: 8px;
+    justify-content: flex-end;
     margin-top: 12px;
 }
 
