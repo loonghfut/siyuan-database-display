@@ -18,6 +18,8 @@ import { addSettings } from './settings';
 import { getCursorBlockId, getAVreferenceid, reConfirmedDocId } from "./block";
 import { extractContentsWithMeta } from './extract-meta';
 import { enableInlineEdit } from './inline-edit';
+import { setI18n, t } from "./i18n";
+import { toErrorMessage } from "./libs/error-utils";
 
 let disShow_doc = null;
 let disShow_block = null;
@@ -39,7 +41,7 @@ function parseFieldColorMap(raw?: string, isBg: boolean = false) {
             if (isBg) fieldBgColorMap = obj; else fieldColorMap = obj;
         }
     } catch (e) {
-        console.warn(isBg ? '解析字段背景颜色 JSON 失败' : '解析字段颜色 JSON 失败', e);
+        console.warn(isBg ? t('messages.fieldBgColorParseFailed') : t('messages.fieldColorParseFailed'), e);
     }
 }
 
@@ -51,7 +53,7 @@ function parseFieldValueColorMap(raw?: string) {
             fieldValueColorMap = obj as any;
         }
     } catch (e) {
-        console.warn('解析字段值颜色 JSON 失败', e);
+        console.warn(t('messages.fieldValueColorParseFailed'), e);
     }
 }
 
@@ -159,6 +161,7 @@ export default class DatabaseDisplay extends Plugin {
     private externalTriggerFlag: boolean = false; // 标记外部触发
 
     async onload() {
+        setI18n(this.i18n as Record<string, unknown>);
         //记得取消注释
         this.eventBus.on("switch-protyle", async (event) => {
             const currentDocId2 = event.detail.protyle.block.id;
@@ -220,8 +223,7 @@ export default class DatabaseDisplay extends Plugin {
         const blockId = getCursorBlockId();
         if (blockId) {
             clickId = blockId;
-
-            showMessage(`光标所在的块ID: ${clickId}`);
+            showMessage(t('common.cursorBlockId', { id: clickId }));
             await this.showdata_block();
         } else {
             //console.log("无法获取光标所在的块ID");
@@ -336,7 +338,7 @@ export default class DatabaseDisplay extends Plugin {
         // 从最近的带有 data-node-id 的父元素获取 blockID
         const blockElement = target.closest('[data-node-id]') as HTMLElement;
         if (!blockElement) {
-            showMessage('无法获取块ID', 3000, 'error');
+            showMessage(t('common.missingBlockId'), 3000, 'error');
             return;
         }
         const blockID = blockElement.getAttribute('data-node-id') || '';
@@ -356,7 +358,7 @@ export default class DatabaseDisplay extends Plugin {
             const itemID = mapping[blockID];
             
             if (!itemID) {
-                showMessage('无法获取行ID', 3000, 'error');
+                showMessage(t('common.missingRowId'), 3000, 'error');
                 return;
             }
             
@@ -378,7 +380,7 @@ export default class DatabaseDisplay extends Plugin {
             });
         } catch (error) {
             console.error('获取itemID失败:', error);
-            showMessage('获取行ID失败: ' + error.message, 5000, 'error');
+            showMessage(t('common.fetchRowIdFailed', { message: toErrorMessage(error) }), 5000, 'error');
         }
     }
 

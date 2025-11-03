@@ -3,8 +3,14 @@ import { updateHiddenFields } from './index';
 import { validateHiddenFields } from './handleKey';
 import { showMessage } from 'siyuan';
 import { SettingUtils } from './libs/setting-utils';
+import { getI18n, t } from './i18n';
 
 export function addSettings(settingUtils: SettingUtils) {
+    const i18n = getI18n();
+    const switchOn = t('settings.switch.on');
+    const switchOff = t('settings.switch.off');
+    const fieldTypes = ["mSelect", "number", "date", "text", "mAsset", "checkbox", "phone", "url", "email", "created", "updated"];
+
     // 统一广播颜色配置变化事件
     function emitColorConfigChanged() {
         document.dispatchEvent(new CustomEvent('dbdisplay-color-changed'));
@@ -13,8 +19,8 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "dis-show",
         value: "",
         type: "textarea",
-        title: "文档块展示的字段(不填默认展示所有支持的字段)",
-        description: "输入展示的字段(mSelect,number,date,text,mAsset,checkbox,phone,url,email,created,updated)",
+        title: i18n.settings.disShow.title,
+        description: i18n.settings.disShow.description,
         action: {
             // Called when focus is lost and content changes
             callback: () => {
@@ -26,8 +32,8 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "dis-show-block",
         value: "mSelect,text",
         type: "textarea",
-        title: "普通块展示的字段(不填默认展示所有支持的字段)",
-        description: "输入展示的字段(mSelect,number,date,text,mAsset,checkbox,phone,url,email,created,updated)",
+        title: i18n.settings.disShowBlock.title,
+        description: i18n.settings.disShowBlock.description,
         action: {
             // Called when focus is lost and content changes
             callback: () => {
@@ -39,8 +45,8 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "hidden-fields",
         value: "",
         type: "textarea",
-        title: "隐藏的字段名称",
-        description: "输入要隐藏的字段名称，用逗号分隔。例如：密码,私人信息,内部备注。设置后将在数据显示时自动过滤这些字段。",
+        title: i18n.settings.hiddenFields.title,
+        description: i18n.settings.hiddenFields.description,
         action: {
             // Called when focus is lost and content changes
             callback: () => {
@@ -49,7 +55,7 @@ export function addSettings(settingUtils: SettingUtils) {
                 // 验证隐藏字段设置
                 const validation = validateHiddenFields(hiddenFieldsValue);
                 if (!validation.isValid) {
-                    console.warn("隐藏字段设置有问题:", validation.errors);
+                    console.warn(i18n.settings.hiddenFields.validationWarning, validation.errors);
                     // 可以选择显示警告消息给用户
                 }
 
@@ -60,9 +66,9 @@ export function addSettings(settingUtils: SettingUtils) {
                 // 显示设置生效提示
                 const fieldCount = validation.fields.length;
                 if (fieldCount > 0) {
-                    console.log(`隐藏字段设置已更新，共隐藏 ${fieldCount} 个字段: ${validation.fields.join(', ')}`);
+                    console.log(t('settings.hiddenFields.logUpdated', { count: fieldCount, fields: validation.fields.join(', ') }));
                 } else {
-                    console.log("隐藏字段设置已清空，将显示所有字段");
+                    console.log(i18n.settings.hiddenFields.logCleared);
                 }
             }
         }
@@ -71,20 +77,13 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "date-format",
         value: "YYYY-MM-DD",
         type: "select",
-        title: "日期显示格式",
-        description: "选择日期字段的显示格式",
-        options: {
-            "YYYY-MM-DD": "YYYY-MM-DD (2023-12-25)",
-            "YYYY/MM/DD": "YYYY/MM/DD (2023/12/25)",
-            "MM/DD/YYYY": "MM/DD/YYYY (12/25/2023)",
-            "DD/MM/YYYY": "DD/MM/YYYY (25/12/2023)",
-            "full": "完整格式 (2023年12月25日星期一)",
-            "relative": "相对时间 (3天前, 明天)"
-        },
+        title: i18n.settings.dateFormat.title,
+        description: i18n.settings.dateFormat.description,
+        options: i18n.settings.dateFormat.options,
         action: {
             callback: () => {
                 settingUtils.takeAndSave("date-format");
-                console.log(`日期格式已更新为: ${settingUtils.get("date-format")}`);
+                console.log(t('settings.dateFormat.logUpdated', { format: settingUtils.get("date-format") }));
             }
         }
     });
@@ -92,13 +91,13 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "include-time",
         value: false,
         type: "checkbox",
-        title: "显示时间",
-        description: "是否在日期中包含具体时间 (小时:分钟:秒)",
+        title: i18n.settings.includeTime.title,
+        description: i18n.settings.includeTime.description,
         action: {
             callback: () => {
                 settingUtils.takeAndSave("include-time");
                 const includeTime = settingUtils.get("include-time");
-                console.log(`时间显示已${includeTime ? '开启' : '关闭'}`);
+                console.log(t('settings.includeTime.logUpdated', { state: includeTime ? switchOn : switchOff }));
             }
         }
     });
@@ -106,17 +105,13 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "checkbox-style",
         value: "emoji",
         type: "select",
-        title: "复选框显示样式",
-        description: "选择复选框字段的显示样式",
-        options: {
-            "emoji": "表情符号 (✅ / ❌)",
-            "symbol": "符号样式 (☑ / ☐)",
-            "text": "文字描述 (已选中 / 未选中)"
-        },
+        title: i18n.settings.checkboxStyle.title,
+        description: i18n.settings.checkboxStyle.description,
+        options: i18n.settings.checkboxStyle.options,
         action: {
             callback: () => {
                 settingUtils.takeAndSave("checkbox-style");
-                console.log(`复选框样式已更新为: ${settingUtils.get("checkbox-style")}`);
+                console.log(t('settings.checkboxStyle.logUpdated', { style: settingUtils.get("checkbox-style") }));
             }
         }
     });
@@ -124,13 +119,13 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "show-timestamps",
         value: true,
         type: "checkbox",
-        title: "显示时间戳字段",
-        description: "是否显示创建时间(created)和更新时间(updated)字段。关闭后这些字段将被自动过滤。",
+        title: i18n.settings.showTimestamps.title,
+        description: i18n.settings.showTimestamps.description,
         action: {
             callback: () => {
                 settingUtils.takeAndSave("show-timestamps");
                 const showTimestamps = settingUtils.get("show-timestamps");
-                console.log(`时间戳字段显示已${showTimestamps ? '开启' : '关闭'}`);
+                console.log(t('settings.showTimestamps.logUpdated', { state: showTimestamps ? switchOn : switchOff }));
             }
         }
     });
@@ -138,18 +133,18 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "max-display-length",
         value: 30,
         type: "number",
-        title: "最大显示长度",
-        description: "设置字段内容的最大显示字符数，超出部分将显示为省略号。范围：10-200字符。",
+        title: i18n.settings.maxDisplayLength.title,
+        description: i18n.settings.maxDisplayLength.description,
         action: {
             callback: () => {
                 const maxLength = parseInt(settingUtils.get("max-display-length"));
                 // 验证输入范围
                 if (maxLength < 10 || maxLength > 200) {
-                    showMessage("最大显示长度应在10-200字符之间，已重置为默认值30");
+                    showMessage(t('settings.maxDisplayLength.rangeWarning'));
                     settingUtils.set("max-display-length", 30);
                 }
                 settingUtils.takeAndSave("max-display-length");
-                console.log(`最大显示长度已更新为: ${settingUtils.get("max-display-length")} 字符`);
+                console.log(t('settings.maxDisplayLength.logUpdated', { length: settingUtils.get("max-display-length") }));
             }
         }
     });
@@ -158,9 +153,9 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "field-color-map",
         value: "{\n  \"mSelect\": \"#4f46e5\",\n  \"number\": \"#2563eb\",\n  \"date\": \"#16a34a\",\n  \"text\": \"#374151\",\n  \"mAsset\": \"#7c3aed\",\n  \"checkbox\": \"#059669\",\n  \"phone\": \"#0d9488\",\n  \"url\": \"#d97706\",\n  \"email\": \"#db2777\",\n  \"created\": \"#6b7280\",\n  \"updated\": \"#6b7280\"\n}",
         type: "custom",
-        title: "字段文字类型配色(JSON)",
+        title: i18n.settings.fieldColorMap.title,
         direction: "row",
-        description: "为各字段类型自定义颜色。支持: mSelect,number,date,text,mAsset,checkbox,phone,url,email,created,updated。左侧输入框直接编辑 JSON，右侧可视化修改。",
+        description: i18n.settings.fieldColorMap.description,
         createElement: (currentVal: string) => {
             const wrap = document.createElement('div');
             wrap.style.display = 'flex';
@@ -180,7 +175,7 @@ export function addSettings(settingUtils: SettingUtils) {
 
             const help = document.createElement('div');
             help.className = 'b3-label';
-            help.textContent = '可视化修改:';
+            help.textContent = i18n.settings.fieldColorMap.visualLabel;
 
             function syncVisual() {
                 visual.innerHTML = '';
@@ -190,8 +185,7 @@ export function addSettings(settingUtils: SettingUtils) {
                 } catch (e) {
                     // ignore
                 }
-                const allKeys = ["mSelect", "number", "date", "text", "mAsset", "checkbox", "phone", "url", "email", "created", "updated"];
-                allKeys.forEach(k => {
+                fieldTypes.forEach(k => {
                     const item = document.createElement('div');
                     item.style.display = 'flex';
                     item.style.alignItems = 'center';
@@ -249,9 +243,9 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "field-bg-color-map",
         value: "{\n  \"mSelect\": \"#eef2ff\",\n  \"number\": \"#dbeafe\",\n  \"date\": \"#dcfce7\",\n  \"text\": \"#f3f4f6\",\n  \"mAsset\": \"#ede9fe\",\n  \"checkbox\": \"#d1fae5\",\n  \"phone\": \"#ccfbf1\",\n  \"url\": \"#fef3c7\",\n  \"email\": \"#fce7f3\",\n  \"created\": \"#f1f5f9\",\n  \"updated\": \"#f1f5f9\"\n}",
         type: "custom",
-        title: "字段背景类型配色(JSON)",
+        title: i18n.settings.fieldBgColorMap.title,
         direction: "row",
-        description: "为各字段类型自定义背景颜色（浅色更易读）。支持同上字段。",
+        description: i18n.settings.fieldBgColorMap.description,
         createElement: (currentVal: string) => {
             const wrap = document.createElement('div');
             wrap.style.display = 'flex';
@@ -271,14 +265,13 @@ export function addSettings(settingUtils: SettingUtils) {
 
             const help = document.createElement('div');
             help.className = 'b3-label';
-            help.textContent = '可视化修改:';
+            help.textContent = i18n.settings.fieldBgColorMap.visualLabel;
 
             function syncVisual() {
                 visual.innerHTML = '';
                 let map: Record<string, string> = {};
                 try { map = JSON.parse(textarea.value || '{}'); } catch (e) {}
-                const allKeys = ["mSelect", "number", "date", "text", "mAsset", "checkbox", "phone", "url", "email", "created", "updated"];
-                allKeys.forEach(k => {
+                fieldTypes.forEach(k => {
                     const item = document.createElement('div');
                     item.style.display = 'flex';
                     item.style.alignItems = 'center';
@@ -331,9 +324,9 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "field-value-color-map",
         value: "{\n  \"测试\": { \"color\": \"#ffffff\", \"bg\": \"#dc2626\" },\n  \"重要\": { \"bg\": \"#fde68a\", \"color\": \"#92400e\" },\n  \"进行中\": \"#2563eb\"\n}",
         type: "custom",
-        title: "字段值配色(JSON)",
+        title: i18n.settings.fieldValueColorMap.title,
         direction: "row",
-        description: "按具体值自定义颜色，覆盖类型配色。格式: { \"值\": \"#文字色\" } 或 { \"值\": { \"color\": \"#文字色\", \"bg\": \"#背景色\" } }。",
+        description: i18n.settings.fieldValueColorMap.description,
         createElement: (currentVal: string) => {
             const wrap = document.createElement('div');
             wrap.style.display = 'flex';
@@ -353,7 +346,7 @@ export function addSettings(settingUtils: SettingUtils) {
 
             const addBtn = document.createElement('button');
             addBtn.className = 'b3-button b3-button--outline';
-            addBtn.textContent = '新增条目';
+            addBtn.textContent = i18n.settings.fieldValueColorMap.addEntry;
 
             let valueOrder: string[] = [];
             function parse(): any {
@@ -396,7 +389,7 @@ export function addSettings(settingUtils: SettingUtils) {
                     colorInput.type = 'color';
                     const bgInput = document.createElement('input');
                     bgInput.type = 'color';
-                    bgInput.title = '背景色';
+                    bgInput.title = i18n.settings.fieldValueColorMap.bgLabel;
                     let val = obj[key];
                     let colorVal = '#000000';
                     let bgVal = '#ffffff';
@@ -449,11 +442,14 @@ export function addSettings(settingUtils: SettingUtils) {
             }
             addBtn.onclick = () => {
                 const obj = parse();
-                let base = '新值';
-                let i = 1;
-                while (Object.prototype.hasOwnProperty.call(obj, base)) { base = '新值' + (++i); }
-                obj[base] = '#000000';
-                valueOrder.push(base);
+                const base = i18n.settings.fieldValueColorMap.newValue;
+                let index = 1;
+                let candidate = base;
+                while (Object.prototype.hasOwnProperty.call(obj, candidate)) {
+                    candidate = `${base}${++index}`;
+                }
+                obj[candidate] = '#000000';
+                valueOrder.push(candidate);
                 serializeWithOrder(obj);
                 rebuild();
             };
@@ -477,9 +473,9 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "preview-color-demo",
         value: "",
         type: "custom",
-        title: "测试预览",
+        title: i18n.settings.previewColorDemo.title,
         direction: "row",
-        description: "展示当前类型 / 背景 / 值配色的示例。修改任一 JSON 即时刷新。",
+        description: i18n.settings.previewColorDemo.description,
         createElement: () => {
             const wrap = document.createElement('div');
             wrap.style.display = 'flex';
@@ -488,7 +484,7 @@ export function addSettings(settingUtils: SettingUtils) {
 
             const note = document.createElement('div');
             note.className = 'b3-label';
-            note.textContent = '优先级：值配色 > 类型文字色 / 类型背景色 (自动刷新)';
+            note.textContent = i18n.settings.previewColorDemo.priorityHint;
 
             const sectionTypes = document.createElement('div');
             const sectionValues = document.createElement('div');
@@ -516,8 +512,7 @@ export function addSettings(settingUtils: SettingUtils) {
                 sectionValues.innerHTML = '';
                 const typeColorMap = safeParse(settingUtils.get('field-color-map'));
                 const typeBgMap = safeParse(settingUtils.get('field-bg-color-map'));
-                const allKeys = ["mSelect","number","date","text","mAsset","checkbox","phone","url","email","created","updated"];
-                allKeys.forEach(k => {
+                fieldTypes.forEach(k => {
                     sectionTypes.appendChild(chip(k, hexLike(typeColorMap[k]) ? typeColorMap[k] : undefined, hexLike(typeBgMap[k]) ? typeBgMap[k] : undefined));
                 });
                 const valueMap = safeParse(settingUtils.get('field-value-color-map'));
@@ -554,10 +549,10 @@ export function addSettings(settingUtils: SettingUtils) {
             setTimeout(bindListeners, 300);
             const title1 = document.createElement('div');
             title1.className = 'b3-label';
-            title1.textContent = '类型配色示例:';
+            title1.textContent = i18n.settings.previewColorDemo.typeTitle;
             const title2 = document.createElement('div');
             title2.className = 'b3-label';
-            title2.textContent = '值配色示例:';
+            title2.textContent = i18n.settings.previewColorDemo.valueTitle;
             wrap.appendChild(note);
             wrap.appendChild(title1);
             wrap.appendChild(sectionTypes);
@@ -574,8 +569,8 @@ export function addSettings(settingUtils: SettingUtils) {
         key: "auto-loaded-interval",
         value: 0,
         type: "number",
-        title: "自动刷新间隔(秒)",
-        description: "定时自动执行 loaded() 的间隔；0=关闭；>=5 启用（小于5会自动提升到5）。",
+        title: i18n.settings.autoLoadedInterval.title,
+        description: i18n.settings.autoLoadedInterval.description,
         action: {
             callback: () => {
                 let v = parseInt(settingUtils.get("auto-loaded-interval"));
@@ -587,7 +582,7 @@ export function addSettings(settingUtils: SettingUtils) {
                 if (plugin && typeof plugin.updateAutoLoadedInterval === 'function') {
                     plugin.updateAutoLoadedInterval();
                 }
-                showMessage(v === 0 ? '自动刷新已关闭' : `自动刷新每 ${v} 秒`);
+                showMessage(v === 0 ? t('common.autoRefreshDisabled') : t('common.autoRefreshEnabled', { seconds: v }));
             }
         }
     });

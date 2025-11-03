@@ -5,6 +5,8 @@
 import { showMessage } from "siyuan";
 import { AVManager } from "./db_pro";
 import { setAttributeViewValue } from "./db_interface";
+import { t } from "./i18n";
+import { toErrorMessage } from "./libs/error-utils";
 
 export interface InlineEditOptions {
     element: HTMLElement;
@@ -73,14 +75,15 @@ async function handleCheckboxEdit(options: InlineEditOptions) {
         
         await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
         
-        showMessage('保存成功', 2000, 'info');
+        showMessage(t('common.saveSuccess'), 2000, 'info');
         
         if (onSave) {
             onSave(newValue);
         }
     } catch (error) {
-        console.error('保存失败:', error);
-        showMessage('保存失败: ' + error.message, 5000, 'error');
+        const message = toErrorMessage(error);
+        console.error(t('common.saveFailed', { message }), error);
+        showMessage(t('common.saveFailed', { message }), 5000, 'error');
     }
 }
 
@@ -100,7 +103,7 @@ function handleSelectEdit(options: InlineEditOptions) {
     optionsList.className = 'inline-edit-dropdown-list';
     
     // 添加空选项
-    const emptyOption = createDropdownOption('', '-- 清空 --', currentValue === '' || !currentValue);
+    const emptyOption = createDropdownOption('', t('common.clear'), currentValue === '' || !currentValue);
     optionsList.appendChild(emptyOption);
     
     // 添加备选项
@@ -129,14 +132,15 @@ function handleSelectEdit(options: InlineEditOptions) {
             await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
             
             closeDropdown(dropdown);
-            showMessage('保存成功', 2000, 'info');
+            showMessage(t('common.saveSuccess'), 2000, 'info');
             
             if (onSave) {
                 onSave(selectedValue);
             }
         } catch (error) {
-            console.error('保存失败:', error);
-            showMessage('保存失败: ' + error.message, 5000, 'error');
+            const message = toErrorMessage(error);
+            console.error(t('common.saveFailed', { message }), error);
+            showMessage(t('common.saveFailed', { message }), 5000, 'error');
         }
     };
     
@@ -214,11 +218,11 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
     
     const saveButton = document.createElement('button');
     saveButton.className = 'inline-edit-dropdown-button inline-edit-dropdown-button--primary';
-    saveButton.textContent = '保存';
+    saveButton.textContent = t('common.save');
     
     const cancelButton = document.createElement('button');
     cancelButton.className = 'inline-edit-dropdown-button';
-    cancelButton.textContent = '取消';
+    cancelButton.textContent = t('common.cancel');
     
     buttonContainer.appendChild(cancelButton);
     buttonContainer.appendChild(saveButton);
@@ -239,14 +243,15 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
             await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
             
             closeDropdown(dropdown);
-            showMessage('保存成功', 2000, 'info');
+            showMessage(t('common.saveSuccess'), 2000, 'info');
             
             if (onSave) {
                 onSave(values);
             }
         } catch (error) {
-            console.error('保存失败:', error);
-            showMessage('保存失败: ' + error.message, 5000, 'error');
+            const message = toErrorMessage(error);
+            console.error(t('common.saveFailed', { message }), error);
+            showMessage(t('common.saveFailed', { message }), 5000, 'error');
         }
     };
     
@@ -301,11 +306,11 @@ function handleDateEdit(options: InlineEditOptions) {
     
     const saveButton = document.createElement('button');
     saveButton.className = 'inline-edit-datepicker-button inline-edit-datepicker-button--primary';
-    saveButton.textContent = '保存';
+    saveButton.textContent = t('common.save');
     
     const cancelButton = document.createElement('button');
     cancelButton.className = 'inline-edit-datepicker-button';
-    cancelButton.textContent = '取消';
+    cancelButton.textContent = t('common.cancel');
     
     buttonContainer.appendChild(cancelButton);
     buttonContainer.appendChild(saveButton);
@@ -331,14 +336,15 @@ function handleDateEdit(options: InlineEditOptions) {
             await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
             
             closeDropdown(datePicker);
-            showMessage('保存成功', 2000, 'info');
+            showMessage(t('common.saveSuccess'), 2000, 'info');
             
             if (onSave) {
                 onSave(timestamp);
             }
         } catch (error) {
-            console.error('保存失败:', error);
-            showMessage('保存失败: ' + error.message, 5000, 'error');
+            const message = toErrorMessage(error);
+            console.error(t('common.saveFailed', { message }), error);
+            showMessage(t('common.saveFailed', { message }), 5000, 'error');
         }
     };
     
@@ -398,7 +404,7 @@ function handlePopupEdit(options: InlineEditOptions) {
     // 添加标题
     const title = document.createElement('div');
     title.className = 'inline-edit-popup-title';
-    title.textContent = `编辑：${keyName}`;
+    title.textContent = t('inlineEdit.editTitle', { name: keyName });
     popupContent.appendChild(title);
     
     // 创建输入区域
@@ -431,11 +437,11 @@ function handlePopupEdit(options: InlineEditOptions) {
     
     const saveButton = document.createElement('button');
     saveButton.className = 'inline-edit-popup-button inline-edit-popup-button--primary';
-    saveButton.textContent = '保存';
+    saveButton.textContent = t('common.save');
     
     const cancelButton = document.createElement('button');
     cancelButton.className = 'inline-edit-popup-button inline-edit-popup-button--secondary';
-    cancelButton.textContent = '取消';
+    cancelButton.textContent = t('common.cancel');
     
     buttonContainer.appendChild(cancelButton);
     buttonContainer.appendChild(saveButton);
@@ -474,14 +480,15 @@ function handlePopupEdit(options: InlineEditOptions) {
             // 关闭弹窗
             closePopup();
             
-            showMessage('保存成功', 2000, 'info');
+            showMessage(t('common.saveSuccess'), 2000, 'info');
             
             if (onSave) {
                 onSave(newValue);
             }
         } catch (error) {
-            console.error('保存失败:', error);
-            showMessage('保存失败: ' + error.message, 5000, 'error');
+            const message = toErrorMessage(error);
+            console.error(t('common.saveFailed', { message }), error);
+            showMessage(t('common.saveFailed', { message }), 5000, 'error');
             isSaving = false;
         }
     };

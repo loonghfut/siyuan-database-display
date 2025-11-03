@@ -1,20 +1,113 @@
 {
-    "addTopBarIcon": "使用插件添加一个顶栏按钮",
-    "cancel": "取消",
-    "save": "保存",
-    "byeMenu": "再见，菜单！",
-    "helloPlugin": "你好，插件！",
-    "byePlugin": "再见，插件！",
-    "showDialog": "弹出一个对话框",
-    "removedData": "数据已删除",
-    "confirmRemove": "确认删除 ${name} 中的数据？",
-    "insertEmoji": "插入表情",
-    "removeSpace": "移除空格",
-    "getTab": "在日志中打印出已打开的所有自定义页签",
-    "name": "思源",
-    "hello": {
-        "makesure": "使用这个模板之前，请阅读<a href=\"https://github.com/siyuan-note/plugin-sample\">官方教程</a>, 确保自己已经理解了插件的基本开发流程。"
+    "common": {
+        "save": "保存",
+        "cancel": "取消",
+        "clear": "-- 清空 --",
+        "saveSuccess": "保存成功",
+        "saveFailed": "保存失败：${message}",
+        "missingBlockId": "无法获取块 ID",
+        "missingRowId": "无法获取行 ID",
+        "fetchRowIdFailed": "获取行 ID 失败：${message}",
+        "cursorBlockId": "光标所在块 ID：${id}",
+        "autoRefreshDisabled": "自动刷新已关闭",
+        "autoRefreshEnabled": "自动刷新间隔 ${seconds} 秒"
     },
-    "hintTitle": "关于",
-    "hintDesc": "<a href='https://github.com/siyuan-note/plugin-sample-vite-svelte'>🔗 plugin-sample-vite-svelte</a><br>💻 @frostime<br>💻 @88250<br>💻 @zxkmm"
+    "messages": {
+        "fieldColorParseFailed": "解析字段颜色 JSON 失败",
+        "fieldBgColorParseFailed": "解析字段背景颜色 JSON 失败",
+        "fieldValueColorParseFailed": "解析字段值颜色 JSON 失败",
+        "keyNotFoundByName": "未找到名称为 ${name} 的属性键",
+        "blockKeyNotFound": "未找到类型为 block 的属性键"
+    },
+    "inlineEdit": {
+        "editTitle": "编辑：${name}"
+    },
+    "settings": {
+        "disShow": {
+            "title": "文档块展示字段",
+            "description": "输入需要展示的字段类型（mSelect、number、date、text、mAsset、checkbox、phone、url、email、created、updated），留空则展示全部支持字段。"
+        },
+        "disShowBlock": {
+            "title": "普通块展示字段",
+            "description": "输入需要展示的字段类型（mSelect、number、date、text、mAsset、checkbox、phone、url、email、created、updated），留空则展示全部支持字段。"
+        },
+        "hiddenFields": {
+            "title": "隐藏字段名称",
+            "description": "请输入需要隐藏的字段名称，使用逗号分隔，例如：密码, 私人信息, 内部备注。",
+            "logUpdated": "隐藏字段已更新（${count} 项）：${fields}",
+            "logCleared": "已清空隐藏字段，将显示所有字段。",
+            "validationWarning": "隐藏字段设置存在问题："
+        },
+        "dateFormat": {
+            "title": "日期显示格式",
+            "description": "选择日期字段的展示格式。",
+            "options": {
+                "YYYY-MM-DD": "YYYY-MM-DD (2023-12-25)",
+                "YYYY/MM/DD": "YYYY/MM/DD (2023/12/25)",
+                "MM/DD/YYYY": "MM/DD/YYYY (12/25/2023)",
+                "DD/MM/YYYY": "DD/MM/YYYY (25/12/2023)",
+                "full": "完整格式 (2023年12月25日 星期一)",
+                "relative": "相对时间 (3天前、明天)"
+            },
+            "logUpdated": "日期格式已更新为：${format}"
+        },
+        "includeTime": {
+            "title": "显示时间",
+            "description": "在日期字段中包含具体时间（小时:分钟:秒）。",
+            "logUpdated": "时间显示已${state}"
+        },
+        "checkboxStyle": {
+            "title": "复选框显示样式",
+            "description": "选择复选框字段的展示样式。",
+            "options": {
+                "emoji": "表情符号 (✅ / ❌)",
+                "symbol": "符号样式 (☑ / ☐)",
+                "text": "文字描述 (已选中 / 未选中)"
+            },
+            "logUpdated": "复选框样式已更新为：${style}"
+        },
+        "showTimestamps": {
+            "title": "显示时间戳字段",
+            "description": "是否展示 created、updated 时间戳字段。",
+            "logUpdated": "时间戳字段显示已${state}"
+        },
+        "maxDisplayLength": {
+            "title": "最大显示长度",
+            "description": "设置字段内容最大展示字符数，超出部分将显示省略号。范围：10-200。",
+            "rangeWarning": "最大显示长度需在 10-200 字符之间，已重置为默认值 30。",
+            "logUpdated": "最大显示长度已更新为：${length} 个字符"
+        },
+        "fieldColorMap": {
+            "title": "字段文字颜色 (JSON)",
+            "description": "为不同字段类型自定义文字颜色。支持：mSelect、number、date、text、mAsset、checkbox、phone、url、email、created、updated。",
+            "visualLabel": "可视化修改："
+        },
+        "fieldBgColorMap": {
+            "title": "字段背景颜色 (JSON)",
+            "description": "为不同字段类型自定义背景颜色（推荐使用浅色）。",
+            "visualLabel": "可视化修改："
+        },
+        "fieldValueColorMap": {
+            "title": "字段值颜色 (JSON)",
+            "description": "按具体字段值自定义颜色，优先级最高。格式：{ \"值\": \"#文字色\" } 或 { \"值\": { \"color\": \"#文字色\", \"bg\": \"#背景色\" } }。",
+            "addEntry": "新增条目",
+            "bgLabel": "背景色",
+            "newValue": "新值"
+        },
+        "previewColorDemo": {
+            "title": "测试预览",
+            "description": "展示当前类型 / 背景 / 值配色示例，修改 JSON 后即时刷新。",
+            "priorityHint": "优先级：值配色 > 类型文字色 / 类型背景色",
+            "typeTitle": "类型配色示例：",
+            "valueTitle": "值配色示例："
+        },
+        "autoLoadedInterval": {
+            "title": "自动刷新间隔（秒）",
+            "description": "定时自动执行 loaded() 的间隔；0 = 关闭，≥5 启用（小于 5 会自动提升到 5）。"
+        },
+        "switch": {
+            "on": "开启",
+            "off": "关闭"
+        }
+    }
 }

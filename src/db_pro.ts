@@ -1,6 +1,7 @@
 // ============== AVManager 类实现 ==============
 
 import { showMessage } from "siyuan";
+import { t } from "./i18n";
 import {
     AttributeViewKey,
     AttributeViewValue,
@@ -142,8 +143,9 @@ export class AVManager {
         const key = keys.find(k => k.name === keyName);
         // console.log("kEEY", key);
         if (!key) {
-            showMessage(`未找到名称为 ${keyName} 的属性键`, -1, "error");
-            console.error(`未找到名称为 ${keyName} 的属性键`);
+            const message = t('messages.keyNotFoundByName', { name: keyName });
+            showMessage(message, -1, "error");
+            console.error(message);
         }
         return key;
     }
@@ -153,9 +155,10 @@ export class AVManager {
         const keys = await this.getAttributeViewKeysWithCache(avID);
         const key = keys.find(k => k.type === 'block');
         if (!key) {
-            showMessage(`未找到类型为 block 的属性键`, -1, "error");
-            console.error(`未找到类型为 block 的属性键`);
-            throw new Error('未找到类型为 block 的属性键');
+            const message = t('messages.blockKeyNotFound');
+            showMessage(message, -1, "error");
+            console.error(message);
+            throw new Error(message);
         }
         return key;
     }

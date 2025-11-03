@@ -1,20 +1,113 @@
 {
-    "addTopBarIcon": "Add a top bar icon by plugin",
-    "cancel": "Cancel",
-    "save": "Save",
-    "byeMenu": "Bye, Menu!",
-    "helloPlugin": "Hello, Plugin!",
-    "byePlugin": "Bye, Plugin!",
-    "showDialog": "Show dialog",
-    "removedData": "Data deleted",
-    "confirmRemove": "Confirm to delete the data in ${name}?",
-    "insertEmoji": "Insert Emoji",
-    "removeSpace": "Remove Space",
-    "getTab": "Print out all opened custom tabs in the debugger",
-    "name": "SiYuan",
-    "hello": {
-        "makesure": "Before using this template, please read the <a href=\"https://github.com/siyuan-note/plugin-sample\">offical sample</a>, make sure that you've known about the pipeline for plugin developing."
+    "common": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "clear": "-- Clear --",
+        "saveSuccess": "Saved successfully",
+        "saveFailed": "Save failed: ${message}",
+        "missingBlockId": "Unable to get block ID",
+        "missingRowId": "Unable to get row ID",
+        "fetchRowIdFailed": "Failed to get row ID: ${message}",
+        "cursorBlockId": "Cursor block ID: ${id}",
+        "autoRefreshDisabled": "Auto refresh disabled",
+        "autoRefreshEnabled": "Auto refresh every ${seconds} seconds"
     },
-    "hintTitle":"About",
-    "hintDesc":"<a href='https://github.com/siyuan-note/plugin-sample-vite-svelte'>plugin-sample-vite-svelte</a><br>@frostime<br>@88250<br>@zxkmm"
+    "messages": {
+        "fieldColorParseFailed": "Failed to parse field color JSON",
+        "fieldBgColorParseFailed": "Failed to parse field background color JSON",
+        "fieldValueColorParseFailed": "Failed to parse field value color JSON",
+        "keyNotFoundByName": "Attribute key named ${name} not found",
+        "blockKeyNotFound": "Attribute key of type block not found"
+    },
+    "inlineEdit": {
+        "editTitle": "Edit: ${name}"
+    },
+    "settings": {
+        "disShow": {
+            "title": "Document block fields",
+            "description": "Enter the field types to display (mSelect, number, date, text, mAsset, checkbox, phone, url, email, created, updated). Leave blank to show all supported fields."
+        },
+        "disShowBlock": {
+            "title": "Regular block fields",
+            "description": "Enter the field types to display (mSelect, number, date, text, mAsset, checkbox, phone, url, email, created, updated). Leave blank to show all supported fields."
+        },
+        "hiddenFields": {
+            "title": "Hidden field names",
+            "description": "Comma-separated field names to hide, for example: Password, Private Notes, Internal Remarks.",
+            "logUpdated": "Hidden fields updated (${count}): ${fields}",
+            "logCleared": "Hidden fields cleared; all fields will be shown.",
+            "validationWarning": "Hidden field configuration issues:"
+        },
+        "dateFormat": {
+            "title": "Date display format",
+            "description": "Select how date fields are formatted.",
+            "options": {
+                "YYYY-MM-DD": "YYYY-MM-DD (2023-12-25)",
+                "YYYY/MM/DD": "YYYY/MM/DD (2023/12/25)",
+                "MM/DD/YYYY": "MM/DD/YYYY (12/25/2023)",
+                "DD/MM/YYYY": "DD/MM/YYYY (25/12/2023)",
+                "full": "Full (Monday, December 25, 2023)",
+                "relative": "Relative time (3 days ago, tomorrow)"
+            },
+            "logUpdated": "Date format updated: ${format}"
+        },
+        "includeTime": {
+            "title": "Show time",
+            "description": "Include time (HH:mm:ss) in date fields.",
+            "logUpdated": "Time display is ${state}"
+        },
+        "checkboxStyle": {
+            "title": "Checkbox style",
+            "description": "Choose how checkbox fields are rendered.",
+            "options": {
+                "emoji": "Emoji (✅ / ❌)",
+                "symbol": "Symbols (☑ / ☐)",
+                "text": "Text (Checked / Unchecked)"
+            },
+            "logUpdated": "Checkbox style updated: ${style}"
+        },
+        "showTimestamps": {
+            "title": "Show timestamp fields",
+            "description": "Toggle display of created and updated timestamp fields.",
+            "logUpdated": "Timestamp fields are ${state}"
+        },
+        "maxDisplayLength": {
+            "title": "Max display length",
+            "description": "Maximum characters to display before showing an ellipsis. Range: 10-200.",
+            "rangeWarning": "Display length should be between 10 and 200 characters. Reset to default (30).",
+            "logUpdated": "Max display length updated: ${length} characters"
+        },
+        "fieldColorMap": {
+            "title": "Field text color (JSON)",
+            "description": "Customize text colors for each field type. Supported: mSelect, number, date, text, mAsset, checkbox, phone, url, email, created, updated.",
+            "visualLabel": "Visual editor:"
+        },
+        "fieldBgColorMap": {
+            "title": "Field background color (JSON)",
+            "description": "Customize background colors for each field type (lighter colors recommended).",
+            "visualLabel": "Visual editor:"
+        },
+        "fieldValueColorMap": {
+            "title": "Field value colors (JSON)",
+            "description": "Override colors by specific values. Format: { \"value\": \"#textColor\" } or { \"value\": { \"color\": \"#textColor\", \"bg\": \"#background\" } }.",
+            "addEntry": "Add entry",
+            "bgLabel": "Background color",
+            "newValue": "New value"
+        },
+        "previewColorDemo": {
+            "title": "Preview",
+            "description": "Preview the current type/background/value colors. Updates automatically.",
+            "priorityHint": "Priority: Value colors > Type text color / Type background color",
+            "typeTitle": "Type colors",
+            "valueTitle": "Value colors"
+        },
+        "autoLoadedInterval": {
+            "title": "Auto refresh interval (seconds)",
+            "description": "Interval for automatically triggering loaded(). 0 = off; >=5 enables refresh (values <5 are raised to 5)."
+        },
+        "switch": {
+            "on": "enabled",
+            "off": "disabled"
+        }
+    }
 }
