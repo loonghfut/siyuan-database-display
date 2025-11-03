@@ -4,6 +4,7 @@
   "url": "https://github.com/loonghfut/siyuan-database-display",
   "version": "0.7.0",
   "minAppVersion": "3.0.12",
+  "disabledInPublish": true,
   "backends": [
     "all"
   ],
