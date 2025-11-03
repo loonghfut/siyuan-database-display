@@ -11,15 +11,15 @@
     "all"
   ],
   "displayName": {
-    "en_US": "Database Display",
+    "default": "Database Display",
     "zh_CN": "数据库数据展示"
   },
   "description": {
-    "en_US": "Advanced database attribute display plugin with field hiding, date formatting, checkbox beautification, and customizable settings. Supports 99% of blocks!",
+    "default": "Advanced database attribute display plugin with field hiding, date formatting, checkbox beautification, and customizable settings. Supports 99% of blocks!",
     "zh_CN": "数据库属性显示插件，支持字段隐藏、日期格式化、复选框美化和可自定义设置。支持99%的块！"
   },
   "readme": {
-    "en_US": "README.md",
+    "default": "README.md",
     "zh_CN": "README_zh_CN.md"
   },
   "funding": {
@@ -28,17 +28,8 @@
     ]
   },
   "keywords": [
-    "plugin",
     "database",
     "display",
-    "attribute",
-    "field",
-    "format",
-    "hide",
-    "checkbox",
-    "date",
-    "beautify",
-    "customizable",
-    "settings"
+    "attribute"
   ]
 }
