@@ -279,6 +279,109 @@ export default class DatabaseDisplay extends Plugin {
         this.clearAutoTimer();
     }
 
+    /**
+     * 为元素添加编辑事件
+     * @param newSpan 要添加事件的元素
+     * @param contentMeta 元数据
+     * @param refreshCallback 保存后的刷新回调
+     */
+    addEditEventToSpan(newSpan: HTMLElement, contentMeta: any, refreshCallback: () => Promise<void>) {
+        // created 和 updated 字段不允许编辑
+        if (['created', 'updated'].includes(contentMeta.type)) {
+            return;
+        }
+        
+        newSpan.style.cursor = 'pointer';
+        
+        // 对于 url 类型，左键点击跳转，右键编辑
+        if (contentMeta.type === 'url') {
+            newSpan.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const target = e.currentTarget as HTMLElement;
+                const rawValue = target.dataset['rawValue'] ? JSON.parse(target.dataset['rawValue']) : null;
+                
+                if (rawValue && typeof rawValue === 'string') {
+                    // 确保 URL 有协议前缀
+                    let url = rawValue;
+                    // if (!url.match(/^https?:\/\//i)) {
+                    //     url = 'http://' + url;
+                    // }
+                    window.open(url, '_blank');
+                }
+            });
+            
+            // 右键点击编辑
+            newSpan.addEventListener('contextmenu', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                await this.handleEditClick(e, refreshCallback);
+            });
+        } else {
+            // 其他类型字段，左键点击编辑
+            newSpan.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                
+                await this.handleEditClick(e, refreshCallback);
+            });
+        }
+    }
+
+    /**
+     * 处理编辑点击事件
+     */
+    async handleEditClick(e: MouseEvent | Event, refreshCallback: () => Promise<void>) {
+        const target = e.currentTarget as HTMLElement;
+        
+        // 从最近的带有 data-node-id 的父元素获取 blockID
+        const blockElement = target.closest('[data-node-id]') as HTMLElement;
+        if (!blockElement) {
+            showMessage('无法获取块ID', 3000, 'error');
+            return;
+        }
+        const blockID = blockElement.getAttribute('data-node-id') || '';
+        
+        // 从 dataset 中读取其他参数
+        const avID = target.dataset['avId'] || '';
+        const keyName = target.dataset['keyName'] || '';
+        const keyType = target.dataset['keyType'] || '';
+        const rawValue = target.dataset['rawValue'] ? JSON.parse(target.dataset['rawValue']) : null;
+        const selectOptions = target.dataset['selectOptions'] ? JSON.parse(target.dataset['selectOptions']) : undefined;
+        
+        // 使用 AVManager 将 blockID 转换为 itemID
+        try {
+            const { AVManager } = await import('./db_pro');
+            const avManager = new AVManager();
+            const mapping = await avManager.getItemIDsByBoundIDs(avID, [blockID]);
+            const itemID = mapping[blockID];
+            
+            if (!itemID) {
+                showMessage('无法获取行ID', 3000, 'error');
+                return;
+            }
+            
+            // 弹窗编辑模式
+            enableInlineEdit({
+                element: target,
+                avID,
+                blockID,
+                itemID,
+                keyID: target.dataset['keyId'] || '',
+                keyName,
+                keyType,
+                currentValue: rawValue,
+                selectOptions,
+                onSave: async () => {
+                    // 保存成功后刷新显示
+                    await refreshCallback();
+                }
+            });
+        } catch (error) {
+            console.error('获取itemID失败:', error);
+            showMessage('获取行ID失败: ' + error.message, 5000, 'error');
+        }
+    }
+
     async showdata_doc() { //TODO:以后合成一个函数
         //console.log("showdata2");
         const viewKeys = await getAttributeViewKeys(currentDocId);
@@ -359,65 +462,10 @@ export default class DatabaseDisplay extends Plugin {
                     newSpan.dataset['selectOptions'] = JSON.stringify(contentMeta.selectOptions);
                 }
                 
-                // 添加点击事件 - created 和 updated 字段不允许编辑
-                if (!['created', 'updated'].includes(contentMeta.type)) {
-                    newSpan.style.cursor = 'pointer';
-                    newSpan.title = `点击编辑 ${contentMeta.keyName}`;
-                    
-                    newSpan.addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        
-                        const target = e.currentTarget as HTMLElement;
-                        
-                        // 从最近的带有 data-node-id 的父元素获取 blockID
-                        const blockElement = target.closest('[data-node-id]') as HTMLElement;
-                        if (!blockElement) {
-                            showMessage('无法获取块ID', 3000, 'error');
-                            return;
-                        }
-                        const blockID = blockElement.getAttribute('data-node-id') || '';
-                        
-                        // 从 dataset 中读取其他参数
-                        const avID = target.dataset['avId'] || '';
-                        const keyName = target.dataset['keyName'] || '';
-                        const keyType = target.dataset['keyType'] || '';
-                        const rawValue = target.dataset['rawValue'] ? JSON.parse(target.dataset['rawValue']) : null;
-                        const selectOptions = target.dataset['selectOptions'] ? JSON.parse(target.dataset['selectOptions']) : undefined;
-                        
-                        // 使用 AVManager 将 blockID 转换为 itemID
-                        try {
-                            const { AVManager } = await import('./db_pro');
-                            const avManager = new AVManager();
-                            const mapping = await avManager.getItemIDsByBoundIDs(avID, [blockID]);
-                            const itemID = mapping[blockID];
-                            
-                            if (!itemID) {
-                                showMessage('无法获取行ID', 3000, 'error');
-                                return;
-                            }
-                            
-                            // 弹窗编辑模式
-                            enableInlineEdit({
-                                element: target,
-                                avID,
-                                blockID,
-                                itemID,
-                                keyID: target.dataset['keyId'] || '',
-                                keyName,
-                                keyType,
-                                currentValue: rawValue,
-                                selectOptions,
-                                onSave: async () => {
-                                    // 保存成功后刷新显示
-                                    await this.showdata_doc();
-                                }
-                            });
-                        } catch (error) {
-                            console.error('获取itemID失败:', error);
-                            showMessage('获取行ID失败: ' + error.message, 5000, 'error');
-                        }
-                    });
-                }
+                // 添加编辑事件
+                this.addEditEventToSpan(newSpan, contentMeta, async () => {
+                    await this.showdata_doc();
+                });
                 
                 newDiv.appendChild(newSpan);
             })
@@ -511,65 +559,10 @@ export default class DatabaseDisplay extends Plugin {
                     newSpan.dataset['selectOptions'] = JSON.stringify(contentMeta.selectOptions);
                 }
                 
-                // 添加点击事件 - created 和 updated 字段不允许编辑
-                if (!['created', 'updated'].includes(contentMeta.type)) {
-                    newSpan.style.cursor = 'pointer';
-                    newSpan.title = `点击编辑 ${contentMeta.keyName}`;
-                    
-                    newSpan.addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        
-                        const target = e.currentTarget as HTMLElement;
-                        
-                        // 从最近的带有 data-node-id 的父元素获取 blockID
-                        const blockElement = target.closest('[data-node-id]') as HTMLElement;
-                        if (!blockElement) {
-                            showMessage('无法获取块ID', 3000, 'error');
-                            return;
-                        }
-                        const blockID = blockElement.getAttribute('data-node-id') || '';
-                        
-                        // 从 dataset 中读取其他参数
-                        const avID = target.dataset['avId'] || '';
-                        const keyName = target.dataset['keyName'] || '';
-                        const keyType = target.dataset['keyType'] || '';
-                        const rawValue = target.dataset['rawValue'] ? JSON.parse(target.dataset['rawValue']) : null;
-                        const selectOptions = target.dataset['selectOptions'] ? JSON.parse(target.dataset['selectOptions']) : undefined;
-                        
-                        // 使用 AVManager 将 blockID 转换为 itemID
-                        try {
-                            const { AVManager } = await import('./db_pro');
-                            const avManager = new AVManager();
-                            const mapping = await avManager.getItemIDsByBoundIDs(avID, [blockID]);
-                            const itemID = mapping[blockID];
-                            
-                            if (!itemID) {
-                                showMessage('无法获取行ID', 3000, 'error');
-                                return;
-                            }
-                            
-                            // 弹窗编辑模式
-                            enableInlineEdit({
-                                element: target,
-                                avID,
-                                blockID,
-                                itemID,
-                                keyID: target.dataset['keyId'] || '',
-                                keyName,
-                                keyType,
-                                currentValue: rawValue,
-                                selectOptions,
-                                onSave: async () => {
-                                    // 保存成功后刷新显示
-                                    await this.showdata_block();
-                                }
-                            });
-                        } catch (error) {
-                            console.error('获取itemID失败:', error);
-                            showMessage('获取行ID失败: ' + error.message, 5000, 'error');
-                        }
-                    });
-                }
+                // 添加编辑事件
+                this.addEditEventToSpan(newSpan, contentMeta, async () => {
+                    await this.showdata_block();
+                });
                 
                 newDiv.appendChild(newSpan);
             });
