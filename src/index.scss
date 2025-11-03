@@ -69,6 +69,7 @@
 .my-protyle-attr--av>span {
     padding: 0 0.5em;
     border-radius: 0.5em;
+    transition: all 0.2s ease;
 
     &:nth-child(4n + 4) {
         color: var(--b3-card-error-color);
@@ -88,5 +89,376 @@
     &:nth-child(4n + 1) {
         color: var(--b3-card-success-color);
         background-color: var(--b3-card-success-background);
+    }
+
+    // 可编辑字段样式
+    &[style*="cursor: pointer"] {
+        &:hover {
+            opacity: 0.8;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        &:active {
+            transform: translateY(0);
+        }
+    }
+}
+
+// 直接编辑模式样式 - 弹窗版本
+.inline-edit-popup {
+    position: fixed;
+    z-index: 10000;
+    background: var(--b3-theme-background);
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    min-width: 280px;
+    max-width: 400px;
+    animation: popupFadeIn 0.15s ease-out;
+}
+
+@keyframes popupFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.inline-edit-popup-content {
+    padding: 16px;
+}
+
+.inline-edit-popup-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--b3-theme-on-background);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--b3-border-color);
+}
+
+.inline-edit-popup-input {
+    margin-bottom: 12px;
+    
+    input,
+    select {
+        width: 100%;
+        min-width: 200px;
+        border: 1px solid var(--b3-border-color);
+        outline: none;
+        background-color: var(--b3-theme-surface);
+        font-size: 14px;
+        font-family: inherit;
+        color: var(--b3-theme-on-background);
+        padding: 8px 10px;
+        border-radius: 4px;
+        transition: border-color 0.2s;
+        
+        &:focus {
+            border-color: var(--b3-theme-primary);
+            box-shadow: 0 0 0 2px var(--b3-theme-primary-lightest);
+        }
+        
+        &[type="checkbox"] {
+            width: auto;
+            min-width: auto;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+    }
+    
+    select[multiple] {
+        min-height: 100px;
+        padding: 6px;
+        
+        option {
+            padding: 4px 8px;
+            border-radius: 3px;
+            margin: 2px 0;
+        }
+    }
+}
+
+.inline-edit-popup-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.inline-edit-popup-button {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+    
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    &:active {
+        transform: translateY(0);
+    }
+    
+    &--primary {
+        background: var(--b3-theme-primary);
+        color: var(--b3-theme-on-primary);
+        
+        &:hover {
+            background: var(--b3-theme-primary-light);
+        }
+    }
+    
+    &--secondary {
+        background: var(--b3-theme-surface);
+        color: var(--b3-theme-on-surface);
+        border: 1px solid var(--b3-border-color);
+        
+        &:hover {
+            background: var(--b3-theme-surface-lighter);
+        }
+    }
+}
+
+// 旧的直接编辑样式（已废弃，保留以防需要）
+.inline-edit-input {
+    width: 100%;
+    min-width: 140px;
+    min-height: 24px;
+    border: none;
+    outline: none;
+    background-color: transparent;
+    font-size: inherit;
+    font-family: inherit;
+    color: inherit;
+    padding: 2px 4px;
+    
+    &:focus {
+        outline: none;
+    }
+}
+
+.inline-edit-select,
+.inline-edit-mselect {
+    width: 100%;
+    min-width: 160px;
+    min-height: 28px;
+    border: 1px solid var(--b3-border-color);
+    outline: none;
+    background-color: var(--b3-theme-background);
+    font-size: inherit;
+    font-family: inherit;
+    color: inherit;
+    padding: 4px;
+    border-radius: 4px;
+    
+    &:focus {
+        outline: none;
+        border-color: var(--b3-theme-primary);
+    }
+}
+
+.inline-edit-mselect {
+    min-height: 80px;
+    max-height: 150px;
+}
+
+.inline-edit-checkbox {
+    width: auto !important;
+    height: auto !important;
+    cursor: pointer;
+    min-width: 18px !important;
+    min-height: 18px !important;
+}
+
+// 编辑状态的容器高亮 - 增强视觉效果
+span[style*="outline: 2px solid"] {
+    position: relative;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    min-width: 150px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+// 下拉菜单样式
+.inline-edit-dropdown {
+    position: fixed;
+    z-index: 10000;
+    background: var(--b3-theme-surface);
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    max-width: 320px;
+    max-height: 320px;
+    overflow: hidden;
+    animation: fadeInDown 0.15s ease-out;
+}
+
+.inline-edit-dropdown-list {
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.inline-edit-dropdown-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s;
+    user-select: none;
+    font-size: 14px;
+    
+    &:hover {
+        background: var(--b3-list-hover);
+    }
+    
+    &--selected {
+        background: var(--b3-theme-primary-lighter);
+        color: var(--b3-theme-primary);
+        font-weight: 500;
+    }
+    
+    &--multi {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        
+        input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+        }
+        
+        span {
+            flex: 1;
+        }
+    }
+}
+
+.inline-edit-dropdown--multi {
+    max-height: 400px;
+}
+
+.inline-edit-dropdown-buttons {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    border-top: 1px solid var(--b3-border-color);
+    background: var(--b3-theme-surface);
+}
+
+.inline-edit-dropdown-button {
+    flex: 1;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface);
+    border: 1px solid var(--b3-border-color);
+    
+    &:hover {
+        background: var(--b3-list-hover);
+    }
+    
+    &--primary {
+        background: var(--b3-theme-primary);
+        color: var(--b3-theme-on-primary);
+        border: none;
+        
+        &:hover {
+            background: var(--b3-theme-primary-light);
+        }
+    }
+}
+
+// 日期选择器样式
+.inline-edit-datepicker {
+    position: fixed;
+    z-index: 10000;
+    background: var(--b3-theme-surface);
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    padding: 12px;
+    min-width: 280px;
+    animation: fadeInDown 0.15s ease-out;
+}
+
+.inline-edit-datepicker-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    background: var(--b3-theme-background);
+    color: var(--b3-theme-on-background);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    
+    &:focus {
+        border-color: var(--b3-theme-primary);
+        box-shadow: 0 0 0 2px var(--b3-theme-primary-lightest);
+    }
+}
+
+.inline-edit-datepicker-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.inline-edit-datepicker-button {
+    flex: 1;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface);
+    border: 1px solid var(--b3-border-color);
+    
+    &:hover {
+        background: var(--b3-list-hover);
+    }
+    
+    &--primary {
+        background: var(--b3-theme-primary);
+        color: var(--b3-theme-on-primary);
+        border: none;
+        
+        &:hover {
+            background: var(--b3-theme-primary-light);
+        }
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }

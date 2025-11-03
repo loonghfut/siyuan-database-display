@@ -391,6 +391,7 @@ export type setAttributeViewValue =
     | { text: { content: string } }
     | { number: { content: number } }
     | { date: { content: number; isNotTime?: boolean; hasEndDate?: boolean; content2?: number } }
+    | { select: { content: string; color?: string } }
     | { mSelect: Array<{ content: string; color?: string }> }
     | { checkbox: { checked: boolean } }
     | { url: { content: string } }

@@ -13,10 +13,11 @@ import {
 } from "siyuan";
 import "@/index.scss";
 import { getAttributeViewKeys } from "./api";
-import { extractContentsWithTypes } from './handleKey';
 import { SettingUtils } from "./libs/setting-utils";
 import { addSettings } from './settings';
 import { getCursorBlockId, getAVreferenceid, reConfirmedDocId } from "./block";
+import { extractContentsWithMeta } from './extract-meta';
+import { enableInlineEdit } from './inline-edit';
 
 let disShow_doc = null;
 let disShow_block = null;
@@ -284,17 +285,23 @@ export default class DatabaseDisplay extends Plugin {
         const hiddenFieldsList = getHiddenFields();
         const dateOptions = getDateFormatOptions();
         const checkboxOptions = getCheckboxOptions();
-        let contentsTyped: Array<{ type: string; text: string }> = [];
+        
+        let conditions: string[] = [];
         if (disShow_doc) {
-            const baseConditions = disShow_doc.split(',');
-            const filteredConditions = getFilteredConditions(baseConditions);
-            contentsTyped = extractContentsWithTypes(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
+            conditions = disShow_doc.split(',');
         } else {
-            const defaultConditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
-            const filteredConditions = getFilteredConditions(defaultConditions);
-            contentsTyped = extractContentsWithTypes(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
+            conditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
         }
-        const contents = contentsTyped.filter(c => c.text).map(c => c);
+        const filteredConditions = getFilteredConditions(conditions);
+        
+        // 使用新方法提取内容及元数据
+        const contentsWithMeta = extractContentsWithMeta(
+            viewKeys, 
+            filteredConditions, 
+            hiddenFieldsList, 
+            dateOptions, 
+            checkboxOptions
+        );
 
         const parentElements = document.querySelectorAll('.protyle-title');
         let parentElementsArray = [];
@@ -327,19 +334,91 @@ export default class DatabaseDisplay extends Plugin {
             newDiv.className = 'my-protyle-attr--av';
 
             // 将所有 content 作为 span 元素添加到 newDiv 中
-            contents.forEach(contentObj => {
+            contentsWithMeta.forEach(contentMeta => {
                 const newSpan = document.createElement('span');
                 newSpan.className = 'popover__block ariaLabel';
-                applyColors(newSpan, contentObj.type, contentObj.text);
+                applyColors(newSpan, contentMeta.type, contentMeta.text);
+                
                 const maxLength = getMaxDisplayLength();
-                const contentStr = contentObj.text;
+                const contentStr = contentMeta.text;
                 if (contentStr.length > maxLength) {
                     newSpan.textContent = contentStr.substring(0, maxLength) + '...';
                     newSpan.setAttribute('aria-label', contentStr);
                 } else {
                     newSpan.textContent = contentStr;
                 }
-                newSpan.dataset['fieldType'] = contentObj.type;
+                
+                // 只保存必要的元数据到 dataset
+                newSpan.dataset['fieldType'] = contentMeta.type;
+                newSpan.dataset['avId'] = contentMeta.avID;
+                newSpan.dataset['keyId'] = contentMeta.keyID;
+                newSpan.dataset['keyName'] = contentMeta.keyName;
+                newSpan.dataset['keyType'] = contentMeta.keyType;
+                newSpan.dataset['rawValue'] = JSON.stringify(contentMeta.rawValue);
+                if (contentMeta.selectOptions) {
+                    newSpan.dataset['selectOptions'] = JSON.stringify(contentMeta.selectOptions);
+                }
+                
+                // 添加点击事件 - created 和 updated 字段不允许编辑
+                if (!['created', 'updated'].includes(contentMeta.type)) {
+                    newSpan.style.cursor = 'pointer';
+                    newSpan.title = `点击编辑 ${contentMeta.keyName}`;
+                    
+                    newSpan.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        
+                        const target = e.currentTarget as HTMLElement;
+                        
+                        // 从最近的带有 data-node-id 的父元素获取 blockID
+                        const blockElement = target.closest('[data-node-id]') as HTMLElement;
+                        if (!blockElement) {
+                            showMessage('无法获取块ID', 3000, 'error');
+                            return;
+                        }
+                        const blockID = blockElement.getAttribute('data-node-id') || '';
+                        
+                        // 从 dataset 中读取其他参数
+                        const avID = target.dataset['avId'] || '';
+                        const keyName = target.dataset['keyName'] || '';
+                        const keyType = target.dataset['keyType'] || '';
+                        const rawValue = target.dataset['rawValue'] ? JSON.parse(target.dataset['rawValue']) : null;
+                        const selectOptions = target.dataset['selectOptions'] ? JSON.parse(target.dataset['selectOptions']) : undefined;
+                        
+                        // 使用 AVManager 将 blockID 转换为 itemID
+                        try {
+                            const { AVManager } = await import('./db_pro');
+                            const avManager = new AVManager();
+                            const mapping = await avManager.getItemIDsByBoundIDs(avID, [blockID]);
+                            const itemID = mapping[blockID];
+                            
+                            if (!itemID) {
+                                showMessage('无法获取行ID', 3000, 'error');
+                                return;
+                            }
+                            
+                            // 弹窗编辑模式
+                            enableInlineEdit({
+                                element: target,
+                                avID,
+                                blockID,
+                                itemID,
+                                keyID: target.dataset['keyId'] || '',
+                                keyName,
+                                keyType,
+                                currentValue: rawValue,
+                                selectOptions,
+                                onSave: async () => {
+                                    // 保存成功后刷新显示
+                                    await this.showdata_doc();
+                                }
+                            });
+                        } catch (error) {
+                            console.error('获取itemID失败:', error);
+                            showMessage('获取行ID失败: ' + error.message, 5000, 'error');
+                        }
+                    });
+                }
+                
                 newDiv.appendChild(newSpan);
             })
 
@@ -356,17 +435,23 @@ export default class DatabaseDisplay extends Plugin {
         const hiddenFieldsList = getHiddenFields();
         const dateOptions = getDateFormatOptions();
         const checkboxOptions = getCheckboxOptions();
-        let contentsTyped: Array<{ type: string; text: string }> = [];
+        
+        let conditions: string[] = [];
         if (disShow_block) {
-            const baseConditions = disShow_block.split(',');
-            const filteredConditions = getFilteredConditions(baseConditions);
-            contentsTyped = extractContentsWithTypes(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
+            conditions = disShow_block.split(',');
         } else {
-            const defaultConditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
-            const filteredConditions = getFilteredConditions(defaultConditions);
-            contentsTyped = extractContentsWithTypes(viewKeys, filteredConditions, hiddenFieldsList, dateOptions, checkboxOptions);
+            conditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
         }
-        const contents = contentsTyped.filter(c => c.text).map(c => c);
+        const filteredConditions = getFilteredConditions(conditions);
+        
+        // 使用新方法提取内容及元数据
+        const contentsWithMeta = extractContentsWithMeta(
+            viewKeys, 
+            filteredConditions, 
+            hiddenFieldsList, 
+            dateOptions, 
+            checkboxOptions
+        );
 
         const parentElements = document.querySelectorAll('[custom-avs]');
         let parentElementsArray = [];
@@ -401,19 +486,91 @@ export default class DatabaseDisplay extends Plugin {
             newDiv.className = 'my-protyle-attr--av';
 
             // 将所有 content 作为 span 元素添加到 newDiv 中
-            contents.forEach(contentObj => {
+            contentsWithMeta.forEach(contentMeta => {
                 const newSpan = document.createElement('span');
                 newSpan.className = 'popover__block ariaLabel';
-                applyColors(newSpan, contentObj.type, contentObj.text);
+                applyColors(newSpan, contentMeta.type, contentMeta.text);
+                
                 const maxLength = getMaxDisplayLength();
-                const contentStr = contentObj.text;
+                const contentStr = contentMeta.text;
                 if (contentStr.length > maxLength) {
                     newSpan.textContent = contentStr.substring(0, maxLength) + '...';
                     newSpan.setAttribute('aria-label', contentStr);
                 } else {
                     newSpan.textContent = contentStr;
                 }
-                newSpan.dataset['fieldType'] = contentObj.type;
+                
+                // 只保存必要的元数据到 dataset
+                newSpan.dataset['fieldType'] = contentMeta.type;
+                newSpan.dataset['avId'] = contentMeta.avID;
+                newSpan.dataset['keyId'] = contentMeta.keyID;
+                newSpan.dataset['keyName'] = contentMeta.keyName;
+                newSpan.dataset['keyType'] = contentMeta.keyType;
+                newSpan.dataset['rawValue'] = JSON.stringify(contentMeta.rawValue);
+                if (contentMeta.selectOptions) {
+                    newSpan.dataset['selectOptions'] = JSON.stringify(contentMeta.selectOptions);
+                }
+                
+                // 添加点击事件 - created 和 updated 字段不允许编辑
+                if (!['created', 'updated'].includes(contentMeta.type)) {
+                    newSpan.style.cursor = 'pointer';
+                    newSpan.title = `点击编辑 ${contentMeta.keyName}`;
+                    
+                    newSpan.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        
+                        const target = e.currentTarget as HTMLElement;
+                        
+                        // 从最近的带有 data-node-id 的父元素获取 blockID
+                        const blockElement = target.closest('[data-node-id]') as HTMLElement;
+                        if (!blockElement) {
+                            showMessage('无法获取块ID', 3000, 'error');
+                            return;
+                        }
+                        const blockID = blockElement.getAttribute('data-node-id') || '';
+                        
+                        // 从 dataset 中读取其他参数
+                        const avID = target.dataset['avId'] || '';
+                        const keyName = target.dataset['keyName'] || '';
+                        const keyType = target.dataset['keyType'] || '';
+                        const rawValue = target.dataset['rawValue'] ? JSON.parse(target.dataset['rawValue']) : null;
+                        const selectOptions = target.dataset['selectOptions'] ? JSON.parse(target.dataset['selectOptions']) : undefined;
+                        
+                        // 使用 AVManager 将 blockID 转换为 itemID
+                        try {
+                            const { AVManager } = await import('./db_pro');
+                            const avManager = new AVManager();
+                            const mapping = await avManager.getItemIDsByBoundIDs(avID, [blockID]);
+                            const itemID = mapping[blockID];
+                            
+                            if (!itemID) {
+                                showMessage('无法获取行ID', 3000, 'error');
+                                return;
+                            }
+                            
+                            // 弹窗编辑模式
+                            enableInlineEdit({
+                                element: target,
+                                avID,
+                                blockID,
+                                itemID,
+                                keyID: target.dataset['keyId'] || '',
+                                keyName,
+                                keyType,
+                                currentValue: rawValue,
+                                selectOptions,
+                                onSave: async () => {
+                                    // 保存成功后刷新显示
+                                    await this.showdata_block();
+                                }
+                            });
+                        } catch (error) {
+                            console.error('获取itemID失败:', error);
+                            showMessage('获取行ID失败: ' + error.message, 5000, 'error');
+                        }
+                    });
+                }
+                
                 newDiv.appendChild(newSpan);
             });
 
