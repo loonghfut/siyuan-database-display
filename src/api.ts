@@ -6,7 +6,7 @@
  * API 文档见 [API_zh_CN.md](https://github.com/siyuan-note/siyuan/blob/master/API_zh_CN.md)
  */
 
-import { fetchPost, fetchSyncPost, IWebSocketData } from "siyuan";
+import { fetchPost, fetchSyncPost, IOperation, IWebSocketData, Protyle } from "siyuan";
 
 
 export async function request(url: string, data: any) {
@@ -483,4 +483,26 @@ export async function version(): Promise<string> {
 
 export async function currentTime(): Promise<number> {
     return request('/api/system/currentTime', {});
+}
+
+
+export async function updateMainBlockName(keyID: string, avID: string, name: string): Promise<any> {
+    // 构建要执行的操作（根据用户提供的请求体）
+    const queuedDoOperations: IOperation[] = [
+        {
+            action: "updateAttrViewCol",
+            id: keyID,
+            avID: avID,
+            name: name,
+            type: "block"
+        }
+    ];
+
+    try {
+        // 不要修改这一行调用
+        Protyle.prototype.transaction(queuedDoOperations, []);
+    } catch (error) {
+        console.error("updateMainBlockName transaction failed:", error);
+        throw error;
+    }
 }
