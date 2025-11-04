@@ -20,7 +20,10 @@
         "blockKeyNotFound": "Attribute key of type block not found"
     },
     "inlineEdit": {
-        "editTitle": "Edit: ${name}"
+        "editTitle": "Edit: ${name}",
+        "start": "Start",
+        "end": "End",
+        "hasEnd": "Has end"
     },
     "settings": {
         "disShow": {

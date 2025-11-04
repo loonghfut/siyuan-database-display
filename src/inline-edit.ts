@@ -50,7 +50,7 @@ export function enableInlineEdit(options: InlineEditOptions) {
             handleMultiSelectEdit(options);
             break;
         case 'date':
-            // 日期：显示日期选择器
+            // 日期：显示开始/结束时间选择器
             handleDateEdit(options);
             break;
         default:
@@ -286,60 +286,108 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
  */
 function handleDateEdit(options: InlineEditOptions) {
     const { element, avID, blockID, itemID, keyName, currentValue, onSave, onCancel } = options;
-    
+
+    // 归一化当前值
+    const current = (currentValue && typeof currentValue === 'object')
+        ? currentValue
+        : { content: currentValue ?? null, hasEndDate: false, content2: null, isNotTime: false };
+
     // 创建日期选择容器
     const datePicker = document.createElement('div');
     datePicker.className = 'inline-edit-datepicker';
     currentPopup = datePicker;
-    
-    // 创建日期输入框
-    const dateInput = document.createElement('input');
-    dateInput.type = 'datetime-local';
-    dateInput.value = timestampToDateInput(currentValue);
-    dateInput.className = 'inline-edit-datepicker-input';
-    
-    datePicker.appendChild(dateInput);
-    
+
+    // 开始时间
+    const startWrap = document.createElement('div');
+    startWrap.className = 'inline-edit-datepicker-row';
+    const startLabel = document.createElement('label');
+    startLabel.className = 'inline-edit-datepicker-label';
+    startLabel.textContent = t('inlineEdit.start') || 'Start';
+    const startInput = document.createElement('input');
+    startInput.type = 'datetime-local';
+    startInput.value = timestampToDateInput(current.content);
+    startInput.className = 'inline-edit-datepicker-input';
+    startWrap.appendChild(startLabel);
+    startWrap.appendChild(startInput);
+
+    // 是否有结束时间
+    const rangeWrap = document.createElement('div');
+    rangeWrap.className = 'inline-edit-datepicker-row';
+    const rangeLabel = document.createElement('label');
+    rangeLabel.className = 'inline-edit-datepicker-label';
+    const rangeCheckbox = document.createElement('input');
+    rangeCheckbox.type = 'checkbox';
+    rangeCheckbox.checked = Boolean(current.hasEndDate && current.content2);
+    rangeLabel.appendChild(rangeCheckbox);
+    rangeLabel.appendChild(document.createTextNode(' ' + (t('inlineEdit.hasEnd') || 'Has end')));
+    rangeWrap.appendChild(rangeLabel);
+
+    // 结束时间
+    const endWrap = document.createElement('div');
+    endWrap.className = 'inline-edit-datepicker-row';
+    const endLabel = document.createElement('label');
+    endLabel.className = 'inline-edit-datepicker-label';
+    endLabel.textContent = t('inlineEdit.end') || 'End';
+    const endInput = document.createElement('input');
+    endInput.type = 'datetime-local';
+    endInput.value = timestampToDateInput(current.content2);
+    endInput.className = 'inline-edit-datepicker-input';
+    endWrap.style.display = rangeCheckbox.checked ? '' : 'none';
+    endWrap.appendChild(endLabel);
+    endWrap.appendChild(endInput);
+
+    // 同步禁用状态
+    rangeCheckbox.addEventListener('change', () => {
+        endWrap.style.display = rangeCheckbox.checked ? '' : 'none';
+    });
+
+    datePicker.appendChild(startWrap);
+    datePicker.appendChild(rangeWrap);
+    datePicker.appendChild(endWrap);
+
     // 创建按钮区域
     const buttonContainer = document.createElement('div');
     buttonContainer.className = 'inline-edit-datepicker-buttons';
-    
+
     const saveButton = document.createElement('button');
     saveButton.className = 'inline-edit-datepicker-button inline-edit-datepicker-button--primary';
     saveButton.textContent = t('common.save');
-    
+
     const cancelButton = document.createElement('button');
     cancelButton.className = 'inline-edit-datepicker-button';
     cancelButton.textContent = t('common.cancel');
-    
+
     buttonContainer.appendChild(cancelButton);
     buttonContainer.appendChild(saveButton);
     datePicker.appendChild(buttonContainer);
-    
+
     document.body.appendChild(datePicker);
-    
+
     // 定位日期选择器
     positionDropdown(datePicker, element);
-    
-    // 聚焦日期输入框
+
+    // 聚焦开始时间
     setTimeout(() => {
-        dateInput.focus();
+        startInput.focus();
     }, 10);
-    
+
     // 保存函数
     const save = async () => {
         try {
-            const timestamp = dateInput.value ? new Date(dateInput.value).getTime() : null;
+            const startTs = startInput.value ? new Date(startInput.value).getTime() : null;
+            const hasEnd = rangeCheckbox.checked;
+            const endTs = hasEnd && endInput.value ? new Date(endInput.value).getTime() : null;
+
             const avManager = new AVManager();
-            const value = convertToAVValue('date', timestamp);
-            
+            const value = convertToAVValue('date', { content: startTs, hasEndDate: hasEnd, content2: endTs, isNotTime: false });
+
             await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
-            
+
             closeDropdown(datePicker);
             showMessage(t('common.saveSuccess'), 2000, 'info');
-            
+
             if (onSave) {
-                onSave(timestamp);
+                onSave({ content: startTs, hasEndDate: hasEnd, content2: endTs });
             }
         } catch (error) {
             const message = toErrorMessage(error);
@@ -347,31 +395,33 @@ function handleDateEdit(options: InlineEditOptions) {
             showMessage(t('common.saveFailed', { message }), 5000, 'error');
         }
     };
-    
+
     // 按钮事件
     saveButton.addEventListener('click', (e) => {
         e.stopPropagation();
         save();
     });
-    
+
     cancelButton.addEventListener('click', (e) => {
         e.stopPropagation();
         closeDropdown(datePicker);
         if (onCancel) onCancel();
     });
-    
+
     // 键盘事件
-    dateInput.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            save();
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            closeDropdown(datePicker);
-            if (onCancel) onCancel();
-        }
+    [startInput, endInput].forEach(input => {
+        input.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                save();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeDropdown(datePicker);
+                if (onCancel) onCancel();
+            }
+        });
     });
-    
+
     // 点击外部关闭
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
@@ -380,7 +430,7 @@ function handleDateEdit(options: InlineEditOptions) {
             if (onCancel) onCancel();
         }
     };
-    
+
     setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
     }, 100);
@@ -728,8 +778,16 @@ function convertToAVValue(keyType: string, value: any): setAttributeViewValue {
             return { text: { content: String(value || '') } };
         case 'number':
             return { number: { content: Number(value) || 0 } };
-        case 'date':
-            return { date: { content: Number(value), isNotTime: false } };
+        case 'date': {
+            // 兼容数值与对象两种输入
+            if (value && typeof value === 'object') {
+                const content = Number(value.content ?? 0);
+                const hasEndDate = Boolean(value.hasEndDate);
+                const content2 = hasEndDate ? Number(value.content2 ?? 0) : undefined;
+                return { date: { content, isNotTime: Boolean(value.isNotTime) || false, hasEndDate, content2 } } as any;
+            }
+            return { date: { content: Number(value ?? 0), isNotTime: false } };
+        }
         case 'url':
             return { url: { content: String(value || '') } };
         case 'email':

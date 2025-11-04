@@ -142,7 +142,15 @@ function extractRawValue(value: any, condition: string): any {
         case 'number':
             return value.number?.content || 0;
         case 'date':
-            return value.date?.content || null;
+            if (value.date) {
+                return {
+                    content: value.date.content ?? null,
+                    hasEndDate: value.date.hasEndDate ?? false,
+                    isNotTime: value.date.isNotTime ?? false,
+                    content2: value.date.content2 ?? null
+                };
+            }
+            return null;
         case 'url':
             return value.url?.content || '';
         case 'email':

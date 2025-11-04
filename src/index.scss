@@ -419,6 +419,20 @@ span[style*="outline: 2px solid"] {
     }
 }
 
+.inline-edit-datepicker-row {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+}
+
+.inline-edit-datepicker-label {
+    font-size: 12px;
+    color: var(--b3-theme-on-surface);
+    opacity: 0.9;
+}
+
 .inline-edit-datepicker-buttons {
     display: flex;
     gap: 8px;

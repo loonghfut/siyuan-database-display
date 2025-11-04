@@ -204,8 +204,15 @@ export function getConditionTexts(
             return value.number?.content ? [value.number.content] : [];
         case 'date':
             if (value.date?.content) {
-                const ts = value.date.content;
-                return [formatDate(ts, dateOptions)];
+                const ts1 = value.date.content;
+                const includeTime = (dateOptions?.includeTime ?? false) && !(value.date.isNotTime ?? false);
+                const opt = { ...(dateOptions || {}), includeTime };
+                // 如果有结束时间，显示范围
+                if (value.date.hasEndDate && value.date.content2) {
+                    const ts2 = value.date.content2;
+                    return [`${formatDate(ts1, opt)} ~ ${formatDate(ts2, opt)}`];
+                }
+                return [formatDate(ts1, opt)];
             }
             return [];
         case 'text':
