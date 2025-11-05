@@ -74,6 +74,12 @@
             "description": "Toggle display of created and updated timestamp fields.",
             "logUpdated": "Timestamp fields are ${state}"
         },
+        "forceShowFields": {
+            "title": "Force display fields",
+            "description": "Comma-separated field names to display even when their value is empty.",
+            "logUpdated": "Force display fields updated (${count}): ${fields}",
+            "logCleared": "Force display fields cleared; placeholders disabled."
+        },
         "maxDisplayLength": {
             "title": "Max display length",
             "description": "Maximum characters to display before showing an ellipsis. Range: 10-200.",

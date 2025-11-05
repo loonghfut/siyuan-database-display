@@ -74,6 +74,12 @@
             "description": "是否展示 created、updated 时间戳字段。",
             "logUpdated": "时间戳字段显示已${state}"
         },
+        "forceShowFields": {
+            "title": "强制显示字段",
+            "description": "填写字段名称（用逗号分隔），即使字段没有值也会显示字段名。",
+            "logUpdated": "强制显示字段已更新（${count} 项）：${fields}",
+            "logCleared": "强制显示字段已清空，不再显示占位项。"
+        },
         "maxDisplayLength": {
             "title": "最大显示长度",
             "description": "设置字段内容最大展示字符数，超出部分将显示省略号。范围：10-200。",

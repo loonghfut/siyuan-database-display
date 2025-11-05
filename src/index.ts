@@ -32,6 +32,21 @@ let maxDisplayLength = null;
 let fieldColorMap: Record<string, string> = {};
 let fieldBgColorMap: Record<string, string> = {};
 let fieldValueColorMap: Record<string, string | { color?: string; bg?: string }> = {};
+let forceShowFieldNames: string[] = [];
+
+function parseForceShowFieldList(value: unknown): string[] {
+    if (Array.isArray(value)) {
+        return value.map(v => String(v).trim()).filter(v => v.length > 0);
+    }
+    if (typeof value === 'string') {
+        return value.split(',').map(v => v.trim()).filter(v => v.length > 0);
+    }
+    if (typeof value === 'boolean') {
+        // 兼容旧版本布尔开关，开启时保留旧行为：占位全局字段名标签
+        return value ? ['*'] : [];
+    }
+    return [];
+}
 
 function parseFieldColorMap(raw?: string, isBg: boolean = false) {
     if (!raw) return;
@@ -123,6 +138,15 @@ export function updateHiddenFields(newHiddenFields: string) {
     hiddenFields = newHiddenFields;
 }
 
+export function updateForceShowFields(value: unknown) {
+    const parsed = parseForceShowFieldList(value);
+    if (parsed.includes('*')) {
+        console.warn('[DatabaseDisplay] Detected legacy force-show setting. Please configure "force-show-fields" with specific field names.');
+    }
+    // 旧行为 '*' 表示全部字段，当检测到时转换为空数组以避免强制全部显示
+    forceShowFieldNames = parsed.filter(name => name !== '*');
+}
+
 export function getDateFormatOptions() {
     return {
         format: dateFormat || 'YYYY-MM-DD',
@@ -138,6 +162,10 @@ export function getCheckboxOptions() {
 
 export function getMaxDisplayLength(): number {
     return maxDisplayLength || 30;
+}
+
+export function getForceShowFields(): string[] {
+    return [...forceShowFieldNames];
 }
 
 export function getFilteredConditions(baseConditions: string[]): string[] {
@@ -241,6 +269,7 @@ export default class DatabaseDisplay extends Plugin {
         checkboxStyle = this.settingUtils.get("checkbox-style");
         showTimestamps = this.settingUtils.get("show-timestamps");
         maxDisplayLength = this.settingUtils.get("max-display-length");
+    updateForceShowFields(this.settingUtils.get("force-show-fields"));
     parseFieldColorMap(this.settingUtils.get("field-color-map"));
     parseFieldColorMap(this.settingUtils.get("field-bg-color-map"), true);
     parseFieldValueColorMap(this.settingUtils.get("field-value-color-map"));
@@ -405,7 +434,8 @@ export default class DatabaseDisplay extends Plugin {
             filteredConditions, 
             hiddenFieldsList, 
             dateOptions, 
-            checkboxOptions
+            checkboxOptions,
+            forceShowFieldNames
         );
 
         const parentElements = document.querySelectorAll('.protyle-title');
@@ -500,7 +530,8 @@ export default class DatabaseDisplay extends Plugin {
             filteredConditions, 
             hiddenFieldsList, 
             dateOptions, 
-            checkboxOptions
+            checkboxOptions,
+            forceShowFieldNames
         );
 
         const parentElements = document.querySelectorAll('[custom-avs]');

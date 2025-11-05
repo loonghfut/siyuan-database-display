@@ -34,9 +34,11 @@ export function extractContentsWithMeta(
     conditions: string[],
     hiddenFields: string[],
     dateOptions?: DateFormatOptions,
-    checkboxOptions?: { style?: 'emoji' | 'symbol' | 'text' }
+    checkboxOptions?: { style?: 'emoji' | 'symbol' | 'text' },
+    forceShowFields: string[] = []
 ): ContentWithMeta[] {
     const results: ContentWithMeta[] = [];
+    const forceShowSet = new Set(forceShowFields.map(name => name.trim()).filter(name => name.length > 0));
 
     if (!data || !Array.isArray(data)) {
         return results;
@@ -44,12 +46,9 @@ export function extractContentsWithMeta(
 
     data.forEach(item => {
         const avID = item.avID || '';
-        
-        if (!item.keyValues || !Array.isArray(item.keyValues)) {
-            return;
-        }
+        const keyValues = Array.isArray(item.keyValues) ? item.keyValues : [];
 
-        item.keyValues.forEach(keyValue => {
+        keyValues.forEach(keyValue => {
             const key = keyValue.key;
             if (!key) return;
 
@@ -63,12 +62,10 @@ export function extractContentsWithMeta(
             const keyName = key.name;
             const keyType = key.type;
             const selectOptions = key.options || [];  // 获取选择选项
+            const values = Array.isArray(keyValue.values) ? keyValue.values : [];
+            let hasDisplayedValue = false;
 
-            if (!keyValue.values || !Array.isArray(keyValue.values)) {
-                return;
-            }
-
-            keyValue.values.forEach(value => {
+            values.forEach(value => {
                 conditions.forEach(condition => {
                     // 检查当前值是否匹配此条件类型
                     if (!valueMatchesCondition(value, condition)) {
@@ -79,6 +76,7 @@ export function extractContentsWithMeta(
                     if (texts && texts.length) {
                         texts.forEach(t => {
                             if (t !== undefined && t !== null && t !== '') {
+                                hasDisplayedValue = true;
                                 results.push({
                                     type: condition,
                                     text: String(t),
@@ -94,6 +92,22 @@ export function extractContentsWithMeta(
                     }
                 });
             });
+
+            if (!hasDisplayedValue && forceShowSet.has(keyName)) {
+                const placeholderType = pickConditionForKeyType(keyType, conditions);
+                if (placeholderType) {
+                    results.push({
+                        type: placeholderType,
+                        text: keyName,
+                        avID,
+                        keyID,
+                        keyName,
+                        keyType,
+                        rawValue: null,
+                        selectOptions: (keyType === 'select' || keyType === 'mSelect') ? selectOptions : undefined
+                    });
+                }
+            }
         });
     });
 
@@ -171,4 +185,56 @@ function extractRawValue(value: any, condition: string): any {
         default:
             return null;
     }
+}
+
+function pickConditionForKeyType(keyType: string, conditions: string[]): string | undefined {
+    if (!keyType || !conditions || !conditions.length) {
+        return undefined;
+    }
+    const normalizedKeyType = String(keyType).toLowerCase();
+    const candidates: string[] = [];
+    switch (normalizedKeyType) {
+        case 'mselect':
+        case 'select':
+            candidates.push('mSelect');
+            break;
+        case 'text':
+            candidates.push('text');
+            break;
+        case 'number':
+            candidates.push('number');
+            break;
+        case 'date':
+            candidates.push('date');
+            break;
+        case 'masset':
+        case 'asset':
+            candidates.push('mAsset');
+            break;
+        case 'checkbox':
+            candidates.push('checkbox');
+            break;
+        case 'phone':
+            candidates.push('phone');
+            break;
+        case 'url':
+            candidates.push('url');
+            break;
+        case 'email':
+            candidates.push('email');
+            break;
+        case 'created':
+            candidates.push('created');
+            break;
+        case 'updated':
+            candidates.push('updated');
+            break;
+        default:
+            candidates.push(keyType);
+            break;
+    }
+
+    const lowerCandidates = candidates.map(c => c.toLowerCase());
+    const matched = conditions.find(condition => lowerCandidates.includes(condition.toLowerCase()));
+    return matched;
 }

@@ -1,5 +1,5 @@
 // settings.ts
-import { updateHiddenFields } from './index';
+import { updateHiddenFields, updateForceShowFields } from './index';
 import { validateHiddenFields } from './handleKey';
 import { showMessage } from 'siyuan';
 import { SettingUtils } from './libs/setting-utils';
@@ -10,6 +10,13 @@ export function addSettings(settingUtils: SettingUtils) {
     const switchOn = t('settings.switch.on');
     const switchOff = t('settings.switch.off');
     const fieldTypes = ["mSelect", "number", "date", "text", "mAsset", "checkbox", "phone", "url", "email", "created", "updated"];
+
+    const parseFieldNameList = (value: string | null | undefined) => {
+        if (!value) {
+            return [];
+        }
+        return value.split(',').map(name => name.trim()).filter(name => name.length > 0);
+    };
 
     // 统一广播颜色配置变化事件
     function emitColorConfigChanged() {
@@ -126,6 +133,26 @@ export function addSettings(settingUtils: SettingUtils) {
                 settingUtils.takeAndSave("show-timestamps");
                 const showTimestamps = settingUtils.get("show-timestamps");
                 console.log(t('settings.showTimestamps.logUpdated', { state: showTimestamps ? switchOn : switchOff }));
+            }
+        }
+    });
+    settingUtils.addItem({
+        key: "force-show-fields",
+        value: "",
+        type: "textarea",
+        title: i18n.settings.forceShowFields.title,
+        description: i18n.settings.forceShowFields.description,
+        action: {
+            callback: () => {
+                settingUtils.takeAndSave("force-show-fields");
+                const rawValue = settingUtils.get("force-show-fields") as string;
+                updateForceShowFields(rawValue);
+                const fields = parseFieldNameList(rawValue);
+                if (fields.length > 0) {
+                    console.log(t('settings.forceShowFields.logUpdated', { count: fields.length, fields: fields.join(', ') }));
+                } else {
+                    console.log(i18n.settings.forceShowFields.logCleared);
+                }
             }
         }
     });
