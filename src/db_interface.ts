@@ -389,7 +389,7 @@ export interface RenderAttributeViewResponse {
 
 export type setAttributeViewValue =
     | { text: { content: string } }
-    | { number: { content: number } }
+    | { number: { content: number; isNotEmpty?: boolean } }
     | { date: { content: number; isNotTime?: boolean; hasEndDate?: boolean; content2?: number } }
     | { select: { content: string; color?: string } }
     | { mSelect: Array<{ content: string; color?: string }> }

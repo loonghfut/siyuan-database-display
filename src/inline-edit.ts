@@ -518,20 +518,27 @@ function handlePopupEdit(options: InlineEditOptions) {
     const save = async () => {
         if (isSaving) return;
         isSaving = true;
-        
+
         const newValue = getInputValue(inputElement, keyType);
-        
+
         try {
             const avManager = new AVManager();
-            const value = convertToAVValue(keyType, newValue);
-            
+            // 对于数字类型，需要同时传递 isNotEmpty 标记，保持 onSave 回调传回原始数值以保持兼容
+            let avInput: any = newValue;
+            if (keyType === 'number') {
+                const isNotEmpty = (inputElement instanceof HTMLInputElement) ? (inputElement.value.trim() !== '') : Boolean(newValue);
+                avInput = { content: newValue, isNotEmpty };
+            }
+
+            const value = convertToAVValue(keyType, avInput);
+
             await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
-            
+
             // 关闭弹窗
             closePopup();
-            
+
             showMessage(t('common.saveSuccess'), 2000, 'info');
-            
+
             if (onSave) {
                 onSave(newValue);
             }
@@ -721,7 +728,14 @@ function createTextInput(value: any, type: string): HTMLInputElement {
 function createNumberInput(value: any): HTMLInputElement {
     const input = document.createElement('input');
     input.type = 'number';
-    input.value = String(value || '0');
+    // 支持传入原始数字或对象 { content, isNotEmpty }
+    if (value && typeof value === 'object' && 'content' in value) {
+        input.value = String(value.content ?? '');
+    } else if (value !== null && value !== undefined) {
+        input.value = String(value);
+    } else {
+        input.value = '';
+    }
     input.className = 'inline-edit-input';
     return input;
 }
@@ -777,7 +791,15 @@ function convertToAVValue(keyType: string, value: any): setAttributeViewValue {
         case 'text':
             return { text: { content: String(value || '') } };
         case 'number':
-            return { number: { content: Number(value) || 0 } };
+            // 支持传入对象 { content, isNotEmpty } 或原始值
+            if (value && typeof value === 'object') {
+                const content = Number(value.content ?? 0);
+                const isNotEmpty = Boolean(value.isNotEmpty);
+                return { number: { content: content || 0, isNotEmpty } } as any;
+            }
+            const content = Number(value) || 0;
+            const isNotEmpty = (value !== '' && value !== null && value !== undefined);
+            return { number: { content, isNotEmpty } } as any;
         case 'date': {
             // 兼容数值与对象两种输入
             if (value && typeof value === 'object') {
