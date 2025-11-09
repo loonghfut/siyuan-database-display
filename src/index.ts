@@ -405,6 +405,14 @@ export default class DatabaseDisplay extends Plugin {
                 onSave: async () => {
                     // 保存成功后刷新显示
                     await refreshCallback();
+                    // 每次修改完数据也要停止休眠并唤醒自动刷新
+                    try {
+                        // wakeAuto 是类内部方法，直接调用以重启自动刷新
+                        this.wakeAuto();
+                        // console.log('[DatabaseDisplay] wakeAuto 调用成功');
+                    } catch (err) {
+                        console.warn('[DatabaseDisplay] wakeAuto 调用失败:', err);
+                    }
                 }
             });
         } catch (error) {
