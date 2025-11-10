@@ -676,19 +676,7 @@ export default class DatabaseDisplay extends Plugin {
     }
 }
 
-// const callback = (mutationsList: MutationRecord[]) => {
-//     for (const mutation of mutationsList) {
-//         if (mutation.type === 'childList') {
-//             mutation.removedNodes.forEach((node) => {
-//                 if (node instanceof HTMLElement && node.matches('div[data-key="dialog-attr"].b3-dialog--open')) {
-//                     console.log('Dialog closed');
-//                     // 在这里添加你的代码
-//                     DatabaseDisplay.prototype.loaded();
-//                 }
-//             });
-//         }
-//     }
-// };
+
 
 // 
 export function outLog(any, str = "") {

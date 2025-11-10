@@ -29,16 +29,14 @@ export function getCursorBlockId() {
     }
 }
 
-export async function getAVreferenceid(currentDocId) {//获取当前文档的被数据库引用的块id
-    const sqlStr = `SELECT id
-    FROM blocks
-    WHERE root_id = '${currentDocId}'
-    AND id != '${currentDocId}'
-    // AND type = 'p'
-    AND ial LIKE '%custom-avs%';`;
-    const res = await sql(sqlStr);
-    // console.log(res.map(item => item.id));
-    return res.map(item => item.id);
+export async function getAVreferenceid(_currentDocId?: string) { // 不再使用传入的 currentDocId，返回所有带 custom-avs 的块 id
+    const resultIds = new Set<string>();
+    const candidates: NodeListOf<HTMLElement> = document.querySelectorAll('[custom-avs][data-node-id]');
+    candidates.forEach(el => {
+        const blockId = el.getAttribute('data-node-id');
+        if (blockId) resultIds.add(blockId);
+    });
+    return Array.from(resultIds);
 }
 
 export async function reConfirmedDocId(DocId) {//兼容通过数据库点击后获取id会获取到聚焦块的id
