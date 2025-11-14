@@ -187,6 +187,8 @@ export default class DatabaseDisplay extends Plugin {
     private readonly autoRunMax: number = 10; // 达到后若无外部触发则休眠
     private sleeping: boolean = false;
     private externalTriggerFlag: boolean = false; // 标记外部触发
+    private attrObserver: MutationObserver | null = null; // 监听属性视图出现
+    private attrObserverDebounce: any = null; // 防抖计时器
 
     async onload() {
         setI18n(this.i18n as Record<string, unknown>);
@@ -284,6 +286,8 @@ export default class DatabaseDisplay extends Plugin {
         });
         // 初始化自动刷新
         this.initAutoInterval();
+        // 根据设置决定是否开启属性视图监听
+        this.updateAttrObserverEnabled();
         // 监听dom变化
         // const targetNode = document.body;
         // const config = { childList: true, subtree: true };
@@ -299,6 +303,7 @@ export default class DatabaseDisplay extends Plugin {
         this.eventBus.off("loaded-protyle-static", this.loaded.bind(this));
         this.eventBus.off("loaded-protyle-dynamic", this.loaded.bind(this));
         this.clearAutoTimer();
+        this.stopAttrObserver();
     }
 
     uninstall() {
@@ -308,6 +313,7 @@ export default class DatabaseDisplay extends Plugin {
         this.eventBus.off("loaded-protyle-dynamic", this.loaded.bind(this));
         //console.log("uninstall");
         this.clearAutoTimer();
+        this.stopAttrObserver();
     }
 
     /**
@@ -673,6 +679,68 @@ export default class DatabaseDisplay extends Plugin {
     // 供设置修改后调用的更新接口（未来若在 settings 中添加按钮，即可调用）
     public updateAutoLoadedInterval() {
         this.initAutoInterval();
+    }
+
+    public updateAttrObserverEnabled() {
+        const enabled = this.settingUtils.get("enable-av-observer");
+        if (enabled) {
+            this.startAttrObserver();
+        } else {
+            this.stopAttrObserver();
+        }
+    }
+
+    /* ================= 监听原始属性视图出现，自动补充显示 ================= */
+    private startAttrObserver() {
+        if (this.attrObserver) return;
+        const root = document.body;
+        if (!root) return;
+        this.attrObserver = new MutationObserver(mutations => {
+            let needRefresh = false;
+            for (const m of mutations) {
+                // 仅关心新增节点
+                for (const node of Array.from(m.addedNodes)) {
+                    if (!(node instanceof HTMLElement)) continue;
+                    // 收集候选 .protyle-attr--av 元素（自身或后代）
+                    const candidates: HTMLElement[] = [];
+                    if (node.matches('.protyle-attr--av')) {
+                        candidates.push(node);
+                    }
+                    for (const el of Array.from(node.querySelectorAll('.protyle-attr--av'))) {
+                        if (el instanceof HTMLElement) candidates.push(el);
+                    }
+                    if (candidates.length === 0) continue;
+                    for (const avDiv of candidates) {
+                        const container = avDiv.parentElement;
+                        if (!container || !container.classList.contains('protyle-attr')) continue;
+                        // 若同级尚无我们插入的 .my-protyle-attr--av，则标记需要刷新
+                        if (!container.querySelector('.my-protyle-attr--av')) {
+                            needRefresh = true;
+                        }
+                    }
+                }
+            }
+            if (needRefresh) {
+                // 防抖：短时间多次触发仅执行一次
+                if (this.attrObserverDebounce) clearTimeout(this.attrObserverDebounce);
+                this.attrObserverDebounce = setTimeout(() => {
+                    // 调用 loaded_run 以便根据当前文档与块刷新
+                    this.loaded_run();
+                }, 50);
+            }
+        });
+        this.attrObserver.observe(root, { childList: true, subtree: true });
+    }
+
+    private stopAttrObserver() {
+        if (this.attrObserver) {
+            this.attrObserver.disconnect();
+            this.attrObserver = null;
+        }
+        if (this.attrObserverDebounce) {
+            clearTimeout(this.attrObserverDebounce);
+            this.attrObserverDebounce = null;
+        }
     }
 }
 

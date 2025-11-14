@@ -613,4 +613,23 @@ export function addSettings(settingUtils: SettingUtils) {
             }
         }
     });
+    // 属性视图监听开关
+    settingUtils.addItem({
+        key: "enable-av-observer",
+        value: true,
+        type: "checkbox",
+        title: i18n.settings.enableAttrObserver.title,
+        description: i18n.settings.enableAttrObserver.description,
+        action: {
+            callback: () => {
+                settingUtils.takeAndSave("enable-av-observer");
+                const enabled = settingUtils.get("enable-av-observer");
+                const plugin = (window as any).siyuan?.plugins?.find?.(p => p.name === 'DatabaseDisplay');
+                if (plugin && typeof plugin.updateAttrObserverEnabled === 'function') {
+                    plugin.updateAttrObserverEnabled();
+                }
+                console.log('[DatabaseDisplay] attr observer is', enabled ? 'enabled' : 'disabled');
+            }
+        }
+    });
 }

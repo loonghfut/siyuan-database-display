@@ -114,6 +114,10 @@
             "title": "自动刷新间隔（秒）",
             "description": "定时自动执行 loaded() 的间隔；0 = 关闭，≥5 启用（小于 5 会自动提升到 5）。"
         },
+        "enableAttrObserver": {
+            "title": "启用属性视图监听",
+            "description": "监听新增原生属性视图节点 (.protyle-attr--av)，在缺少插件镜像元素时自动补充展示。若遇到性能问题可关闭。"
+        },
         "switch": {
             "on": "开启",
             "off": "关闭"

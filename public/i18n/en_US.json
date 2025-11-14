@@ -114,6 +114,10 @@
             "title": "Auto refresh interval (seconds)",
             "description": "Interval for automatically triggering loaded(). 0 = off; >=5 enables refresh (values <5 are raised to 5)."
         },
+        "enableAttrObserver": {
+            "title": "Enable attribute view observer",
+            "description": "Detect new native attribute view nodes (.protyle-attr--av) and inject custom display automatically when missing our mirror element. Disable if causing performance issues."
+        },
         "switch": {
             "on": "enabled",
             "off": "disabled"

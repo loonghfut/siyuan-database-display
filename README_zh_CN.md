@@ -3,6 +3,11 @@
 
 显示块的数据库属性值，支持99%的块！
 
+## 开发动力来源[打赏](https://pic.imgdb.cn/item/6751b929d0e0a243d4de55a7.png) star
+<p align="center">
+  <img src="https://pic.imgdb.cn/item/6751b929d0e0a243d4de55a7.png" alt="打赏" style="max-width:240px; width:100%; height:auto;" />
+</p>
+
 ## ✨ 功能特性
 
 ### 📊 数据库字段显示
