@@ -317,6 +317,61 @@ export default class DatabaseDisplay extends Plugin {
     }
 
     /**
+     * 检查元素是否为特殊的 tl-html-container 元素（例如 TalDraw 绘图容器）
+     * 这类元素不应该显示数据库属性
+     * 需要同时满足: 1) 有 tl-html-container 类名或 id 以 shape: 开头
+     *              2) 容器内有 <use xlink:href="#iconDatabase"></use>
+     */
+    private isTlHtmlContainer(element: Element): boolean {
+        // 检查自身或任何父元素是否为 tl-html-container
+        let current = element;
+        while (current && current !== document.documentElement) {
+            const isTlContainer = current.classList && current.classList.contains('tl-html-container');
+            const hasShapeId = current.id && current.id.startsWith('shape:');
+            
+            if (isTlContainer || hasShapeId) {
+                // 找到了可疑的容器，再检查是否包含 iconDatabase
+                if (this.hasIconDatabase(current)) {
+                    return true;
+                }
+            }
+            current = current.parentElement;
+        }
+        return false;
+    }
+
+    /**
+     * 检查元素内是否包含完全匹配的 iconDatabase 图标
+     * 必须匹配特定的 SVG 结构：
+     * <svg viewBox="0 0 32 32" width="14" height="14" style="fill: rgb(232, 232, 232);">
+     *   <use xlink:href="#iconDatabase"></use>
+     * </svg>
+     */
+    private hasIconDatabase(element: Element): boolean {
+        const svgElements = element.querySelectorAll('svg');
+        for (const svg of svgElements) {
+            // 检查 SVG 属性
+            const viewBox = svg.getAttribute('viewBox');
+            const width = svg.getAttribute('width');
+            const height = svg.getAttribute('height');
+            const style = svg.getAttribute('style');
+            
+            // 验证 SVG 属性是否匹配
+            if (viewBox === '0 0 32 32' && width === '14' && height === '14' && style && style.includes('fill: rgb(232, 232, 232)')) {
+                // 检查内部的 use 元素
+                const useElement = svg.querySelector('use');
+                if (useElement) {
+                    const href = useElement.getAttribute('xlink:href') || useElement.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+                    if (href === '#iconDatabase') {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * 为元素添加编辑事件
      * @param newSpan 要添加事件的元素
      * @param contentMeta 元数据
@@ -456,6 +511,10 @@ export default class DatabaseDisplay extends Plugin {
         let parentElementsArray = [];
         // 遍历父元素，找到不包含 'fn__none' 类且 id 匹配的元素
         parentElements.forEach(element => {
+            // 检查是否为特殊的 tl-html-container 元素，如果是则跳过
+            if (this.isTlHtmlContainer(element)) {
+                return;
+            }
             if (!element.classList.contains('fn__none') && element.getAttribute('data-node-id') === currentDocId) {
                 parentElementsArray.push(element);
             }
@@ -552,6 +611,10 @@ export default class DatabaseDisplay extends Plugin {
         let parentElementsArray = [];
         outLog(parentElements);
         parentElements.forEach(element => {
+            // 检查是否为特殊的 tl-html-container 元素，如果是则跳过
+            if (this.isTlHtmlContainer(element)) {
+                return;
+            }
             if (element.getAttribute('data-node-id') === currentDocId) {
                 outLog(currentDocId, "cunr");
                 parentElementsArray.push(element);
