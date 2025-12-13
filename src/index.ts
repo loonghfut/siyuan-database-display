@@ -357,7 +357,7 @@ export default class DatabaseDisplay extends Plugin {
             const style = svg.getAttribute('style');
             
             // 验证 SVG 属性是否匹配
-            if (viewBox === '0 0 32 32' && width === '14' && height === '14' && style && style.includes('fill: rgb(232, 232, 232)')) {
+            if (viewBox === '0 0 32 32' && width === '14' && height === '14' && style ) {
                 // 检查内部的 use 元素
                 const useElement = svg.querySelector('use');
                 if (useElement) {
