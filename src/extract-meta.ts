@@ -2,8 +2,8 @@
  * 从 viewKeys 数据中提取带有完整元数据的内容
  */
 
-import { outLog } from "./index";
 import { DateFormatOptions, getConditionTexts } from "./handleKey";
+import { AttributeViewValue } from "./db_interface";
 
 export interface ContentWithMeta {
     type: string;
@@ -14,9 +14,9 @@ export interface ContentWithMeta {
     keyName: string;
     keyType: string;
     // 原始值（用于编辑）
-    rawValue: any;
+    rawValue: AttributeViewValue | number | string | boolean | null;
     // 选择选项（用于 select 和 mSelect）
-    selectOptions?: any[];
+    selectOptions?: Array<{ id: string; name: string; color: string }>;
 }
 
 /**
@@ -54,7 +54,6 @@ export function extractContentsWithMeta(
 
             // 检查字段是否被隐藏
             if (hiddenFields.includes(key.name)) {
-                outLog(`字段 "${key.name}" 已被隐藏，跳过处理`);
                 return;
             }
 

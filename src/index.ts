@@ -1,22 +1,13 @@
 import {
     Plugin,
     showMessage,
-    // confirm,
-    // Dialog,
-    // Menu,
-    // openTab,
-    // adaptHotkey,
-    // getFrontend,
-    // getBackend,
-    // IModel,
-
 } from "siyuan";
 import "@/index.scss";
 import { getAttributeViewKeys } from "./api";
 import { SettingUtils } from "./libs/setting-utils";
 import { addSettings } from './settings';
 import { getCursorBlockId, getAVreferenceid, reConfirmedDocId } from "./block";
-import { extractContentsWithMeta } from './extract-meta';
+import { extractContentsWithMeta, ContentWithMeta } from './extract-meta';
 import { enableInlineEdit } from './inline-edit';
 import { setI18n, t } from "./i18n";
 import { toErrorMessage } from "./libs/error-utils";
@@ -119,7 +110,6 @@ function applyColors(ele: HTMLElement, type: string, valueText: string) {
         ele.style.borderRadius = '4px';
     }
 }
-let isoutLog = false;
 let currentDocId = null;
 let currentDocId_block = null;
 let clickId = null;
@@ -181,14 +171,14 @@ export function getFilteredConditions(baseConditions: string[]): string[] {
 
 export default class DatabaseDisplay extends Plugin {
     private settingUtils: SettingUtils;
-    private autoTimer: any = null;
+    private autoTimer: ReturnType<typeof setInterval> | null = null;
     private autoIntervalSec: number = 0; // 用户设定
     private autoRunCount: number = 0; // 已连续自动执行次数
     private readonly autoRunMax: number = 10; // 达到后若无外部触发则休眠
     private sleeping: boolean = false;
     private externalTriggerFlag: boolean = false; // 标记外部触发
     private attrObserver: MutationObserver | null = null; // 监听属性视图出现
-    private attrObserverDebounce: any = null; // 防抖计时器
+    private attrObserverDebounce: ReturnType<typeof setTimeout> | null = null; // 防抖计时器
 
     async onload() {
         setI18n(this.i18n as Record<string, unknown>);
@@ -377,7 +367,7 @@ export default class DatabaseDisplay extends Plugin {
      * @param contentMeta 元数据
      * @param refreshCallback 保存后的刷新回调
      */
-    addEditEventToSpan(newSpan: HTMLElement, contentMeta: any, refreshCallback: () => Promise<void>) {
+    addEditEventToSpan(newSpan: HTMLElement, contentMeta: ContentWithMeta, refreshCallback: () => Promise<void>) {
         // created 和 updated 字段不允许编辑
         if (['created', 'updated'].includes(contentMeta.type)) {
             return;
@@ -482,122 +472,68 @@ export default class DatabaseDisplay extends Plugin {
         }
     }
 
-    async showdata_doc() { //TODO:以后合成一个函数
-        //console.log("showdata2");
-        const viewKeys = await getAttributeViewKeys(currentDocId);
-        const hiddenFieldsList = getHiddenFields();
-        const dateOptions = getDateFormatOptions();
-        const checkboxOptions = getCheckboxOptions();
+    async showdata_doc() {
+        const docId = currentDocId;
+        const settingsKey = 'disShow_doc';
+        const defaultConditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
+        const selector = '.protyle-title';
         
-        let conditions: string[] = [];
-        if (disShow_doc) {
-            conditions = disShow_doc.split(',');
-        } else {
-            conditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
-        }
-        const filteredConditions = getFilteredConditions(conditions);
-        
-        // 使用新方法提取内容及元数据
-        const contentsWithMeta = extractContentsWithMeta(
-            viewKeys, 
-            filteredConditions, 
-            hiddenFieldsList, 
-            dateOptions, 
-            checkboxOptions,
-            forceShowFieldNames
-        );
-
-        const parentElements = document.querySelectorAll('.protyle-title');
-        let parentElementsArray = [];
-        // 遍历父元素，找到不包含 'fn__none' 类且 id 匹配的元素
-        parentElements.forEach(element => {
-            // 检查是否为特殊的 tl-html-container 元素，如果是则跳过
-            if (this.isTlHtmlContainer(element)) {
-                return;
-            }
-            if (!element.classList.contains('fn__none') && element.getAttribute('data-node-id') === currentDocId) {
-                parentElementsArray.push(element);
-            }
-        });
-        if (parentElementsArray.length === 0) {
-            console.log("无法找到不包含 'fn__none' 类且 id 匹配的父元素");
-            return;
-        }
-        //console.log("找到不包含 'fn__none' 类且 id 匹配的父元素 .protyle-title");
-        parentElementsArray.forEach(parentElement => {
-            const attrContainer = Array.from(parentElement.children).find((child: Element) => child.classList.contains('protyle-attr')) as Element;
-            if (!attrContainer) {
-                console.log("无法找到 .protyle-attr 元素");
-                return;
-            }
-
-            // 清空现有的 .my-protyle-attr--av 元素
-            const existingElements = Array.from(attrContainer.querySelectorAll('.my-protyle-attr--av'));
-            existingElements.forEach((div: HTMLElement) => {
-                div.remove();
-            });
-
-            // 创建新的 div 元素
-            const newDiv = document.createElement('div');
-            newDiv.className = 'my-protyle-attr--av';
-
-            // 将所有 content 作为 span 元素添加到 newDiv 中
-            contentsWithMeta.forEach(contentMeta => {
-                const newSpan = document.createElement('span');
-                newSpan.className = 'popover__block ariaLabel';
-                applyColors(newSpan, contentMeta.type, contentMeta.text);
-                
-                const maxLength = getMaxDisplayLength();
-                const contentStr = contentMeta.text;
-                if (contentStr.length > maxLength) {
-                    newSpan.textContent = contentStr.substring(0, maxLength) + '...';
-                    newSpan.setAttribute('aria-label', contentStr);
-                } else {
-                    newSpan.textContent = contentStr;
-                }
-                
-                // 只保存必要的元数据到 dataset
-                newSpan.dataset['fieldType'] = contentMeta.type;
-                newSpan.dataset['avId'] = contentMeta.avID;
-                newSpan.dataset['keyId'] = contentMeta.keyID;
-                newSpan.dataset['keyName'] = contentMeta.keyName;
-                newSpan.dataset['keyType'] = contentMeta.keyType;
-                newSpan.dataset['rawValue'] = JSON.stringify(contentMeta.rawValue);
-                if (contentMeta.selectOptions) {
-                    newSpan.dataset['selectOptions'] = JSON.stringify(contentMeta.selectOptions);
-                }
-                
-                // 添加编辑事件
-                this.addEditEventToSpan(newSpan, contentMeta, async () => {
-                    await this.showdata_doc();
-                });
-                
-                newDiv.appendChild(newSpan);
-            })
-
-            // 将 newDiv 插入到 attrContainer 中
-            attrContainer.insertBefore(newDiv, attrContainer.firstChild);
-
-            // console.log(".protyle-attr 元素已添加到父元素");
+        await this.renderAttributeView({
+            blockId: docId,
+            settingsKey,
+            defaultConditions,
+            selector,
+            filterFn: (element: Element) => {
+                if (this.isTlHtmlContainer(element)) return false;
+                return !element.classList.contains('fn__none') && element.getAttribute('data-node-id') === docId;
+            },
+            refreshCallback: () => this.showdata_doc()
         });
     }
 
     async showdata_block() {
-        const currentDocId = clickId; // 替换为实际的 currentDocId
-        const viewKeys = await getAttributeViewKeys(currentDocId);
+        const blockId = clickId;
+        const settingsKey = 'disShow_block';
+        const defaultConditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
+        const selector = '[custom-avs]';
+        
+        await this.renderAttributeView({
+            blockId,
+            settingsKey,
+            defaultConditions,
+            selector,
+            filterFn: (element: Element) => {
+                if (this.isTlHtmlContainer(element)) return false;
+                return element.getAttribute('data-node-id') === blockId;
+            },
+            refreshCallback: () => this.showdata_block()
+        });
+    }
+
+    /**
+     * 通用属性视图渲染方法
+     */
+    private async renderAttributeView(params: {
+        blockId: string;
+        settingsKey: string;
+        defaultConditions: string[];
+        selector: string;
+        filterFn: (element: Element) => boolean;
+        refreshCallback: () => Promise<void>;
+    }): Promise<void> {
+        const { blockId, settingsKey, defaultConditions, selector, filterFn, refreshCallback } = params;
+        
+        const viewKeys = await getAttributeViewKeys(blockId);
         const hiddenFieldsList = getHiddenFields();
         const dateOptions = getDateFormatOptions();
         const checkboxOptions = getCheckboxOptions();
         
-        let conditions: string[] = [];
-        if (disShow_block) {
-            conditions = disShow_block.split(',');
-        } else {
-            conditions = ['mSelect', 'number', 'date', 'text', 'mAsset', 'checkbox', 'phone', 'url', 'email', 'created', 'updated'];
-        }
+        const settingsValue = (this as any)[settingsKey];
+        let conditions: string[] = settingsValue 
+            ? settingsValue.split(',') 
+            : [...defaultConditions];
         const filteredConditions = getFilteredConditions(conditions);
         
-        // 使用新方法提取内容及元数据
         const contentsWithMeta = extractContentsWithMeta(
             viewKeys, 
             filteredConditions, 
@@ -607,37 +543,28 @@ export default class DatabaseDisplay extends Plugin {
             forceShowFieldNames
         );
 
-        const parentElements = document.querySelectorAll('[custom-avs]');
-        let parentElementsArray = [];
-        outLog(parentElements);
+        const parentElements = document.querySelectorAll(selector);
+        let parentElementsArray: Element[] = [];
+        
         parentElements.forEach(element => {
-            // 检查是否为特殊的 tl-html-container 元素，如果是则跳过
-            if (this.isTlHtmlContainer(element)) {
-                return;
-            }
-            if (element.getAttribute('data-node-id') === currentDocId) {
-                outLog(currentDocId, "cunr");
+            if (filterFn(element)) {
                 parentElementsArray.push(element);
             }
         });
 
-        if (parentElementsArray.length === 0) {
-            console.log("无法找到 id 匹配的父元素");
-            return;
-        }
+        if (parentElementsArray.length === 0) return;
+
+        const maxLength = getMaxDisplayLength();
 
         parentElementsArray.forEach(parentElement => {
-            const attrContainer = Array.from(parentElement.children).find((child: Element) => child.classList.contains('protyle-attr')) as Element;
-            if (!attrContainer) {
-                console.log("无法找到 .protyle-attr 元素");
-                return;
-            }
+            const attrContainer = Array.from(parentElement.children).find(
+                (child: Element) => child.classList.contains('protyle-attr')
+            ) as Element;
+            if (!attrContainer) return;
 
             // 清空现有的 .my-protyle-attr--av 元素
             const existingElements = Array.from(attrContainer.querySelectorAll('.my-protyle-attr--av'));
-            existingElements.forEach((div: HTMLElement) => {
-                div.remove();
-            });
+            existingElements.forEach((div: HTMLElement) => div.remove());
 
             // 创建新的 div 元素
             const newDiv = document.createElement('div');
@@ -649,7 +576,6 @@ export default class DatabaseDisplay extends Plugin {
                 newSpan.className = 'popover__block ariaLabel';
                 applyColors(newSpan, contentMeta.type, contentMeta.text);
                 
-                const maxLength = getMaxDisplayLength();
                 const contentStr = contentMeta.text;
                 if (contentStr.length > maxLength) {
                     newSpan.textContent = contentStr.substring(0, maxLength) + '...';
@@ -658,7 +584,7 @@ export default class DatabaseDisplay extends Plugin {
                     newSpan.textContent = contentStr;
                 }
                 
-                // 只保存必要的元数据到 dataset
+                // 保存元数据到 dataset
                 newSpan.dataset['fieldType'] = contentMeta.type;
                 newSpan.dataset['avId'] = contentMeta.avID;
                 newSpan.dataset['keyId'] = contentMeta.keyID;
@@ -670,17 +596,11 @@ export default class DatabaseDisplay extends Plugin {
                 }
                 
                 // 添加编辑事件
-                this.addEditEventToSpan(newSpan, contentMeta, async () => {
-                    await this.showdata_block();
-                });
-                
+                this.addEditEventToSpan(newSpan, contentMeta, refreshCallback);
                 newDiv.appendChild(newSpan);
             });
 
-            // 将 newDiv 插入到 attrContainer 中
             attrContainer.insertBefore(newDiv, attrContainer.firstChild);
-
-            // console.log(".protyle-attr 元素已添加到父元素");
         });
     }
 
@@ -804,14 +724,5 @@ export default class DatabaseDisplay extends Plugin {
             clearTimeout(this.attrObserverDebounce);
             this.attrObserverDebounce = null;
         }
-    }
-}
-
-
-
-// 
-export function outLog(any, str = "") {
-    if (isoutLog) {
-        console.log(any, str);
     }
 }

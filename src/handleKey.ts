@@ -1,5 +1,3 @@
-import { outLog } from "./index";
-
 /**
  * 日期格式化选项
  */
@@ -131,7 +129,6 @@ export function extractContents(
         item.keyValues.forEach(keyValue => {
             // 检查字段名称是否在隐藏列表中
             if (hiddenFields.includes(keyValue.key?.name)) {
-                outLog(`字段 "${keyValue.key?.name}" 已被隐藏，跳过处理`);
                 return; // 跳过这个字段的处理
             }
 
@@ -286,7 +283,6 @@ export function handleCondition(value, condition, contents, dateOptions?: DateFo
 
 export function handleMSelect(value, contents) {
     if (value.mSelect) {
-        outLog("mSelect");
         value.mSelect.forEach(select => {
             contents.push(select.content);
         });
@@ -295,31 +291,26 @@ export function handleMSelect(value, contents) {
 
 export function handleNumber(value, contents) {
     if (value.number?.content) {
-        outLog("number");
         contents.push(value.number.content);
     }
 }
 
 export function handleDate(value, contents, options: DateFormatOptions = {}) {
     if (value.date?.content) {
-        outLog("date");
         const timestamp = value.date.content;
         const formattedDate = formatDate(timestamp, options);
         contents.push(formattedDate);
-        outLog(`日期格式化: ${timestamp} -> ${formattedDate}`);
     }
 }
 
 export function handleText(value, contents) {
     if (value.text?.content) {
-        outLog("text");
         contents.push(value.text.content);
     }
 }
 
 export function handleMAsset(value, contents) {
     if (value.mAsset) {
-        outLog("mAsset");
         value.mAsset.forEach(asset => {
             contents.push(asset.name);
         });
@@ -328,54 +319,45 @@ export function handleMAsset(value, contents) {
 
 export function handleCheckbox(value, contents, options: { style?: 'emoji' | 'symbol' | 'text' } = {}) {
     if (value.checkbox) {
-        outLog("checkbox");
         const isChecked = value.checkbox.checked;
         const style = options.style || 'emoji';
         const displayValue = getCheckboxIcon(isChecked, style);
         
         contents.push(displayValue);
-        outLog(`复选框状态: ${isChecked} -> ${displayValue}`);
     }
 }
 
 export function handlePhone(value, contents) {
     if (value.phone?.content) {
-        outLog("phone");
         contents.push(value.phone.content);
     }
 }
 
 export function handleUrl(value, contents) {
     if (value.url?.content) {
-        outLog("url");
         contents.push(value.url.content);
     }
 }
 
 export function handleEmail(value, contents) {
     if (value.email?.content) {
-        outLog("email");
         contents.push(value.email.content);
     }
 }
 
 export function handleCreated(value, contents, options: DateFormatOptions = {}) {
     if (value.created?.content) {
-        outLog("created");
         const timestamp = value.created.content;
         const formattedDate = formatDate(timestamp, options);
         contents.push(formattedDate);
-        outLog(`创建时间格式化: ${timestamp} -> ${formattedDate}`);
     }
 }
 
 export function handleUpdated(value, contents, options: DateFormatOptions = {}) {
     if (value.updated?.content) {
-        outLog("updated");
         const timestamp = value.updated.content;
         const formattedDate = formatDate(timestamp, options);
         contents.push(formattedDate);
-        outLog(`更新时间格式化: ${timestamp} -> ${formattedDate}`);
     }
 }
 
