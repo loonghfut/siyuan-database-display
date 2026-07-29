@@ -6,12 +6,14 @@ import { addDisplayFormatPanel } from "./panels/display-format";
 import { addFieldRulesPanel } from "./panels/field-rules";
 import { addRefreshPanel } from "./panels/refresh";
 import { addLicensePanel } from "./panels/license";
-import { LicenseService } from "@/licensing";
+import { addTrialPanel } from "./panels/trial";
+import { LicenseService, TrialService } from "@/licensing";
 import { AddPanel } from "./types";
 
 export { migrateLegacySettings } from "./migration";
 
-export function addSettings(settings: SettingUtils, onChanged: () => void, license: LicenseService): void {
+export function addSettings(settings: SettingUtils, onChanged: () => void, license: LicenseService, trial: TrialService): void {
+    settings.addData("pro-trial-records", "[]");
     const i18n = getI18n();
     const addPanel: AddPanel = (key, value, title, description, render) => {
         settings.addItem({
@@ -41,4 +43,5 @@ export function addSettings(settings: SettingUtils, onChanged: () => void, licen
     addAppearancePanel(addPanel, i18n.settings.panel);
     addRefreshPanel(addPanel, i18n.settings.panel);
     addLicensePanel(addPanel, i18n.settings.panel, license);
+    addTrialPanel(addPanel, i18n.settings.panel, trial, onChanged);
 }

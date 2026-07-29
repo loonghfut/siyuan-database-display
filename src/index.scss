@@ -1291,4 +1291,14 @@ span[style*="outline: 2px solid"] {
     gap: 8px;
 }
 
+.db-settings--trial {
+    display: grid;
+    gap: 12px;
+    max-width: 560px;
+}
+
+.db-settings--trial > .b3-button {
+    justify-self: start;
+}
+
 

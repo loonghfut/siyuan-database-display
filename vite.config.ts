@@ -14,9 +14,13 @@ const isSrcmap = env.VITE_SOURCEMAP === 'inline';
 const isDev = env.NODE_ENV === 'development';
 const proLicensePublicKeyPath = resolve(__dirname, ".license/pro-license-public.pem");
 const proLicensePublicKey = existsSync(proLicensePublicKeyPath) ? readFileSync(proLicensePublicKeyPath, "utf8").trim() : "";
+const trialConfigPath = resolve(__dirname, ".license/trial-config.json");
+const trialConfig = existsSync(trialConfigPath) ? JSON.parse(readFileSync(trialConfigPath, "utf8")) as { trialDays?: number; webhookUrl?: string } : {};
+const trialDays = Number(trialConfig.trialDays);
+const trialWebhookUrl = typeof trialConfig.webhookUrl === "string" ? trialConfig.webhookUrl.trim() : "";
 
-if (!isDev && !proLicensePublicKey) {
-    throw new Error("Missing .license/pro-license-public.pem. Run npm run generate-license-key before building a release.");
+if (!isDev && (!proLicensePublicKey || !trialWebhookUrl || !Number.isFinite(trialDays) || trialDays <= 0)) {
+    throw new Error("Missing or invalid .license release configuration. Generate the license key and configure trial-config.json before building a release.");
 }
 
 const outputDir = isDev ? "dev" : "dist";
@@ -65,7 +69,9 @@ export default defineConfig({
     define: {
         "process.env.DEV_MODE": JSON.stringify(isDev),
         "process.env.NODE_ENV": JSON.stringify(env.NODE_ENV),
-        "__DATABASE_DISPLAY_PRO_PUBLIC_KEY__": JSON.stringify(proLicensePublicKey)
+        "__DATABASE_DISPLAY_PRO_PUBLIC_KEY__": JSON.stringify(proLicensePublicKey),
+        "__DATABASE_DISPLAY_TRIAL_DAYS__": JSON.stringify(trialDays),
+        "__DATABASE_DISPLAY_TRIAL_WEBHOOK_URL__": JSON.stringify(trialWebhookUrl)
     },
 
     build: {

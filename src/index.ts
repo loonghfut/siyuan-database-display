@@ -5,12 +5,13 @@ import { DisplayController } from "@/services/display-controller";
 import { setI18n } from "@/i18n";
 import { SettingUtils } from "@/libs/setting-utils";
 import { addSettings, migrateLegacySettings } from "@/settings";
-import { LicenseService } from "@/licensing";
+import { LicenseService, TrialService } from "@/licensing";
 
 export default class DatabaseDisplay extends Plugin {
     private settings!: SettingUtils;
     private controller!: DisplayController;
     private license!: LicenseService;
+    private trial!: TrialService;
     private readonly onSwitchProtyle = (event: CustomEvent) => void this.controller.switchDocument(event.detail);
     private readonly onLoaded = () => this.controller.scheduleRefresh(false);
     private readonly onWebsocketMessage = (event: MessageEvent) => this.handleWebsocketMessage(event);
@@ -20,7 +21,11 @@ export default class DatabaseDisplay extends Plugin {
         setI18n(this.i18n as Record<string, unknown>);
         this.settings = new SettingUtils({ plugin: this, name: "DatabaseDisplay" });
         this.license = new LicenseService();
-        addSettings(this.settings, () => this.applySettings(), this.license);
+        this.trial = new TrialService({
+            getRecords: () => this.settings.get("pro-trial-records"),
+            saveRecords: value => this.settings.setAndSave("pro-trial-records", value)
+        });
+        addSettings(this.settings, () => this.applySettings(), this.license, this.trial);
         const savedSettings = await this.settings.load();
         if (migrateLegacySettings(this.settings, savedSettings)) await this.settings.save();
         await this.license.refresh(this.settings.get("pro-license"));
@@ -28,7 +33,7 @@ export default class DatabaseDisplay extends Plugin {
             getConfig: () => readDisplayConfig(key => this.settings.get(key)),
             getAutoRefreshInterval: () => readRefreshOptions(key => this.settings.get(key)).interval,
             isObserverEnabled: () => readRefreshOptions(key => this.settings.get(key)).observerEnabled,
-            canInlineEdit: () => this.license.hasFeature("inline-edit")
+            canInlineEdit: () => this.license.hasFeature("inline-edit") || this.trial.hasActiveTrial()
         });
         this.eventBus.on("switch-protyle", this.onSwitchProtyle);
         this.eventBus.on("loaded-protyle-dynamic", this.onLoaded);

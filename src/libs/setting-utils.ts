@@ -239,6 +239,18 @@ export class SettingUtils {
         return data;
     }
 
+    addData(key: string, value: unknown): void {
+        this.settings.set(key, {
+            key,
+            value,
+            type: "hint",
+            title: "",
+            description: "",
+            getEleVal: () => this.settings.get(key)?.value,
+            setEleVal: () => {}
+        });
+    }
+
     addItem(item: ISettingUtilsItem) {
         this.settings.set(item.key, item);
         const IsCustom = item.type === 'custom';
