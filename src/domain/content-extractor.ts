@@ -67,12 +67,40 @@ function displayType(keyType: string, types: FieldType[]): FieldType | undefined
     return types.find(type => type.toLowerCase() === normalized.toLowerCase());
 }
 
+function isSelectKey(keyType: string): boolean {
+    return keyType === "select" || keyType === "mSelect";
+}
+
 export function extractDisplayItems(tables: AttributeViewTable[], types: FieldType[], config: DisplayConfig): DisplayItem[] {
     const result: DisplayItem[] = [];
     for (const table of tables || []) {
         for (const keyValue of table.keyValues || []) {
             const key = keyValue.key;
             if (!key || config.hiddenFields.has(key.name)) continue;
+
+            // Select values are represented by one database property, even when
+            // multiple options are selected. Keep that relationship intact so
+            // rendering and editing both operate on one independent item.
+            if (isSelectKey(key.type)) {
+                const selected = (keyValue.values || [])
+                    .flatMap(value => texts(value, "mSelect", config));
+                if (types.includes("mSelect") && selected.length > 0) {
+                    result.push({
+                        type: "mSelect",
+                        text: selected.join("、"),
+                        avID: table.avID,
+                        keyID: key.id,
+                        keyName: key.name,
+                        keyType: key.type,
+                        rawValue: selected,
+                        selectOptions: key.options
+                    });
+                } else if (config.forceShowFields.has(key.name) && types.includes("mSelect")) {
+                    result.push({ type: "mSelect", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: [], selectOptions: key.options });
+                }
+                continue;
+            }
+
             let shown = false;
             for (const value of keyValue.values || []) {
                 for (const type of types) {

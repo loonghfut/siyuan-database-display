@@ -864,3 +864,294 @@ span[style*="outline: 2px solid"] {
         transform: translateY(0);
     }
 }
+
+// Compact attribute editor panel
+.inline-edit-popup,
+.inline-edit-dropdown,
+.inline-edit-datepicker {
+    width: min(300px, calc(100vw - 16px));
+    min-width: 0;
+    max-width: none;
+    overflow: hidden;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 6px;
+    background: var(--b3-theme-surface);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+    transform-origin: top left;
+    animation: inlineEditPanelIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.inline-edit-panel--closing {
+    pointer-events: none;
+    animation: inlineEditPanelOut 110ms ease-in forwards;
+}
+
+.inline-edit-panel__header {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 3px 5px 3px 10px;
+    border-bottom: 1px solid var(--b3-border-color);
+    color: var(--b3-theme-on-surface);
+    box-sizing: border-box;
+}
+
+.inline-edit-panel__header strong {
+    overflow: hidden;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.inline-edit-panel__field-icon,
+.inline-edit-panel__close svg,
+.inline-edit-action svg,
+.inline-edit-dropdown-option > svg {
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+}
+
+.inline-edit-panel__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.inline-edit-panel__field-icon {
+    color: var(--b3-theme-on-surface-light);
+}
+
+.inline-edit-panel__close,
+.inline-edit-action {
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    cursor: pointer;
+    transition: color 120ms ease, background-color 120ms ease, transform 100ms ease;
+}
+
+.inline-edit-panel__close:hover,
+.inline-edit-action:hover {
+    background: var(--b3-list-hover);
+    color: var(--b3-theme-on-surface);
+}
+
+.inline-edit-panel__close:active,
+.inline-edit-action:active {
+    transform: scale(0.88);
+}
+
+.inline-edit-panel__close:focus-visible,
+.inline-edit-action:focus-visible,
+.inline-edit-dropdown-option:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: -2px;
+}
+
+.inline-edit-popup-content {
+    padding: 0;
+}
+
+.inline-edit-popup-input {
+    margin: 0;
+    padding: 10px;
+}
+
+.inline-edit-popup-input input,
+.inline-edit-datepicker-input {
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+    padding: 5px 8px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    outline: 0;
+    background: var(--b3-theme-background);
+    color: var(--b3-theme-on-background);
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: 0;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.inline-edit-popup-input input:focus,
+.inline-edit-datepicker-input:focus {
+    border-color: var(--b3-theme-primary);
+    box-shadow: 0 0 0 2px var(--b3-theme-primary-lightest);
+}
+
+.inline-edit-action--primary {
+    background: var(--b3-theme-primary);
+    color: var(--b3-theme-on-primary);
+}
+
+.inline-edit-action--primary:hover {
+    background: var(--b3-theme-primary-light);
+    color: var(--b3-theme-on-primary);
+}
+
+.inline-edit-dropdown-list {
+    max-height: min(260px, calc(100vh - 100px));
+    padding: 4px;
+}
+
+.inline-edit-dropdown-option {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18px;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 30px;
+    margin: 0;
+    padding: 4px 7px 4px 9px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: 0;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 110ms ease, color 110ms ease, transform 100ms ease;
+}
+
+.inline-edit-dropdown-option:hover {
+    background: var(--b3-list-hover);
+}
+
+.inline-edit-dropdown-option:active {
+    transform: scale(0.985);
+}
+
+.inline-edit-dropdown-option > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.inline-edit-dropdown-option > svg {
+    justify-self: center;
+    color: var(--b3-theme-on-surface-light);
+    opacity: 0;
+    transform: scale(0.7);
+    transition: opacity 100ms ease, transform 120ms ease;
+}
+
+.inline-edit-dropdown-option:is(button):first-child > svg,
+.inline-edit-dropdown-option--selected > svg {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.inline-edit-dropdown-option:is(button):first-child > svg {
+    color: var(--b3-theme-error);
+}
+
+.inline-edit-dropdown-option--selected {
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+    font-weight: 500;
+}
+
+.inline-edit-dropdown-option--multi {
+    padding: 4px 7px 4px 9px;
+}
+
+.inline-edit-dropdown-option--multi input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.inline-edit-datepicker {
+    padding: 0;
+}
+
+.inline-edit-datepicker-row {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    padding: 5px 10px;
+}
+
+.inline-edit-datepicker-row:first-of-type {
+    padding-top: 9px;
+}
+
+.inline-edit-datepicker-label {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    letter-spacing: 0;
+}
+
+.inline-edit-datepicker-row:has(> .inline-edit-datepicker-label:only-child) {
+    grid-template-columns: 1fr;
+}
+
+.inline-edit-datepicker-row .inline-edit-datepicker-label:has(input[type="checkbox"]) {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--b3-theme-on-surface);
+    cursor: pointer;
+}
+
+.inline-edit-datepicker-row input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    accent-color: var(--b3-theme-primary);
+}
+
+@keyframes inlineEditPanelIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes inlineEditPanelOut {
+    to {
+        opacity: 0;
+        transform: translateY(-2px) scale(0.985);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .inline-edit-popup,
+    .inline-edit-dropdown,
+    .inline-edit-datepicker,
+    .inline-edit-panel--closing {
+        animation-duration: 1ms;
+    }
+
+    .inline-edit-panel__close,
+    .inline-edit-action,
+    .inline-edit-dropdown-option,
+    .inline-edit-dropdown-option > svg {
+        transition-duration: 1ms;
+    }
+}

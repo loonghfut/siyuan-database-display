@@ -24,7 +24,15 @@ export interface InlineEditOptions {
 
 // 存储当前打开的弹窗引用
 let currentPopup: HTMLElement | null = null;
+let currentPopupCleanup: (() => void) | null = null;
 const attributeViewRepository = new AttributeViewRepository();
+
+const ICONS = {
+    cancel: 'iconClose',
+    check: 'iconCheck',
+    clear: 'iconTrashcan',
+    edit: 'iconEdit'
+} as const;
 
 /**
  * 启用直接编辑模式 - 根据字段类型使用不同的编辑方式
@@ -32,8 +40,10 @@ const attributeViewRepository = new AttributeViewRepository();
 export function enableInlineEdit(options: InlineEditOptions) {
     // 如果已有弹窗打开，先关闭
     if (currentPopup) {
+        currentPopupCleanup?.();
         currentPopup.remove();
         currentPopup = null;
+        currentPopupCleanup = null;
     }
     
     // 根据字段类型选择编辑方式
@@ -91,18 +101,26 @@ async function handleCheckboxEdit(options: InlineEditOptions) {
  */
 function handleSelectEdit(options: InlineEditOptions) {
     const { element, avID, itemID, currentValue, selectOptions, onSave, onCancel } = options;
+    const selectedValue = Array.isArray(currentValue) ? currentValue[0] : currentValue;
     
     // 创建下拉菜单容器
     const dropdown = document.createElement('div');
     dropdown.className = 'inline-edit-dropdown';
+    prepareEditorPanel(dropdown, options.keyName);
     currentPopup = dropdown;
     
     // 创建选项列表
     const optionsList = document.createElement('div');
     optionsList.className = 'inline-edit-dropdown-list';
+
+    const header = createPanelHeader(options.keyName, () => {
+        closeDropdown(dropdown);
+        onCancel?.();
+    });
+    dropdown.appendChild(header);
     
     // 添加空选项
-    const emptyOption = createDropdownOption('', t('common.clear'), currentValue === '' || !currentValue);
+    const emptyOption = createDropdownOption('', t('common.clear'), selectedValue === '' || !selectedValue);
     optionsList.appendChild(emptyOption);
     
     // 添加备选项
@@ -110,7 +128,7 @@ function handleSelectEdit(options: InlineEditOptions) {
         // 选项值：优先使用 name，然后 id，最后 content
         const optionId = option.name || option.id || option.content;
         const optionText = option.name || option.content || option.id;
-        const isSelected = (optionId === currentValue);
+        const isSelected = (optionId === selectedValue);
         
         const optionElement = createDropdownOption(optionId, optionText, isSelected);
         optionsList.appendChild(optionElement);
@@ -160,9 +178,7 @@ function handleSelectEdit(options: InlineEditOptions) {
         }
     };
     
-    setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-    }, 100);
+    currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
 }
 
 /**
@@ -174,6 +190,7 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
     // 创建多选容器
     const dropdown = document.createElement('div');
     dropdown.className = 'inline-edit-dropdown inline-edit-dropdown--multi';
+    prepareEditorPanel(dropdown, options.keyName);
     currentPopup = dropdown;
     
     // 当前选中的值
@@ -182,6 +199,12 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
     // 创建选项列表
     const optionsList = document.createElement('div');
     optionsList.className = 'inline-edit-dropdown-list';
+
+    const header = createPanelHeader(options.keyName, () => {
+        closeDropdown(dropdown);
+        onCancel?.();
+    });
+    dropdown.appendChild(header);
     
     // 添加备选项（带复选框）
     (selectOptions || []).forEach(option => {
@@ -195,9 +218,11 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
         
         // 点击切换选中状态
         optionElement.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
             const checkbox = optionElement.querySelector('input[type="checkbox"]') as HTMLInputElement;
             checkbox.checked = !checkbox.checked;
+            optionElement.classList.toggle('inline-edit-dropdown-option--selected', checkbox.checked);
             
             if (checkbox.checked) {
                 selectedValues.add(optionId);
@@ -209,21 +234,8 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
     
     dropdown.appendChild(optionsList);
     
-    // 添加按钮区域
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'inline-edit-dropdown-buttons';
-    
-    const saveButton = document.createElement('button');
-    saveButton.className = 'inline-edit-dropdown-button inline-edit-dropdown-button--primary';
-    saveButton.textContent = t('common.save');
-    
-    const cancelButton = document.createElement('button');
-    cancelButton.className = 'inline-edit-dropdown-button';
-    cancelButton.textContent = t('common.cancel');
-    
-    buttonContainer.appendChild(cancelButton);
-    buttonContainer.appendChild(saveButton);
-    dropdown.appendChild(buttonContainer);
+    const saveButton = createIconButton(ICONS.check, t('common.save'), 'inline-edit-action inline-edit-action--primary');
+    appendHeaderAction(header, saveButton);
     
     document.body.appendChild(dropdown);
     
@@ -256,12 +268,6 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
         save();
     });
     
-    cancelButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        closeDropdown(dropdown);
-        if (onCancel) onCancel();
-    });
-    
     // 点击外部关闭
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
@@ -271,9 +277,7 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
         }
     };
     
-    setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-    }, 100);
+    currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
 }
 
 /**
@@ -290,7 +294,14 @@ function handleDateEdit(options: InlineEditOptions) {
     // 创建日期选择容器
     const datePicker = document.createElement('div');
     datePicker.className = 'inline-edit-datepicker';
+    prepareEditorPanel(datePicker, options.keyName);
     currentPopup = datePicker;
+
+    const header = createPanelHeader(options.keyName, () => {
+        closeDropdown(datePicker);
+        onCancel?.();
+    });
+    datePicker.appendChild(header);
 
     // 开始时间
     const startWrap = document.createElement('div');
@@ -340,21 +351,8 @@ function handleDateEdit(options: InlineEditOptions) {
     datePicker.appendChild(rangeWrap);
     datePicker.appendChild(endWrap);
 
-    // 创建按钮区域
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'inline-edit-datepicker-buttons';
-
-    const saveButton = document.createElement('button');
-    saveButton.className = 'inline-edit-datepicker-button inline-edit-datepicker-button--primary';
-    saveButton.textContent = t('common.save');
-
-    const cancelButton = document.createElement('button');
-    cancelButton.className = 'inline-edit-datepicker-button';
-    cancelButton.textContent = t('common.cancel');
-
-    buttonContainer.appendChild(cancelButton);
-    buttonContainer.appendChild(saveButton);
-    datePicker.appendChild(buttonContainer);
+    const saveButton = createIconButton(ICONS.check, t('common.save'), 'inline-edit-action inline-edit-action--primary');
+    appendHeaderAction(header, saveButton);
 
     document.body.appendChild(datePicker);
 
@@ -395,12 +393,6 @@ function handleDateEdit(options: InlineEditOptions) {
         save();
     });
 
-    cancelButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        closeDropdown(datePicker);
-        if (onCancel) onCancel();
-    });
-
     // 键盘事件
     [startInput, endInput].forEach(input => {
         input.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -424,9 +416,7 @@ function handleDateEdit(options: InlineEditOptions) {
         }
     };
 
-    setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-    }, 100);
+    currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
 }
 
 /**
@@ -438,6 +428,7 @@ function handlePopupEdit(options: InlineEditOptions) {
     // 创建弹窗容器
     const popup = document.createElement('div');
     popup.className = 'inline-edit-popup';
+    prepareEditorPanel(popup, keyName);
     currentPopup = popup;
     
     // 创建弹窗内容
@@ -445,10 +436,11 @@ function handlePopupEdit(options: InlineEditOptions) {
     popupContent.className = 'inline-edit-popup-content';
     
     // 添加标题
-    const title = document.createElement('div');
-    title.className = 'inline-edit-popup-title';
-    title.textContent = t('inlineEdit.editTitle', { name: keyName });
-    popupContent.appendChild(title);
+    const header = createPanelHeader(keyName, () => {
+        closePopup();
+        onCancel?.();
+    });
+    popupContent.appendChild(header);
     
     // 创建输入区域
     const inputContainer = document.createElement('div');
@@ -474,21 +466,8 @@ function handlePopupEdit(options: InlineEditOptions) {
     inputContainer.appendChild(inputElement);
     popupContent.appendChild(inputContainer);
     
-    // 创建按钮区域
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'inline-edit-popup-buttons';
-    
-    const saveButton = document.createElement('button');
-    saveButton.className = 'inline-edit-popup-button inline-edit-popup-button--primary';
-    saveButton.textContent = t('common.save');
-    
-    const cancelButton = document.createElement('button');
-    cancelButton.className = 'inline-edit-popup-button inline-edit-popup-button--secondary';
-    cancelButton.textContent = t('common.cancel');
-    
-    buttonContainer.appendChild(cancelButton);
-    buttonContainer.appendChild(saveButton);
-    popupContent.appendChild(buttonContainer);
+    const saveButton = createIconButton(ICONS.check, t('common.save'), 'inline-edit-action inline-edit-action--primary');
+    appendHeaderAction(header, saveButton);
     
     popup.appendChild(popupContent);
     document.body.appendChild(popup);
@@ -552,24 +531,13 @@ function handlePopupEdit(options: InlineEditOptions) {
     
     // 关闭弹窗函数
     const closePopup = () => {
-        if (popup && popup.parentNode) {
-            popup.remove();
-        }
-        if (currentPopup === popup) {
-            currentPopup = null;
-        }
-        document.removeEventListener('mousedown', handleClickOutside);
+        closeEditorPanel(popup);
     };
     
     // 事件监听
     saveButton.addEventListener('click', (e) => {
         e.stopPropagation();
         save();
-    });
-    
-    cancelButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        cancel();
     });
     
     inputElement.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -593,9 +561,7 @@ function handlePopupEdit(options: InlineEditOptions) {
     };
     
     // 延迟添加点击外部监听器
-    setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-    }, 100);
+    currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
 }
 
 /**
@@ -625,6 +591,7 @@ function positionPopup(popup: HTMLElement, target: HTMLElement) {
         left = 10;
     }
     
+    top = Math.max(8, Math.min(top, window.innerHeight - popupRect.height - 8));
     popup.style.top = `${top}px`;
     popup.style.left = `${left}px`;
 }
@@ -656,6 +623,7 @@ function positionDropdown(dropdown: HTMLElement, target: HTMLElement) {
         left = 10;
     }
     
+    top = Math.max(8, Math.min(top, window.innerHeight - dropdownRect.height - 8));
     dropdown.style.top = `${top}px`;
     dropdown.style.left = `${left}px`;
 }
@@ -664,22 +632,94 @@ function positionDropdown(dropdown: HTMLElement, target: HTMLElement) {
  * 关闭下拉菜单
  */
 function closeDropdown(dropdown: HTMLElement) {
-    if (dropdown && dropdown.parentNode) {
-        dropdown.remove();
-    }
-    if (currentPopup === dropdown) {
+    closeEditorPanel(dropdown);
+}
+
+function closeEditorPanel(panel: HTMLElement) {
+    if (!panel.parentNode) return;
+    if (currentPopup === panel) {
+        currentPopupCleanup?.();
+        currentPopupCleanup = null;
         currentPopup = null;
     }
+    panel.classList.add('inline-edit-panel--closing');
+    window.setTimeout(() => panel.remove(), 120);
+}
+
+function bindOutsideDismiss(handler: (event: MouseEvent) => void): () => void {
+    const timer = window.setTimeout(() => document.addEventListener('mousedown', handler), 100);
+    return () => {
+        window.clearTimeout(timer);
+        document.removeEventListener('mousedown', handler);
+    };
+}
+
+function createIconButton(icon: string, label: string, className: string): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `${className} ariaLabel`;
+    button.setAttribute('aria-label', label);
+    button.title = label;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `#${icon}`);
+    use.setAttribute('xlink:href', `#${icon}`);
+    svg.appendChild(use);
+    button.appendChild(svg);
+    return button;
+}
+
+function prepareEditorPanel(panel: HTMLElement, label: string): void {
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', label);
+}
+
+function createPanelHeader(titleText: string, onClose: () => void): HTMLElement {
+    const header = document.createElement('header');
+    header.className = 'inline-edit-panel__header';
+
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.classList.add('inline-edit-panel__field-icon');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `#${ICONS.edit}`);
+    use.setAttribute('xlink:href', `#${ICONS.edit}`);
+    icon.appendChild(use);
+
+    const title = document.createElement('strong');
+    title.textContent = titleText;
+    const actions = document.createElement('span');
+    actions.className = 'inline-edit-panel__actions';
+    const close = createIconButton(ICONS.cancel, t('common.cancel'), 'inline-edit-panel__close');
+    close.addEventListener('click', event => {
+        event.stopPropagation();
+        onClose();
+    });
+    actions.appendChild(close);
+    header.append(icon, title, actions);
+    return header;
+}
+
+function appendHeaderAction(header: HTMLElement, action: HTMLButtonElement): void {
+    header.querySelector<HTMLElement>('.inline-edit-panel__actions')?.appendChild(action);
 }
 
 /**
  * 创建下拉选项元素
  */
 function createDropdownOption(value: string, text: string, isSelected: boolean): HTMLElement {
-    const option = document.createElement('div');
+    const option = document.createElement('button');
+    option.type = 'button';
     option.className = 'inline-edit-dropdown-option' + (isSelected ? ' inline-edit-dropdown-option--selected' : '');
     option.dataset.value = value;
-    option.textContent = text;
+    const label = document.createElement('span');
+    label.textContent = text;
+    const iconName = value ? ICONS.check : ICONS.clear;
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `#${iconName}`);
+    use.setAttribute('xlink:href', `#${iconName}`);
+    icon.appendChild(use);
+    option.append(label, icon);
     return option;
 }
 
@@ -688,7 +728,7 @@ function createDropdownOption(value: string, text: string, isSelected: boolean):
  */
 function createMultiSelectOption(value: string, text: string, isSelected: boolean): HTMLElement {
     const option = document.createElement('label');
-    option.className = 'inline-edit-dropdown-option inline-edit-dropdown-option--multi';
+    option.className = 'inline-edit-dropdown-option inline-edit-dropdown-option--multi' + (isSelected ? ' inline-edit-dropdown-option--selected' : '');
     
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
@@ -697,9 +737,15 @@ function createMultiSelectOption(value: string, text: string, isSelected: boolea
     
     const label = document.createElement('span');
     label.textContent = text;
+
+    const mark = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `#${ICONS.check}`);
+    use.setAttribute('xlink:href', `#${ICONS.check}`);
+    mark.appendChild(use);
     
     option.appendChild(checkbox);
-    option.appendChild(label);
+    option.append(label, mark);
     
     return option;
 }
