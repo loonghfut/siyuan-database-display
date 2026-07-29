@@ -12,6 +12,7 @@ export default class DatabaseDisplay extends Plugin {
     private readonly onSwitchProtyle = (event: CustomEvent) => void this.controller.switchDocument(event.detail);
     private readonly onLoaded = () => this.controller.scheduleRefresh(false);
     private readonly onWebsocketMessage = (event: MessageEvent) => this.handleWebsocketMessage(event);
+    private themeObserver: MutationObserver | undefined;
 
     async onload(): Promise<void> {
         setI18n(this.i18n as Record<string, unknown>);
@@ -32,6 +33,9 @@ export default class DatabaseDisplay extends Plugin {
     onLayoutReady(): void {
         this.applySettings();
         window.siyuan.ws.ws.addEventListener("message", this.onWebsocketMessage);
+        this.themeObserver?.disconnect();
+        this.themeObserver = new MutationObserver(() => this.controller?.scheduleRefresh(true));
+        this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme-mode"] });
     }
 
     onunload(): void {
@@ -39,6 +43,7 @@ export default class DatabaseDisplay extends Plugin {
         this.eventBus.off("loaded-protyle-dynamic", this.onLoaded);
         this.eventBus.off("loaded-protyle-static", this.onLoaded);
         window.siyuan.ws.ws.removeEventListener("message", this.onWebsocketMessage);
+        this.themeObserver?.disconnect();
         this.controller?.dispose();
     }
 

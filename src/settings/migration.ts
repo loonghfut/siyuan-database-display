@@ -58,5 +58,12 @@ export function migrateLegacySettings(settings: SettingUtils, saved: unknown): b
         }));
         changed = true;
     }
+
+    const appearance = parseObject<{ types?: Record<string, unknown>; values?: Record<string, unknown>; light?: unknown; dark?: unknown }>(settings.get("display-appearance"), {});
+    if (!appearance.light || !appearance.dark) {
+        const legacyAppearance = { types: appearance.types || {}, values: appearance.values || {} };
+        settings.set("display-appearance", JSON.stringify({ light: legacyAppearance, dark: JSON.parse(JSON.stringify(legacyAppearance)) }));
+        changed = true;
+    }
     return changed;
 }

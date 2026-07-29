@@ -5,6 +5,11 @@ export interface ColorRule {
     bg?: string;
 }
 
+export interface AppearanceTheme {
+    types?: Record<string, ColorRule>;
+    values?: Record<string, unknown>;
+}
+
 export interface DisplayConfig {
     documentFields: FieldType[];
     blockFields: FieldType[];
@@ -35,6 +40,16 @@ export const DEFAULT_FIELD_COLORS: Record<string, string> = {
 export const DEFAULT_FIELD_BACKGROUNDS: Record<string, string> = {
     mSelect: "#eef2ff", number: "#eff6ff", date: "#f0fdf4", text: "#f8fafc", mAsset: "#f5f3ff",
     checkbox: "#ecfdf5", phone: "#f0fdfa", url: "#fffbeb", email: "#fdf2f8", created: "#f8fafc", updated: "#f8fafc"
+};
+
+export const DEFAULT_DARK_FIELD_COLORS: Record<string, string> = {
+    mSelect: "#a5b4fc", number: "#93c5fd", date: "#86efac", text: "#e5e7eb", mAsset: "#c4b5fd",
+    checkbox: "#6ee7b7", phone: "#5eead4", url: "#fdba74", email: "#f9a8d4", created: "#94a3b8", updated: "#94a3b8"
+};
+
+export const DEFAULT_DARK_FIELD_BACKGROUNDS: Record<string, string> = {
+    mSelect: "rgba(99, 102, 241, 0.32)", number: "rgba(59, 130, 246, 0.32)", date: "rgba(34, 197, 94, 0.28)", text: "rgba(148, 163, 184, 0.2)", mAsset: "rgba(139, 92, 246, 0.3)",
+    checkbox: "rgba(16, 185, 129, 0.28)", phone: "rgba(20, 184, 166, 0.28)", url: "rgba(245, 158, 11, 0.28)", email: "rgba(236, 72, 153, 0.28)", created: "rgba(100, 116, 139, 0.25)", updated: "rgba(100, 116, 139, 0.25)"
 };
 
 export function parseCsv(value: unknown): string[] {
@@ -93,12 +108,14 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
     const fieldSettings = parseJsonObject<{ document?: string; block?: string }>(get("display-fields"), {});
     const fieldRules = parseJsonObject<{ hidden?: string; force?: string }>(get("field-rules"), {});
     const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean }>>(get("display-format"), {});
-    const appearance = parseJsonObject<{ types?: Record<string, ColorRule>; values?: Record<string, unknown> }>(get("display-appearance"), {});
+    const appearance = parseJsonObject<AppearanceTheme & { light?: AppearanceTheme; dark?: AppearanceTheme }>(get("display-appearance"), {});
+    const themeMode = typeof document !== "undefined" && document.documentElement.dataset.themeMode === "dark" ? "dark" : "light";
+    const themeAppearance = appearance[themeMode] || appearance;
     const max = Number(get("max-display-length"));
     const configuredMax = Number(formatSettings.maxDisplayLength ?? max);
     const dateFormat = formatSettings.dateFormat ?? get("date-format");
     const checkboxStyle = formatSettings.checkboxStyle ?? get("checkbox-style");
-    const typeColors = appearance.types || {};
+    const typeColors = themeAppearance.types || {};
     const colors = Object.fromEntries(Object.entries(typeColors).flatMap(([type, rule]) => isSafeColor(rule?.color) ? [[type, rule.color]] : []));
     const backgrounds = Object.fromEntries(Object.entries(typeColors).flatMap(([type, rule]) => isSafeColor(rule?.bg) ? [[type, rule.bg]] : []));
     return {
@@ -111,9 +128,9 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
         checkboxStyle: ["emoji", "symbol", "text"].includes(String(checkboxStyle)) ? checkboxStyle as CheckboxStyle : "emoji",
         maxDisplayLength: Number.isFinite(configuredMax) ? Math.min(200, Math.max(10, configuredMax || 30)) : 30,
         showFieldNames: formatSettings.showFieldNames === true,
-        fieldColors: Object.keys(colors).length ? colors : sanitizeColorMap(get("field-color-map"), DEFAULT_FIELD_COLORS),
-        fieldBackgrounds: Object.keys(backgrounds).length ? backgrounds : sanitizeColorMap(get("field-bg-color-map"), DEFAULT_FIELD_BACKGROUNDS),
-        valueColors: Object.keys(appearance.values || {}).length ? sanitizeValueColors(JSON.stringify(appearance.values)) : sanitizeValueColors(get("field-value-color-map"))
+        fieldColors: Object.keys(colors).length ? colors : sanitizeColorMap(get("field-color-map"), themeMode === "dark" ? DEFAULT_DARK_FIELD_COLORS : DEFAULT_FIELD_COLORS),
+        fieldBackgrounds: Object.keys(backgrounds).length ? backgrounds : sanitizeColorMap(get("field-bg-color-map"), themeMode === "dark" ? DEFAULT_DARK_FIELD_BACKGROUNDS : DEFAULT_FIELD_BACKGROUNDS),
+        valueColors: Object.keys(themeAppearance.values || {}).length ? sanitizeValueColors(JSON.stringify(themeAppearance.values)) : sanitizeValueColors(get("field-value-color-map"))
     };
 }
 

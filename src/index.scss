@@ -211,6 +211,29 @@
     column-gap: 16px;
 }
 
+.db-settings__theme-tabs {
+    display: inline-flex;
+    justify-self: start;
+    overflow: hidden;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+}
+
+.db-settings__theme-tab {
+    min-width: 88px;
+    border: 0;
+    border-radius: 0;
+}
+
+.db-settings__theme-tab + .db-settings__theme-tab {
+    border-left: 1px solid var(--b3-border-color);
+}
+
+.db-settings__theme-tab--active {
+    background-color: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+}
+
 .db-settings__palette-row {
     display: grid;
     grid-template-columns: minmax(70px, 1fr) auto auto;
