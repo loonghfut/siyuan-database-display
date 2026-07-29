@@ -68,7 +68,6 @@ function displayType(keyType: string, types: FieldType[]): FieldType | undefined
 }
 
 export function extractDisplayItems(tables: AttributeViewTable[], types: FieldType[], config: DisplayConfig): DisplayItem[] {
-    const visibleTypes = config.showTimestamps ? types : types.filter(type => type !== "created" && type !== "updated");
     const result: DisplayItem[] = [];
     for (const table of tables || []) {
         for (const keyValue of table.keyValues || []) {
@@ -76,7 +75,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
             if (!key || config.hiddenFields.has(key.name)) continue;
             let shown = false;
             for (const value of keyValue.values || []) {
-                for (const type of visibleTypes) {
+                for (const type of types) {
                     if (!matches(value, type)) continue;
                     for (const text of texts(value, type, config)) {
                         shown = true;
@@ -85,7 +84,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                 }
             }
             if (!shown && config.forceShowFields.has(key.name)) {
-                const type = displayType(key.type, visibleTypes);
+                const type = displayType(key.type, types);
                 if (type) result.push({ type, text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null, selectOptions: key.options });
             }
         }

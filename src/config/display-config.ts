@@ -13,7 +13,6 @@ export interface DisplayConfig {
     dateFormat: DateFormat;
     includeTime: boolean;
     checkboxStyle: CheckboxStyle;
-    showTimestamps: boolean;
     maxDisplayLength: number;
     fieldColors: Record<string, string>;
     fieldBackgrounds: Record<string, string>;
@@ -44,12 +43,11 @@ export function parseCsv(value: unknown): string[] {
 
 function parseFieldTypes(value: unknown): FieldType[] {
     const requested = parseCsv(value);
-    const types = requested.filter((item): item is FieldType => fieldTypeSet.has(item));
-    return types.length > 0 ? types : [...FIELD_TYPES];
+    return requested.filter((item): item is FieldType => fieldTypeSet.has(item));
 }
 
 function parseFieldTypesOrDefault(value: unknown, fallback: FieldType[]): FieldType[] {
-    if (typeof value !== "string" || !value.trim()) return fallback;
+    if (typeof value !== "string") return fallback;
     return parseFieldTypes(value);
 }
 
@@ -93,7 +91,7 @@ function sanitizeValueColors(value: unknown): Record<string, string | ColorRule>
 export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig {
     const fieldSettings = parseJsonObject<{ document?: string; block?: string }>(get("display-fields"), {});
     const fieldRules = parseJsonObject<{ hidden?: string; force?: string }>(get("field-rules"), {});
-    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; showTimestamps: boolean; maxDisplayLength: number }>>(get("display-format"), {});
+    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number }>>(get("display-format"), {});
     const appearance = parseJsonObject<{ types?: Record<string, ColorRule>; values?: Record<string, unknown> }>(get("display-appearance"), {});
     const max = Number(get("max-display-length"));
     const configuredMax = Number(formatSettings.maxDisplayLength ?? max);
@@ -110,7 +108,6 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
         dateFormat: ["YYYY-MM-DD", "YYYY/MM/DD", "MM/DD/YYYY", "DD/MM/YYYY", "full", "relative"].includes(String(dateFormat)) ? dateFormat as DateFormat : "YYYY-MM-DD",
         includeTime: formatSettings.includeTime ?? Boolean(get("include-time")),
         checkboxStyle: ["emoji", "symbol", "text"].includes(String(checkboxStyle)) ? checkboxStyle as CheckboxStyle : "emoji",
-        showTimestamps: formatSettings.showTimestamps ?? get("show-timestamps") !== false,
         maxDisplayLength: Number.isFinite(configuredMax) ? Math.min(200, Math.max(10, configuredMax || 30)) : 30,
         fieldColors: Object.keys(colors).length ? colors : sanitizeColorMap(get("field-color-map"), DEFAULT_FIELD_COLORS),
         fieldBackgrounds: Object.keys(backgrounds).length ? backgrounds : sanitizeColorMap(get("field-bg-color-map"), DEFAULT_FIELD_BACKGROUNDS),
