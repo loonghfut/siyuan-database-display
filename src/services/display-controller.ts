@@ -13,6 +13,7 @@ export interface DisplayControllerOptions {
     getConfig: () => DisplayConfig;
     getAutoRefreshInterval: () => number;
     isObserverEnabled: () => boolean;
+    canInlineEdit: () => boolean;
 }
 
 export class DisplayController {
@@ -104,7 +105,12 @@ export class DisplayController {
             const tables = await this.repository.getKeys(blockId);
             if (version !== this.refreshVersion) return;
             const items = extractDisplayItems(tables, scope === "document" ? config.documentFields : config.blockFields, config);
-            parents.forEach(parent => this.renderer.render(parent, items, { blockId, config, onEdit: (item, element) => this.edit(blockId, item, element) }));
+            parents.forEach(parent => this.renderer.render(parent, items, {
+                blockId,
+                config,
+                canInlineEdit: this.options.canInlineEdit(),
+                onEdit: (item, element) => this.edit(blockId, item, element)
+            }));
         } catch (error) {
             console.warn("[DatabaseDisplay] Failed to render attribute values", error);
         }

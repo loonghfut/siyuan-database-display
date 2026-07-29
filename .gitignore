@@ -9,3 +9,15 @@ dev
 dist
 build
 tmp
+
+# Local Pro licensing material. Never commit private keys, issued licenses, or local build secrets.
+.license/
+*.private.pem
+*.private.key
+*.p8
+*.license.json
+.env
+.env.*
+!.env.example
+docs/licensing.md
+scripts/generate-license-key.mjs

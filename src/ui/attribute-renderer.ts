@@ -4,6 +4,7 @@ import { DisplayItem } from "@/core/types";
 export interface RenderContext {
     blockId: string;
     config: DisplayConfig;
+    canInlineEdit: boolean;
     onEdit: (item: DisplayItem, element: HTMLElement) => void;
 }
 
@@ -31,7 +32,9 @@ export class AttributeRenderer {
     }
 
     private createItem(item: DisplayItem, context: RenderContext): HTMLElement {
-        const element = document.createElement(item.keyType === "url" && item.rawValue ? "a" : "button");
+        const isLink = item.keyType === "url" && Boolean(item.rawValue);
+        const editable = context.canInlineEdit && item.keyType !== "created" && item.keyType !== "updated";
+        const element = document.createElement(isLink ? "a" : editable ? "button" : "span");
         element.className = "db-display__chip ariaLabel";
         if (element instanceof HTMLButtonElement) element.type = "button";
         const normalizedText = item.text.replace(/\s+/g, " ").trim();
@@ -53,18 +56,20 @@ export class AttributeRenderer {
         element.dataset.fieldType = item.type;
         this.applyColors(element, item, context.config);
 
-        if (item.keyType === "created" || item.keyType === "updated") {
-            element.classList.add("db-display__chip--readonly");
-            return element;
-        }
         if (element instanceof HTMLAnchorElement) {
             element.href = String(item.rawValue || "");
             element.target = "_blank";
             element.rel = "noopener noreferrer";
-            element.addEventListener("contextmenu", event => {
-                event.preventDefault();
-                context.onEdit(item, element);
-            });
+            if (editable) {
+                element.addEventListener("contextmenu", event => {
+                    event.preventDefault();
+                    context.onEdit(item, element);
+                });
+            }
+            return element;
+        }
+        if (!editable) {
+            element.classList.add("db-display__chip--readonly");
             return element;
         }
         element.addEventListener("click", event => {

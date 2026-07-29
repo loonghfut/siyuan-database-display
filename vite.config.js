@@ -1,26 +1,22 @@
-import { resolve } from "path"
-import { existsSync, readFileSync } from "fs"
-import { defineConfig, type Plugin as VitePlugin } from "vite"
-import { viteStaticCopy } from "vite-plugin-static-copy"
-import livereload from "rollup-plugin-livereload"
-import { svelte } from "@sveltejs/vite-plugin-svelte"
+import { resolve } from "path";
+import { existsSync, readFileSync } from "fs";
+import { defineConfig } from "vite";
+import { viteStaticCopy } from "vite-plugin-static-copy";
+import livereload from "rollup-plugin-livereload";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import zipPack from "vite-plugin-zip-pack";
 import fg from 'fast-glob';
-
 import vitePluginYamlI18n from './yaml-plugin';
-
 const env = process.env;
 const isSrcmap = env.VITE_SOURCEMAP === 'inline';
 const isDev = env.NODE_ENV === 'development';
 const proLicensePublicKeyPath = resolve(__dirname, ".license/pro-license-public.pem");
 const proLicensePublicKey = existsSync(proLicensePublicKeyPath) ? readFileSync(proLicensePublicKeyPath, "utf8").trim() : "";
-
 if (!isDev && !proLicensePublicKey) {
     throw new Error("Missing .license/pro-license-public.pem. Run npm run generate-license-key before building a release.");
 }
-
 const outputDir = isDev ? "dev" : "dist";
-const watchExternalPlugin: VitePlugin = {
+const watchExternalPlugin = {
     name: "watch-external",
     async buildStart() {
         const files = await fg([
@@ -28,29 +24,25 @@ const watchExternalPlugin: VitePlugin = {
             "./README*.md",
             "./plugin.json"
         ]);
-        for (const file of files) this.addWatchFile(file);
+        for (const file of files)
+            this.addWatchFile(file);
     }
 };
-
 console.log("isDev=>", isDev);
 console.log("isSrcmap=>", isSrcmap);
 console.log("outputDir=>", outputDir);
-
 export default defineConfig({
     resolve: {
         alias: {
             "@": resolve(__dirname, "src"),
         }
     },
-
     plugins: [
         svelte(),
-
         vitePluginYamlI18n({
             inDir: 'public/i18n',
             outDir: `${outputDir}/i18n`
         }),
-
         viteStaticCopy({
             targets: [
                 { src: "./README*.md", dest: "./" },
@@ -59,21 +51,17 @@ export default defineConfig({
                 { src: "./icon.png", dest: "./" }
             ],
         }),
-
     ],
-
     define: {
         "process.env.DEV_MODE": JSON.stringify(isDev),
         "process.env.NODE_ENV": JSON.stringify(env.NODE_ENV),
         "__DATABASE_DISPLAY_PRO_PUBLIC_KEY__": JSON.stringify(proLicensePublicKey)
     },
-
     build: {
         outDir: outputDir,
         emptyOutDir: false,
         minify: true,
         sourcemap: isSrcmap ? 'inline' : false,
-
         lib: {
             entry: resolve(__dirname, "src/index.ts"),
             fileName: "index",
@@ -103,70 +91,60 @@ export default defineConfig({
                     })
                 ])
             ],
-
             external: ["siyuan", "process"],
-
             output: {
                 entryFileNames: "[name].js",
                 assetFileNames: (assetInfo) => {
                     if (assetInfo.name === "style.css") {
-                        return "index.css"
+                        return "index.css";
                     }
-                    return assetInfo.name || "assets/[name][extname]"
+                    return assetInfo.name || "assets/[name][extname]";
                 },
             },
         },
     }
 });
-
-
 /**
  * Clean up some dist files after compiled
  * @author frostime
  * @param options:
- * @returns 
+ * @returns
  */
-function cleanupDistFiles(options: { patterns: string[], distDir: string }) {
-    const {
-        patterns,
-        distDir
-    } = options;
-
+function cleanupDistFiles(options) {
+    const { patterns, distDir } = options;
     return {
         name: 'rollup-plugin-cleanup',
         enforce: 'post',
         writeBundle: {
             sequential: true,
-            order: 'post' as 'post',
+            order: 'post',
             async handler() {
                 const fg = await import('fast-glob');
                 const fs = await import('fs');
                 // const path = await import('path');
-
                 // 使用 glob 语法，确保能匹配到文件
                 const distPatterns = patterns.map(pat => `${distDir}/${pat}`);
                 console.debug('Cleanup searching patterns:', distPatterns);
-
                 const files = await fg.default(distPatterns, {
                     dot: true,
                     absolute: true,
                     onlyFiles: false
                 });
-
                 // console.info('Files to be cleaned up:', files);
-
                 for (const file of files) {
                     try {
                         if (fs.default.existsSync(file)) {
                             const stat = fs.default.statSync(file);
                             if (stat.isDirectory()) {
                                 fs.default.rmSync(file, { recursive: true });
-                            } else {
+                            }
+                            else {
                                 fs.default.unlinkSync(file);
                             }
                             console.log(`Cleaned up: ${file}`);
                         }
-                    } catch (error) {
+                    }
+                    catch (error) {
                         console.error(`Failed to clean up ${file}:`, error);
                     }
                 }

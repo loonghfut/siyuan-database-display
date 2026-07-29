@@ -5,10 +5,12 @@ import { DisplayController } from "@/services/display-controller";
 import { setI18n } from "@/i18n";
 import { SettingUtils } from "@/libs/setting-utils";
 import { addSettings, migrateLegacySettings } from "@/settings";
+import { LicenseService } from "@/licensing";
 
 export default class DatabaseDisplay extends Plugin {
     private settings!: SettingUtils;
     private controller!: DisplayController;
+    private license!: LicenseService;
     private readonly onSwitchProtyle = (event: CustomEvent) => void this.controller.switchDocument(event.detail);
     private readonly onLoaded = () => this.controller.scheduleRefresh(false);
     private readonly onWebsocketMessage = (event: MessageEvent) => this.handleWebsocketMessage(event);
@@ -17,13 +19,16 @@ export default class DatabaseDisplay extends Plugin {
     async onload(): Promise<void> {
         setI18n(this.i18n as Record<string, unknown>);
         this.settings = new SettingUtils({ plugin: this, name: "DatabaseDisplay" });
-        addSettings(this.settings, () => this.applySettings());
+        this.license = new LicenseService();
+        addSettings(this.settings, () => this.applySettings(), this.license);
         const savedSettings = await this.settings.load();
         if (migrateLegacySettings(this.settings, savedSettings)) await this.settings.save();
+        await this.license.refresh(this.settings.get("pro-license"));
         this.controller = new DisplayController({
             getConfig: () => readDisplayConfig(key => this.settings.get(key)),
             getAutoRefreshInterval: () => readRefreshOptions(key => this.settings.get(key)).interval,
-            isObserverEnabled: () => readRefreshOptions(key => this.settings.get(key)).observerEnabled
+            isObserverEnabled: () => readRefreshOptions(key => this.settings.get(key)).observerEnabled,
+            canInlineEdit: () => this.license.hasFeature("inline-edit")
         });
         this.eventBus.on("switch-protyle", this.onSwitchProtyle);
         this.eventBus.on("loaded-protyle-dynamic", this.onLoaded);
@@ -48,6 +53,7 @@ export default class DatabaseDisplay extends Plugin {
     }
 
     private applySettings(): void {
+        void this.license.refresh(this.settings.get("pro-license")).then(() => this.controller?.scheduleRefresh(true));
         this.controller?.updateAutoRefresh();
         this.controller?.updateObserver();
         this.controller?.scheduleRefresh(true);

@@ -5,11 +5,13 @@ import { addDisplayFieldsPanel } from "./panels/display-fields";
 import { addDisplayFormatPanel } from "./panels/display-format";
 import { addFieldRulesPanel } from "./panels/field-rules";
 import { addRefreshPanel } from "./panels/refresh";
+import { addLicensePanel } from "./panels/license";
+import { LicenseService } from "@/licensing";
 import { AddPanel } from "./types";
 
 export { migrateLegacySettings } from "./migration";
 
-export function addSettings(settings: SettingUtils, onChanged: () => void): void {
+export function addSettings(settings: SettingUtils, onChanged: () => void, license: LicenseService): void {
     const i18n = getI18n();
     const addPanel: AddPanel = (key, value, title, description, render) => {
         settings.addItem({
@@ -38,4 +40,5 @@ export function addSettings(settings: SettingUtils, onChanged: () => void): void
     addDisplayFormatPanel(addPanel, i18n.settings.panel, i18n);
     addAppearancePanel(addPanel, i18n.settings.panel);
     addRefreshPanel(addPanel, i18n.settings.panel);
+    addLicensePanel(addPanel, i18n.settings.panel, license);
 }
