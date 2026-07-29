@@ -80,7 +80,13 @@ export default defineConfig({
                 ] : [
                     // Clean up unnecessary files under dist dir
                     cleanupDistFiles({
-                        patterns: ['i18n/*.yaml', 'i18n/*.md'],
+                        patterns: [
+                            'i18n/*.yaml',
+                            'i18n/*.md',
+                            'i18n/en_US.json',
+                            'i18n/zh_CN.json',
+                            'README_zh_CN.md'
+                        ],
                         distDir: outputDir
                     }),
                     zipPack({

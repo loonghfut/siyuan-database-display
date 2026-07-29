@@ -1,4 +1,4 @@
-import enUS from "../public/i18n/en_US.json";
+import enUS from "../public/i18n/en.json";
 
 export type I18nDictionary = typeof enUS;
 
