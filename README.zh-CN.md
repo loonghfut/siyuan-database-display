@@ -3,6 +3,9 @@
 
 显示块的数据库属性值，支持99%的块！
 
+## 下个版本将会开始收费，但仍然保持开源，介意请勿使用
+
+
 ## 开发动力来源[打赏](https://pic.imgdb.cn/item/6751b929d0e0a243d4de55a7.png) star
 <p align="center">
   <img src="https://pic.imgdb.cn/item/6751b929d0e0a243d4de55a7.png" alt="打赏" style="max-width:240px; width:100%; height:auto;" />

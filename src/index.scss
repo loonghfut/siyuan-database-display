@@ -469,6 +469,10 @@
     box-sizing: border-box;
 }
 
+.db-settings__field-rule {
+    grid-template-columns: 1fr 26px;
+}
+
 .db-settings__remove-rule {
     position: relative;
     display: grid;
@@ -505,6 +509,10 @@
 
     .db-settings__value-rule {
         grid-template-columns: minmax(90px, 1fr) auto 28px auto 26px;
+    }
+
+    .db-settings__field-rule {
+        grid-template-columns: 1fr 26px;
     }
 }
 
@@ -1192,3 +1200,5 @@ span[style*="outline: 2px solid"] {
         transition-duration: 1ms;
     }
 }
+
+
