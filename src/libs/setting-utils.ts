@@ -351,6 +351,7 @@ export class SettingUtils {
                 numberElement.type = 'number';
                 numberElement.className = 'b3-text-field fn__flex-center fn__size200';
                 numberElement.value = item.value;
+                numberElement.onchange = item.action?.callback ?? (() => { });
                 itemElement = numberElement;
                 numberElement.addEventListener('keydown', preventEnterConfirm);
                 break;

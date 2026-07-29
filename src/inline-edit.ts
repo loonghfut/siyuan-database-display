@@ -3,8 +3,8 @@
  */
 
 import { showMessage } from "siyuan";
-import { AVManager } from "./db_pro";
-import { setAttributeViewValue } from "./db_interface";
+import { AttributeViewRepository } from "./data/attribute-view-repository";
+import { AttributeViewWriteValue } from "./core/types";
 import { t } from "./i18n";
 import { toErrorMessage } from "./libs/error-utils";
 
@@ -24,6 +24,7 @@ export interface InlineEditOptions {
 
 // 存储当前打开的弹窗引用
 let currentPopup: HTMLElement | null = null;
+const attributeViewRepository = new AttributeViewRepository();
 
 /**
  * 启用直接编辑模式 - 根据字段类型使用不同的编辑方式
@@ -64,16 +65,14 @@ export function enableInlineEdit(options: InlineEditOptions) {
  * 处理复选框直接切换
  */
 async function handleCheckboxEdit(options: InlineEditOptions) {
-    const { avID, blockID, itemID, keyName, currentValue, onSave } = options;
+    const { avID, itemID, currentValue, onSave } = options;
     
     // 直接切换状态
     const newValue = !Boolean(currentValue);
     
     try {
-        const avManager = new AVManager();
         const value = convertToAVValue('checkbox', newValue);
-        
-        await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
+        await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
         
         showMessage(t('common.saveSuccess'), 2000, 'info');
         
@@ -91,7 +90,7 @@ async function handleCheckboxEdit(options: InlineEditOptions) {
  * 处理单选下拉菜单
  */
 function handleSelectEdit(options: InlineEditOptions) {
-    const { element, avID, blockID, itemID, keyName, currentValue, selectOptions, onSave, onCancel } = options;
+    const { element, avID, itemID, currentValue, selectOptions, onSave, onCancel } = options;
     
     // 创建下拉菜单容器
     const dropdown = document.createElement('div');
@@ -126,10 +125,8 @@ function handleSelectEdit(options: InlineEditOptions) {
     // 保存函数
     const save = async (selectedValue: string) => {
         try {
-            const avManager = new AVManager();
             const value = convertToAVValue('select', selectedValue);
-            
-            await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
+            await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
             
             closeDropdown(dropdown);
             showMessage(t('common.saveSuccess'), 2000, 'info');
@@ -172,7 +169,7 @@ function handleSelectEdit(options: InlineEditOptions) {
  * 处理多选下拉菜单
  */
 function handleMultiSelectEdit(options: InlineEditOptions) {
-    const { element, avID, blockID, itemID, keyName, currentValue, selectOptions, onSave, onCancel } = options;
+    const { element, avID, itemID, currentValue, selectOptions, onSave, onCancel } = options;
     
     // 创建多选容器
     const dropdown = document.createElement('div');
@@ -237,10 +234,8 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
     const save = async () => {
         try {
             const values = Array.from(selectedValues);
-            const avManager = new AVManager();
             const value = convertToAVValue('mSelect', values);
-            
-            await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
+            await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
             
             closeDropdown(dropdown);
             showMessage(t('common.saveSuccess'), 2000, 'info');
@@ -285,7 +280,7 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
  * 处理日期编辑
  */
 function handleDateEdit(options: InlineEditOptions) {
-    const { element, avID, blockID, itemID, keyName, currentValue, onSave, onCancel } = options;
+    const { element, avID, itemID, currentValue, onSave, onCancel } = options;
 
     // 归一化当前值
     const current = (currentValue && typeof currentValue === 'object')
@@ -378,10 +373,8 @@ function handleDateEdit(options: InlineEditOptions) {
             const hasEnd = rangeCheckbox.checked;
             const endTs = hasEnd && endInput.value ? new Date(endInput.value).getTime() : null;
 
-            const avManager = new AVManager();
             const value = convertToAVValue('date', { content: startTs, hasEndDate: hasEnd, content2: endTs, isNotTime: false });
-
-            await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
+            await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
 
             closeDropdown(datePicker);
             showMessage(t('common.saveSuccess'), 2000, 'info');
@@ -440,7 +433,7 @@ function handleDateEdit(options: InlineEditOptions) {
  * 处理弹窗编辑（文本、数字等）
  */
 function handlePopupEdit(options: InlineEditOptions) {
-    const { element, avID, blockID, itemID, keyName, keyType, currentValue, onSave, onCancel } = options;
+    const { element, avID, itemID, keyName, keyType, currentValue, onSave, onCancel } = options;
     
     // 创建弹窗容器
     const popup = document.createElement('div');
@@ -522,7 +515,6 @@ function handlePopupEdit(options: InlineEditOptions) {
         const newValue = getInputValue(inputElement, keyType);
 
         try {
-            const avManager = new AVManager();
             // 对于数字类型，需要同时传递 isNotEmpty 标记，保持 onSave 回调传回原始数值以保持兼容
             let avInput: any = newValue;
             if (keyType === 'number') {
@@ -532,7 +524,7 @@ function handlePopupEdit(options: InlineEditOptions) {
 
             const value = convertToAVValue(keyType, avInput);
 
-            await avManager.setBlockAttribute(avID, keyName, itemID, value, blockID);
+            await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
 
             // 关闭弹窗
             closePopup();
@@ -786,7 +778,7 @@ function getInputValue(element: HTMLInputElement | HTMLSelectElement, keyType: s
 /**
  * 转换为数据库格式
  */
-function convertToAVValue(keyType: string, value: any): setAttributeViewValue {
+function convertToAVValue(keyType: string, value: any): AttributeViewWriteValue {
     switch (keyType) {
         case 'text':
             return { text: { content: String(value || '') } };

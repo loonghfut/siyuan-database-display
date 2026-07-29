@@ -63,49 +63,165 @@
 }
 
 .my-protyle-attr--av {
-    max-width: 80vw !important;
+    max-width: min(100%, 80vw) !important;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5em;
+    gap: 5px;
     align-items: center;
+    padding: 5px 0 2px;
 }
 
-.my-protyle-attr--av>span {
-    padding: 0 0.5em;
-    border-radius: 0.5em;
-    transition: all 0.2s ease;
+.db-display__chip {
+    display: inline-flex;
+    align-items: center;
+    max-width: min(100%, 280px);
+    min-height: 24px;
+    padding: 3px 8px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    border-radius: 4px;
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0;
+    text-align: left;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
 
-    &:nth-child(4n + 4) {
-        color: var(--b3-card-error-color);
-        background-color: var(--b3-card-error-background);
-    }
+.db-display__chip:hover {
+    border-color: currentColor;
+    box-shadow: 0 1px 4px color-mix(in srgb, currentColor 20%, transparent);
+    transform: translateY(-1px);
+}
 
-    &:nth-child(4n + 3) {
-        color: var(--b3-card-warning-color);
-        background-color: var(--b3-card-warning-background);
-    }
+.db-display__chip:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 2px;
+}
 
-    &:nth-child(4n + 2) {
-        color: var(--b3-card-info-color);
-        background-color: var(--b3-card-info-background);
-    }
+.db-display__chip--readonly {
+    cursor: default;
+    opacity: 0.82;
+}
 
-    &:nth-child(4n + 1) {
-        color: var(--b3-card-success-color);
-        background-color: var(--b3-card-success-background);
-    }
+.db-display__chip--readonly:hover {
+    border-color: color-mix(in srgb, currentColor 18%, transparent);
+    box-shadow: none;
+    transform: none;
+}
 
-    // 可编辑字段样式
-    &[style*="cursor: pointer"] {
-        &:hover {
-            opacity: 0.8;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
+.db-settings {
+    display: grid;
+    gap: 10px;
+    width: min(100%, 620px);
+    padding: 10px 12px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 6px;
+    background: var(--b3-theme-surface);
+    box-sizing: border-box;
+}
 
-        &:active {
-            transform: translateY(0);
-        }
+.db-settings section {
+    display: grid;
+    gap: 6px;
+}
+
+.db-settings section + section {
+    padding-top: 10px;
+    border-top: 1px solid var(--b3-border-color);
+}
+
+.db-settings strong {
+    color: var(--b3-theme-on-surface);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.db-settings__row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 5px;
+    padding: 4px 0;
+    color: var(--b3-theme-on-surface);
+    font-size: 13px;
+}
+
+.db-settings__row .b3-text-field,
+.db-settings__row .b3-select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.db-settings__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.db-settings__check {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 26px;
+    padding: 2px 7px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    color: var(--b3-theme-on-surface);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.db-settings__check:has(input:checked) {
+    border-color: var(--b3-theme-primary);
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+}
+
+.db-settings__palette {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.db-settings__palette-row {
+    display: grid;
+    grid-template-columns: 1fr 30px 30px;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 3px 6px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.db-settings__palette-row input[type="color"] {
+    width: 28px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.db-settings__value-rules {
+    min-height: 72px;
+    resize: vertical;
+    box-sizing: border-box;
+    font-family: var(--b3-font-family-code);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+@media (max-width: 520px) {
+    .db-settings__palette {
+        grid-template-columns: 1fr;
     }
 }
 
