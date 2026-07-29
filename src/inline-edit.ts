@@ -447,24 +447,30 @@ function handlePopupEdit(options: InlineEditOptions) {
     inputContainer.className = 'inline-edit-popup-input';
     
     // 根据字段类型创建输入元素
-    let inputElement: HTMLInputElement;
+    let inputElement: HTMLInputElement | HTMLTextAreaElement;
     
     switch (keyType) {
         case 'number':
             inputElement = createNumberInput(currentValue);
             break;
+        case 'text':
+            inputElement = createTextArea(currentValue);
+            break;
         case 'url':
         case 'email':
         case 'phone':
-        case 'text':
         default:
             inputElement = createTextInput(currentValue, keyType);
             break;
     }
     
     styleInputElement(inputElement, keyType);
-    sizeInputToContent(inputElement);
-    inputElement.addEventListener("input", () => sizeInputToContent(inputElement));
+    if (inputElement instanceof HTMLTextAreaElement) {
+        inputElement.addEventListener("input", () => sizeTextAreaToContent(inputElement));
+    } else {
+        sizeInputToContent(inputElement);
+        inputElement.addEventListener("input", () => sizeInputToContent(inputElement));
+    }
     inputContainer.appendChild(inputElement);
     popupContent.appendChild(inputContainer);
     
@@ -480,7 +486,9 @@ function handlePopupEdit(options: InlineEditOptions) {
     // 聚焦输入框
     setTimeout(() => {
         inputElement.focus();
-        if (inputElement.type === 'text') {
+        if (inputElement instanceof HTMLTextAreaElement) {
+            sizeTextAreaToContent(inputElement);
+        } else if (inputElement.type === 'text') {
             inputElement.select();
         }
     }, 10);
@@ -543,7 +551,8 @@ function handlePopupEdit(options: InlineEditOptions) {
     });
     
     inputElement.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        const isTextArea = inputElement instanceof HTMLTextAreaElement;
+        if (e.key === 'Enter' && (isTextArea ? (e.ctrlKey || e.metaKey) : !e.shiftKey)) {
             e.preventDefault();
             if (!isSaving) {
                 save();
@@ -762,6 +771,14 @@ function createTextInput(value: any, type: string): HTMLInputElement {
     return input;
 }
 
+function createTextArea(value: unknown): HTMLTextAreaElement {
+    const textarea = document.createElement('textarea');
+    textarea.value = String(value ?? '');
+    textarea.rows = 1;
+    textarea.className = 'inline-edit-input inline-edit-textarea';
+    return textarea;
+}
+
 /**
  * 创建数字输入框
  */
@@ -783,7 +800,7 @@ function createNumberInput(value: any): HTMLInputElement {
 /**
  * 设置输入元素样式
  */
-function styleInputElement(element: HTMLInputElement | HTMLSelectElement, keyType?: string) {
+function styleInputElement(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, keyType?: string) {
     // 复选框特殊处理
     if (keyType === 'checkbox') {
         element.style.width = 'auto';
@@ -797,10 +814,16 @@ function sizeInputToContent(input: HTMLInputElement): void {
     input.size = Math.min(32, Math.max(8, input.value.length + 1));
 }
 
+function sizeTextAreaToContent(textarea: HTMLTextAreaElement): void {
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 144 ? 'auto' : 'hidden';
+}
+
 /**
  * 获取输入框的值
  */
-function getInputValue(element: HTMLInputElement | HTMLSelectElement, keyType: string): any {
+function getInputValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, keyType: string): any {
     if (element instanceof HTMLSelectElement) {
         if (keyType === 'mSelect') {
             // 多选：返回所有选中的值数组
@@ -823,6 +846,10 @@ function getInputValue(element: HTMLInputElement | HTMLSelectElement, keyType: s
             default:
                 return element.value;
         }
+    }
+
+    if (element instanceof HTMLTextAreaElement) {
+        return element.value;
     }
     
     return '';

@@ -969,6 +969,7 @@ span[style*="outline: 2px solid"] {
 }
 
 .inline-edit-popup-input input,
+.inline-edit-popup-input textarea,
 .inline-edit-datepicker-input {
     width: 100%;
     min-width: 0;
@@ -992,7 +993,21 @@ span[style*="outline: 2px solid"] {
     max-width: 100%;
 }
 
+.inline-edit-popup-input textarea {
+    display: block;
+    width: min(42ch, calc(100vw - 42px));
+    min-width: 18ch;
+    min-height: 32px;
+    max-width: 100%;
+    max-height: 144px;
+    resize: vertical;
+    overflow-y: hidden;
+    line-height: 20px;
+    white-space: pre-wrap;
+}
+
 .inline-edit-popup-input input:focus,
+.inline-edit-popup-input textarea:focus,
 .inline-edit-datepicker-input:focus {
     border-color: var(--b3-theme-primary);
     box-shadow: 0 0 0 2px var(--b3-theme-primary-lightest);
