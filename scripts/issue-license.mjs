@@ -12,10 +12,11 @@ if (!existsSync(keyPath)) {
 }
 
 const payload = { version: 1, userId, edition: "pro" };
-const signature = sign(null, Buffer.from(JSON.stringify(payload)), readFileSync(keyPath)).toString("base64");
+const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+const signature = sign(null, Buffer.from(JSON.stringify(payload)), readFileSync(keyPath)).toString("base64url");
 const licenseDir = resolve(".license/issued");
-const filename = `${userId.replace(/[^a-zA-Z0-9_-]/g, "_")}.license.json`;
+const filename = `${userId.replace(/[^a-zA-Z0-9_-]/g, "_")}.license.txt`;
 const licensePath = resolve(licenseDir, filename);
 mkdirSync(licenseDir, { recursive: true });
-writeFileSync(licensePath, JSON.stringify({ payload, signature }, null, 2));
+writeFileSync(licensePath, `DBP1.${encodedPayload}.${signature}\n`);
 console.log(`License created: ${licensePath}`);

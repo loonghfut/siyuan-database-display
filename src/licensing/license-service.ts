@@ -9,7 +9,9 @@ function currentUserId(): string {
 }
 
 function toArrayBuffer(value: string): ArrayBuffer {
-    const binary = atob(value.replace(/\s/g, ""));
+    const normalized = value.replace(/\s/g, "").replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const binary = atob(padded);
     const bytes = new Uint8Array(binary.length);
     for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
     return bytes.buffer;
@@ -33,7 +35,13 @@ function canonicalPayload(payload: LicensePayload): ArrayBuffer {
 function parseLicense(value: unknown): SignedLicense | undefined {
     if (typeof value !== "string" || !value.trim()) return undefined;
     try {
-        const parsed = JSON.parse(value) as Partial<SignedLicense>;
+        const raw = value.trim();
+        const parts = raw.split(".");
+        if (parts.length !== 3 || parts[0] !== "DBP1") return undefined;
+        const parsed = {
+            payload: JSON.parse(new TextDecoder().decode(toArrayBuffer(parts[1]))),
+            signature: parts[2]
+        } as Partial<SignedLicense>;
         if (!parsed.payload || parsed.payload.version !== 1 || parsed.payload.edition !== "pro" ||
             typeof parsed.payload.userId !== "string" || !parsed.payload.userId.trim() || typeof parsed.signature !== "string") return undefined;
         return parsed as SignedLicense;
