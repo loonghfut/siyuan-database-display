@@ -14,6 +14,7 @@ export interface DisplayConfig {
     includeTime: boolean;
     checkboxStyle: CheckboxStyle;
     maxDisplayLength: number;
+    showFieldNames: boolean;
     fieldColors: Record<string, string>;
     fieldBackgrounds: Record<string, string>;
     valueColors: Record<string, string | ColorRule>;
@@ -91,7 +92,7 @@ function sanitizeValueColors(value: unknown): Record<string, string | ColorRule>
 export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig {
     const fieldSettings = parseJsonObject<{ document?: string; block?: string }>(get("display-fields"), {});
     const fieldRules = parseJsonObject<{ hidden?: string; force?: string }>(get("field-rules"), {});
-    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number }>>(get("display-format"), {});
+    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean }>>(get("display-format"), {});
     const appearance = parseJsonObject<{ types?: Record<string, ColorRule>; values?: Record<string, unknown> }>(get("display-appearance"), {});
     const max = Number(get("max-display-length"));
     const configuredMax = Number(formatSettings.maxDisplayLength ?? max);
@@ -109,6 +110,7 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
         includeTime: formatSettings.includeTime ?? Boolean(get("include-time")),
         checkboxStyle: ["emoji", "symbol", "text"].includes(String(checkboxStyle)) ? checkboxStyle as CheckboxStyle : "emoji",
         maxDisplayLength: Number.isFinite(configuredMax) ? Math.min(200, Math.max(10, configuredMax || 30)) : 30,
+        showFieldNames: formatSettings.showFieldNames === true,
         fieldColors: Object.keys(colors).length ? colors : sanitizeColorMap(get("field-color-map"), DEFAULT_FIELD_COLORS),
         fieldBackgrounds: Object.keys(backgrounds).length ? backgrounds : sanitizeColorMap(get("field-bg-color-map"), DEFAULT_FIELD_BACKGROUNDS),
         valueColors: Object.keys(appearance.values || {}).length ? sanitizeValueColors(JSON.stringify(appearance.values)) : sanitizeValueColors(get("field-value-color-map"))

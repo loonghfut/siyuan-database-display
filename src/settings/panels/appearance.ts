@@ -88,8 +88,8 @@ export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText):
                 const remove = document.createElement("button");
                 remove.type = "button";
                 remove.className = "db-settings__remove-rule";
-                remove.textContent = "×";
                 remove.title = text.appearance.removeValueRule;
+                remove.setAttribute("aria-label", text.appearance.removeValueRule);
                 backgroundEnabled.addEventListener("change", () => {
                     background.element.classList.toggle("fn__none", !backgroundEnabled.checked);
                     save();

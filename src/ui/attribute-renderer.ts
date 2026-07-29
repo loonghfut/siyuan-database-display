@@ -35,8 +35,15 @@ export class AttributeRenderer {
         element.className = "db-display__chip ariaLabel";
         if (element instanceof HTMLButtonElement) element.type = "button";
         const text = item.text.length > context.config.maxDisplayLength ? `${item.text.slice(0, context.config.maxDisplayLength)}...` : item.text;
-        element.textContent = text;
-        element.setAttribute("aria-label", item.text);
+        if (context.config.showFieldNames) {
+            const name = document.createElement("span");
+            name.className = "db-display__field-name";
+            name.textContent = `${item.keyName}: `;
+            element.append(name, document.createTextNode(text));
+        } else {
+            element.textContent = text;
+        }
+        element.setAttribute("aria-label", context.config.showFieldNames ? `${item.keyName}: ${item.text}` : item.text);
         element.dataset.fieldType = item.type;
         this.applyColors(element, item, context.config);
 
@@ -61,18 +68,20 @@ export class AttributeRenderer {
         return element;
     }
 
+
     private applyColors(element: HTMLElement, item: DisplayItem, config: DisplayConfig): void {
         const valueRule = config.valueColors[item.text];
         const rule = typeof valueRule === "string" ? { color: valueRule } : valueRule;
         const color = rule?.color || config.fieldColors[item.type];
         const background = rule?.bg || config.fieldBackgrounds[item.type];
         if (isSafeColor(color)) element.style.color = color;
-        if (isSafeColor(background)) element.style.backgroundColor = background;
+        if (isSafeColor(background)) element.style.setProperty("--db-chip-background", background);
     }
 
     private visualConfig(config: DisplayConfig): unknown {
         return {
             max: config.maxDisplayLength,
+            showFieldNames: config.showFieldNames,
             colors: config.fieldColors,
             backgrounds: config.fieldBackgrounds,
             values: config.valueColors

@@ -66,20 +66,32 @@
     max-width: min(100%, 80vw) !important;
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 6px 8px;
     align-items: center;
-    padding: 5px 0 2px;
+    padding: 0;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.db-display__database-icon {
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    margin: 2px 0;
+    color: var(--b3-theme-on-surface);
 }
 
 .db-display__chip {
     display: inline-flex;
-    align-items: center;
+    align-items: baseline;
     max-width: min(100%, 280px);
-    min-height: 24px;
-    padding: 3px 8px;
+    min-height: 16px;
+    padding: 0 3px;
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
-    border-radius: 4px;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent !important;
+    background-image: linear-gradient(to bottom, transparent 20%, var(--db-chip-background, transparent) 20% 88%, transparent 88%);
     box-sizing: border-box;
     font: inherit;
     font-size: 12px;
@@ -90,13 +102,18 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     cursor: pointer;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.db-display__field-name {
+    flex: 0 1 auto;
+    opacity: 0.7;
 }
 
 .db-display__chip:hover {
-    border-color: currentColor;
-    box-shadow: 0 1px 4px color-mix(in srgb, currentColor 20%, transparent);
-    transform: translateY(-1px);
+    color: var(--b3-protyle-inline-blockref-color) !important;
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }
 
 .db-display__chip:focus-visible {
@@ -110,9 +127,8 @@
 }
 
 .db-display__chip--readonly:hover {
-    border-color: color-mix(in srgb, currentColor 18%, transparent);
-    box-shadow: none;
-    transform: none;
+    color: inherit !important;
+    text-decoration: none;
 }
 
 .db-settings {
@@ -216,11 +232,10 @@
 .db-color-control__trigger {
     position: relative;
     width: 26px;
-    height: 22px;
+    height: 26px;
     padding: 0;
     border: 1px solid var(--b3-border-color);
-    border-radius: 3px;
-    background: repeating-conic-gradient(#e7e7e7 0 25%, #fff 0 50%) 50% / 8px 8px;
+    border-radius: 50%;
     cursor: pointer;
     overflow: hidden;
 }
@@ -228,7 +243,7 @@
 .db-color-control__trigger::after {
     position: absolute;
     inset: 3px;
-    border-radius: 1px;
+    border-radius: inherit;
     background: var(--db-color);
     content: "";
     opacity: var(--db-opacity);
@@ -267,6 +282,9 @@
 }
 
 .db-color-picker__close {
+    position: relative;
+    display: grid;
+    place-items: center;
     width: 26px;
     height: 26px;
     padding: 0;
@@ -274,9 +292,30 @@
     border-radius: 3px;
     background: transparent;
     color: var(--b3-theme-on-surface-light);
-    font-size: 19px;
-    line-height: 1;
+    font-size: 0;
     cursor: pointer;
+}
+
+.db-color-picker__close::before,
+.db-color-picker__close::after,
+.db-settings__remove-rule::before,
+.db-settings__remove-rule::after {
+    position: absolute;
+    width: 16px;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+    content: "";
+}
+
+.db-color-picker__close::before,
+.db-settings__remove-rule::before {
+    transform: rotate(45deg);
+}
+
+.db-color-picker__close::after,
+.db-settings__remove-rule::after {
+    transform: rotate(-45deg);
 }
 
 .db-color-picker__close:hover {
@@ -392,15 +431,17 @@
 }
 
 .db-settings__remove-rule {
-    min-width: 24px;
-    min-height: 24px;
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
     padding: 0;
     border: 0;
     border-radius: 3px;
     background: transparent;
     color: var(--b3-theme-on-surface-light);
-    font-size: 18px;
-    line-height: 1;
+    font-size: 0;
     cursor: pointer;
 }
 
