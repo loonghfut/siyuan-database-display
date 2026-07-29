@@ -463,6 +463,8 @@ function handlePopupEdit(options: InlineEditOptions) {
     }
     
     styleInputElement(inputElement, keyType);
+    sizeInputToContent(inputElement);
+    inputElement.addEventListener("input", () => sizeInputToContent(inputElement));
     inputContainer.appendChild(inputElement);
     popupContent.appendChild(inputContainer);
     
@@ -788,6 +790,11 @@ function styleInputElement(element: HTMLInputElement | HTMLSelectElement, keyTyp
         element.style.minWidth = 'auto';
         element.style.padding = '0';
     }
+}
+
+function sizeInputToContent(input: HTMLInputElement): void {
+    if (input.type === "datetime-local") return;
+    input.size = Math.min(32, Math.max(8, input.value.length + 1));
 }
 
 /**

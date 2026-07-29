@@ -869,9 +869,9 @@ span[style*="outline: 2px solid"] {
 .inline-edit-popup,
 .inline-edit-dropdown,
 .inline-edit-datepicker {
-    width: min(300px, calc(100vw - 16px));
+    width: fit-content;
     min-width: 0;
-    max-width: none;
+    max-width: min(360px, calc(100vw - 16px));
     overflow: hidden;
     border: 1px solid var(--b3-border-color);
     border-radius: 6px;
@@ -984,6 +984,12 @@ span[style*="outline: 2px solid"] {
     font-size: 13px;
     letter-spacing: 0;
     transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.inline-edit-popup-input input {
+    width: auto;
+    min-width: 8ch;
+    max-width: 100%;
 }
 
 .inline-edit-popup-input input:focus,
