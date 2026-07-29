@@ -103,5 +103,5 @@ If you find any issues or have feature suggestions, please:
 
 ## 🙏 Acknowledgments
 
-- Thanks to [A-chuan](https://ld246.com/member/Achuan-2) for the design inspiration from the [tsundoku](https://github.com/Achuan-2/siyuan-themes-tsundoku) theme
+
 - Thanks to the SiYuan community for support

@@ -11,7 +11,7 @@
 ## ✨ 功能特性
 
 ### 📊 数据库字段显示
-- **全面支持**：支持 99% 的块类型数据库属性显示
+- **全面支持**：支持 99.9% 的块类型数据库属性显示
 - **多字段类型**：支持多选、数字、日期、文本、资产、复选框、电话、URL、邮箱等字段类型
 - **智能过滤**：自动过滤空值、null 和 undefined
 
@@ -108,5 +108,5 @@ mSelect,text,date,checkbox
 
 ## 🙏 致谢
 
-- 感谢 [A-chuan](https://ld246.com/member/Achuan-2) 提供的 [tsundoku](https://github.com/Achuan-2/siyuan-themes-tsundoku) 主题设计灵感
+
 - 感谢思源笔记社区提供的插件模板
