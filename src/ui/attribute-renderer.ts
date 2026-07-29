@@ -34,14 +34,20 @@ export class AttributeRenderer {
         const element = document.createElement(item.keyType === "url" && item.rawValue ? "a" : "button");
         element.className = "db-display__chip ariaLabel";
         if (element instanceof HTMLButtonElement) element.type = "button";
-        const text = item.text.length > context.config.maxDisplayLength ? `${item.text.slice(0, context.config.maxDisplayLength)}...` : item.text;
+        const normalizedText = item.text.replace(/\s+/g, " ").trim();
+        const text = normalizedText.length > context.config.maxDisplayLength
+            ? `${normalizedText.slice(0, context.config.maxDisplayLength)}...`
+            : normalizedText;
+        const value = document.createElement("span");
+        value.className = "db-display__value";
+        value.textContent = text;
         if (context.config.showFieldNames) {
             const name = document.createElement("span");
             name.className = "db-display__field-name";
             name.textContent = `${item.keyName}: `;
-            element.append(name, document.createTextNode(text));
+            element.append(name, value);
         } else {
-            element.textContent = text;
+            element.appendChild(value);
         }
         element.setAttribute("aria-label", context.config.showFieldNames ? `${item.keyName}: ${item.text}` : item.text);
         element.dataset.fieldType = item.type;

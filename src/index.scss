@@ -63,6 +63,9 @@
 }
 
 .my-protyle-attr--av {
+    flex: 0 1 auto;
+    width: fit-content;
+    min-width: 0;
     max-width: min(100%, 80vw) !important;
     display: flex;
     flex-wrap: wrap;
@@ -106,8 +109,21 @@
 }
 
 .db-display__field-name {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     opacity: 0.7;
+    white-space: nowrap;
+}
+
+.db-display__value {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.db-display__chip[data-field-type="text"] .db-display__value {
+    max-width: min(220px, 60vw);
 }
 
 .db-display__chip:hover {
