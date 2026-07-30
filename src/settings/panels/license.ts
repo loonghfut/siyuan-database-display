@@ -1,5 +1,5 @@
 import { showMessage } from "siyuan";
-import { LicenseService } from "@/licensing";
+import { LicenseService, TrialService } from "@/licensing";
 import { AddPanel, SettingsPanelText } from "../types";
 
 async function copyText(value: string): Promise<void> {
@@ -15,7 +15,18 @@ async function copyText(value: string): Promise<void> {
     input.remove();
 }
 
-export function addLicensePanel(addPanel: AddPanel, text: SettingsPanelText, license: LicenseService): void {
+function formatExpiry(value: string): string {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+export function addLicensePanel(
+    addPanel: AddPanel,
+    text: SettingsPanelText,
+    license: LicenseService,
+    trial: TrialService,
+    onChanged: () => void
+): void {
     addPanel("pro-license", "", text.license.title, text.license.description, (value, commit) => {
         const panel = document.createElement("div");
         panel.className = "db-settings--license";
@@ -25,25 +36,63 @@ export function addLicensePanel(addPanel: AddPanel, text: SettingsPanelText, lic
         status.className = "db-license__status";
         status.setAttribute("role", "status");
         status.setAttribute("aria-live", "polite");
-        const updateStatus = async () => {
-            const next = await license.refresh(licenseInput.value);
+        const startTrial = document.createElement("button");
+        startTrial.type = "button";
+        startTrial.className = "b3-button b3-button--outline";
+        startTrial.textContent = text.trial.start;
+
+        const renderStatus = (next = license.getStatus()) => {
+            const trialStatus = trial.getStatus();
+            const trialActive = !next.valid && trialStatus.state === "active";
+            const trialAvailable = !next.valid && trialStatus.state === "available";
+            startTrial.hidden = !trialAvailable;
+
+            if (trialActive) {
+                status.classList.add("db-license__status--active");
+                status.classList.remove("db-license__status--inactive");
+                status.textContent = text.trial.active.replace("${expiresAt}", formatExpiry(trialStatus.record.expiresAt));
+                return;
+            }
             if ("reason" in next) {
                 status.classList.remove("db-license__status--active");
                 status.classList.add("db-license__status--inactive");
                 status.textContent = text.license.status[next.reason];
-                return next;
+                return;
             }
             status.classList.add("db-license__status--active");
             status.classList.remove("db-license__status--inactive");
             status.textContent = text.license.status.active;
+        };
+        const updateStatus = async () => {
+            const next = await license.refresh(licenseInput.value);
+            renderStatus(next);
             return next;
         };
+
+        startTrial.addEventListener("click", () => {
+            startTrial.disabled = true;
+            startTrial.textContent = text.trial.starting;
+            void trial.start().then(next => {
+                onChanged();
+                renderStatus();
+                showMessage(next.state === "active" ? text.trial.started : text.trial.failed, 3000, next.state === "active" ? "info" : "error");
+            }).catch(() => {
+                renderStatus();
+                showMessage(text.trial.failed, 3000, "error");
+            }).finally(() => {
+                startTrial.disabled = false;
+                startTrial.textContent = text.trial.start;
+            });
+        });
 
         const statusRow = document.createElement("div");
         statusRow.className = "db-settings__row";
         const statusLabel = document.createElement("span");
         statusLabel.textContent = text.license.statusLabel;
-        statusRow.append(statusLabel, status);
+        const statusActions = document.createElement("div");
+        statusActions.className = "db-license__status-actions";
+        statusActions.append(status, startTrial);
+        statusRow.append(statusLabel, statusActions);
 
         const userIdInput = document.createElement("input");
         userIdInput.className = "b3-text-field";

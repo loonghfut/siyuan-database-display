@@ -6,7 +6,6 @@ import { addDisplayFormatPanel } from "./panels/display-format";
 import { addFieldRulesPanel } from "./panels/field-rules";
 import { addRefreshPanel } from "./panels/refresh";
 import { addLicensePanel } from "./panels/license";
-import { addTrialPanel } from "./panels/trial";
 import { LicenseService, TrialService } from "@/licensing";
 import { AddPanel } from "./types";
 
@@ -42,6 +41,5 @@ export function addSettings(settings: SettingUtils, onChanged: () => void, licen
     addDisplayFormatPanel(addPanel, i18n.settings.panel, i18n);
     addAppearancePanel(addPanel, i18n.settings.panel);
     addRefreshPanel(addPanel, i18n.settings.panel);
-    addLicensePanel(addPanel, i18n.settings.panel, license);
-    addTrialPanel(addPanel, i18n.settings.panel, trial, onChanged);
+    addLicensePanel(addPanel, i18n.settings.panel, license, trial, onChanged);
 }

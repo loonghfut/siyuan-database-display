@@ -1231,6 +1231,13 @@ span[style*="outline: 2px solid"] {
     color: var(--b3-theme-on-surface-light);
 }
 
+.db-license__status-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
 .db-settings--license .fn__flex {
     align-items: center;
     gap: 8px;
@@ -1289,16 +1296,6 @@ span[style*="outline: 2px solid"] {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-}
-
-.db-settings--trial {
-    display: grid;
-    gap: 12px;
-    max-width: 560px;
-}
-
-.db-settings--trial > .b3-button {
-    justify-self: start;
 }
 
 
