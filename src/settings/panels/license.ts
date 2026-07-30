@@ -59,13 +59,16 @@ export function addLicensePanel(
         const startTrial = document.createElement("button");
         startTrial.type = "button";
         startTrial.className = "b3-button b3-button--outline";
+        startTrial.classList.add("fn__none");
         startTrial.textContent = text.trial.start;
 
         const renderStatus = (next = license.getStatus()) => {
             const trialStatus = trial.getStatus();
             const trialActive = !next.valid && trialStatus.state === "active";
             const canStartTrial = !next.valid && trialStatus.state === "available";
-            startTrial.hidden = !canStartTrial;
+            // Use SiYuan's visibility utility class so it remains effective after
+            // the settings framework adds its layout classes.
+            startTrial.classList.toggle("fn__none", !canStartTrial);
 
             if (trialActive) {
                 status.classList.add("db-license__status--active");
