@@ -121,6 +121,18 @@ export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText):
                 const rule = raw as { color?: string; bg?: string };
                 return { name, color: rule.color || "#000000", background: rule.bg || "" };
             });
+            // `renderRules` replaces the rule inputs. Keep edits made since the last save
+            // before doing so, otherwise adding a rule would restore the initial values.
+            const syncRulesFromInputs = () => {
+                const updatedRules = Array.from(list.querySelectorAll<HTMLElement>(".db-settings__value-rule")).map(row => ({
+                    name: row.querySelector<HTMLInputElement>("[data-rule-name]")?.value ?? "",
+                    color: readColorControl(row.querySelector<HTMLElement>("[data-rule-color]")) || "#000000",
+                    background: row.querySelector<HTMLInputElement>("[data-rule-background-enabled]")?.checked
+                        ? readColorControl(row.querySelector<HTMLElement>("[data-rule-background]")) || ""
+                        : ""
+                }));
+                rules.splice(0, rules.length, ...updatedRules);
+            };
             const renderRules = () => {
                 list.replaceChildren();
                 rules.forEach(rule => {
@@ -152,6 +164,7 @@ export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText):
                 });
             };
             addRule.addEventListener("click", () => {
+                syncRulesFromInputs();
                 rules.push({ name: text.appearance.newValue, color: "#000000", background: "" });
                 renderRules();
                 save();
