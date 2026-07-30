@@ -1,3 +1,5 @@
+import { NetworkClient } from "@/network/network-client";
+
 declare const __DATABASE_DISPLAY_TRIAL_DAYS__: number;
 declare const __DATABASE_DISPLAY_TRIAL_WEBHOOK_URL__: string;
 
@@ -18,6 +20,7 @@ export type TrialStatus =
 interface TrialServiceOptions {
     getRecords: () => unknown;
     saveRecords: (value: string) => Promise<void>;
+    networkClient?: NetworkClient;
 }
 
 function currentProfile(): { userId: string; userName: string } {
@@ -49,7 +52,11 @@ function formatLocalTime(date: Date): string {
 }
 
 export class TrialService {
-    constructor(private readonly options: TrialServiceOptions) {}
+    private readonly networkClient: NetworkClient;
+
+    constructor(private readonly options: TrialServiceOptions) {
+        this.networkClient = options.networkClient || new NetworkClient({ serverUrl: "" });
+    }
 
     getStatus(now = Date.now()): TrialStatus {
         const { userId, userName } = currentProfile();
@@ -88,11 +95,11 @@ export class TrialService {
 
     private async notify(userId: string, userName: string, time: Date): Promise<void> {
         try {
-            await fetch(__DATABASE_DISPLAY_TRIAL_WEBHOOK_URL__, {
+            await this.networkClient.request({
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                path: __DATABASE_DISPLAY_TRIAL_WEBHOOK_URL__,
+                contentType: "application/json",
                 body: JSON.stringify({ userid: userId, name: userName, time: formatLocalTime(time) }),
-                credentials: "omit"
             });
         } catch {
             // A reporting failure must not prevent an otherwise eligible local trial.
