@@ -3,7 +3,7 @@ import { LicenseService, TrialService } from "@/licensing";
 import { AddPanel, SettingsPanelText } from "../types";
 
 // Fill this in when the Pro application page is ready.
-const PRO_APPLICATION_URL = "";
+const PRO_APPLICATION_URL = "https://www.kdocs.cn/l/cqkfx6NVc2BE?linkname=Diz87RtY2M";
 
 async function copyText(value: string): Promise<void> {
     if (navigator.clipboard?.writeText) {
