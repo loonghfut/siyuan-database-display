@@ -2,6 +2,9 @@ import { showMessage } from "siyuan";
 import { LicenseService, TrialService } from "@/licensing";
 import { AddPanel, SettingsPanelText } from "../types";
 
+// Fill this in when the Pro application page is ready.
+const PRO_APPLICATION_URL = "";
+
 async function copyText(value: string): Promise<void> {
     if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(value);
@@ -20,6 +23,22 @@ function formatExpiry(value: string): string {
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function addApplicationButton(panel: HTMLElement, label: string): void {
+    queueMicrotask(() => {
+        const title = panel.closest<HTMLElement>(".config-item")?.querySelector<HTMLElement>(".config-name");
+        if (!title || title.querySelector(".db-license__apply")) return;
+
+        const apply = document.createElement("button");
+        apply.type = "button";
+        apply.className = "b3-button b3-button--outline db-license__apply";
+        apply.textContent = label;
+        apply.addEventListener("click", () => {
+            if (PRO_APPLICATION_URL) window.open(PRO_APPLICATION_URL, "_blank", "noopener,noreferrer");
+        });
+        title.append(apply);
+    });
+}
+
 export function addLicensePanel(
     addPanel: AddPanel,
     text: SettingsPanelText,
@@ -30,6 +49,7 @@ export function addLicensePanel(
     addPanel("pro-license", "", text.license.title, text.license.description, (value, commit) => {
         const panel = document.createElement("div");
         panel.className = "db-settings--license";
+        addApplicationButton(panel, text.license.apply);
         const userId = window.siyuan?.user?.userId || "";
 
         const status = document.createElement("span");
@@ -44,8 +64,8 @@ export function addLicensePanel(
         const renderStatus = (next = license.getStatus()) => {
             const trialStatus = trial.getStatus();
             const trialActive = !next.valid && trialStatus.state === "active";
-            const trialAvailable = !next.valid && trialStatus.state === "available";
-            startTrial.hidden = !trialAvailable;
+            const canStartTrial = !next.valid && trialStatus.state === "available";
+            startTrial.hidden = !canStartTrial;
 
             if (trialActive) {
                 status.classList.add("db-license__status--active");
