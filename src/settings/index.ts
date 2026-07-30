@@ -8,6 +8,7 @@ import { addRefreshPanel } from "./panels/refresh";
 import { addLicensePanel } from "./panels/license";
 import { LicenseService, TrialService } from "@/licensing";
 import { AddPanel } from "./types";
+import { installSettingsHeaderNavigation } from "./header-navigation";
 
 export { migrateLegacySettings } from "./migration";
 
@@ -42,4 +43,12 @@ export function addSettings(settings: SettingUtils, onChanged: () => void, licen
     addAppearancePanel(addPanel, i18n.settings.panel);
     addRefreshPanel(addPanel, i18n.settings.panel);
     addLicensePanel(addPanel, i18n.settings.panel, license, trial, onChanged);
+    installSettingsHeaderNavigation(settings, [
+        { key: "display-fields", title: i18n.settings.panel.displayFields.title },
+        { key: "field-rules", title: i18n.settings.panel.fieldRules.title },
+        { key: "format", title: i18n.settings.panel.format.title },
+        { key: "appearance", title: i18n.settings.panel.appearance.title },
+        { key: "refresh", title: i18n.settings.panel.refresh.title },
+        { key: "license", title: i18n.settings.panel.license.title }
+    ]);
 }

@@ -155,6 +155,66 @@
     box-sizing: border-box;
 }
 
+.b3-dialog__header:has(.db-settings-nav) {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.db-settings-nav {
+    display: flex;
+    flex: 1;
+    justify-content: flex-end;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.db-settings-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.db-settings-nav__item {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 3px 7px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    font: inherit;
+    font-size: 12px;
+    line-height: 20px;
+    cursor: pointer;
+    transition: color 120ms ease, background-color 120ms ease;
+}
+
+.db-settings-nav__item:hover {
+    background: var(--b3-list-hover);
+    color: var(--b3-theme-on-surface);
+}
+
+.db-settings-nav__item--active {
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+    font-weight: 600;
+}
+
+.db-settings-nav__item:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: -2px;
+}
+
+@media (max-width: 640px) {
+    .b3-dialog__header:has(.db-settings-nav) {
+        gap: 6px;
+    }
+
+    .db-settings-nav__item {
+        padding: 3px 5px;
+    }
+}
+
 .db-settings section {
     display: grid;
     gap: 4px;
