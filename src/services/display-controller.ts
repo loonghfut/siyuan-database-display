@@ -1,6 +1,6 @@
 import { showMessage } from "siyuan";
 import { DisplayConfig } from "@/config/display-config";
-import { getCurrentDocumentId, getVisibleAttributeBlockIds, resolveDocumentId } from "@/data/block-context";
+import { getCurrentDocumentId, getVisibleAttributeBlockParents, resolveDocumentId } from "@/data/block-context";
 import { AttributeViewRepository } from "@/data/attribute-view-repository";
 import { extractDisplayItems } from "@/domain/content-extractor";
 import { enableInlineEdit } from "@/inline-edit";
@@ -8,6 +8,14 @@ import { toErrorMessage } from "@/libs/error-utils";
 import { DisplayItem } from "@/core/types";
 import { AttributeRenderer } from "@/ui/attribute-renderer";
 import { t } from "@/i18n";
+
+const RELEVANT_NODE_SELECTOR = "[custom-avs], .protyle-title";
+const PROTYLE_SELECTOR = ".protyle";
+
+function hasRelevantNode(node: Node): boolean {
+    if (!(node instanceof HTMLElement)) return false;
+    return node.matches(RELEVANT_NODE_SELECTOR) || Boolean(node.querySelector(RELEVANT_NODE_SELECTOR));
+}
 
 export interface DisplayControllerOptions {
     getConfig: () => DisplayConfig;
@@ -23,7 +31,13 @@ export class DisplayController {
     private refreshTimer: ReturnType<typeof setTimeout> | undefined;
     private autoTimer: ReturnType<typeof setInterval> | undefined;
     private observer: MutationObserver | undefined;
+    private contentObservers: MutationObserver[] = [];
     private refreshVersion = 0;
+    private refreshForcePending = false;
+    private refreshInFlight = false;
+    private refreshAfterInFlight = false;
+    private refreshForceAfterInFlight = false;
+    private disposed = false;
 
     constructor(private readonly options: DisplayControllerOptions) {}
 
@@ -35,24 +49,61 @@ export class DisplayController {
     }
 
     scheduleRefresh(force = false): void {
+        if (this.disposed) return;
+        this.refreshForcePending ||= force;
         if (this.refreshTimer) clearTimeout(this.refreshTimer);
         this.refreshTimer = setTimeout(() => {
             this.refreshTimer = undefined;
-            void this.refresh(force);
+            const requestedForce = this.refreshForcePending;
+            this.refreshForcePending = false;
+            void this.refresh(requestedForce);
         }, 20);
     }
 
     async refresh(force = false): Promise<void> {
-        if (!this.documentId) return;
+        if (this.disposed || !this.documentId) return;
+        if (this.refreshInFlight) {
+            this.refreshAfterInFlight = true;
+            this.refreshForceAfterInFlight ||= force;
+            return;
+        }
+
+        this.refreshInFlight = true;
+        try {
+            await this.performRefresh(force);
+        } finally {
+            this.refreshInFlight = false;
+            if (!this.disposed && this.refreshAfterInFlight) {
+                const requestedForce = this.refreshForceAfterInFlight;
+                this.refreshAfterInFlight = false;
+                this.refreshForceAfterInFlight = false;
+                this.scheduleRefresh(requestedForce);
+            }
+        }
+    }
+
+    private async performRefresh(force: boolean): Promise<void> {
+        if (this.disposed || !this.documentId) return;
         const version = ++this.refreshVersion;
-        const blockIds = getVisibleAttributeBlockIds();
+        const documentId = this.documentId;
+        const blockParents = getVisibleAttributeBlockParents();
+        const blockIds = [...blockParents.keys()];
+        let config: DisplayConfig;
+        let canInlineEdit: boolean;
+        try {
+            config = this.options.getConfig();
+            canInlineEdit = this.options.canInlineEdit();
+        } catch (error) {
+            console.warn("[DatabaseDisplay] Failed to read display configuration", error);
+            return;
+        }
         if (force) {
-            this.repository.invalidateBlock(this.documentId);
+            this.repository.invalidateBlock(documentId);
             blockIds.forEach(blockId => this.repository.invalidateBlock(blockId));
         }
         await Promise.all([
-            this.renderDocument(this.documentId, version),
-            this.renderBlocks(blockIds, version)
+            this.renderDocument(documentId, version, config, canInlineEdit),
+            this.renderBlocks(blockParents, version, config, canInlineEdit)
         ]);
     }
 
@@ -65,50 +116,93 @@ export class DisplayController {
 
     updateObserver(): void {
         this.observer?.disconnect();
+        this.contentObservers.forEach(observer => observer.disconnect());
+        this.contentObservers = [];
         this.observer = undefined;
         if (!this.options.isObserverEnabled()) return;
+
+        const observedRoots = new Set<HTMLElement>();
+        const scheduleForRelevantNodes = (records: MutationRecord[]): void => {
+            for (const record of records) {
+                for (const node of record.addedNodes) {
+                    if (hasRelevantNode(node)) {
+                        this.scheduleRefresh(false);
+                        return;
+                    }
+                }
+            }
+        };
+        const observeProtyle = (root: HTMLElement): void => {
+            if (observedRoots.has(root)) return;
+            observedRoots.add(root);
+            const observer = new MutationObserver(scheduleForRelevantNodes);
+            observer.observe(root, { childList: true, subtree: true });
+            this.contentObservers.push(observer);
+        };
+
+        document.querySelectorAll<HTMLElement>(PROTYLE_SELECTOR).forEach(observeProtyle);
         this.observer = new MutationObserver(records => {
-            const requiresRefresh = records.some(record => [...record.addedNodes].some(node => node instanceof HTMLElement &&
-                (node.matches("[custom-avs], .protyle-title") || Boolean(node.querySelector("[custom-avs], .protyle-title")))));
+            let requiresRefresh = false;
+            for (const record of records) {
+                const target = record.target instanceof HTMLElement ? record.target : undefined;
+                const insideProtyle = Boolean(target?.closest(PROTYLE_SELECTOR));
+                for (const node of record.addedNodes) {
+                    if (!(node instanceof HTMLElement)) continue;
+                    // Content observers handle changes inside an existing Protyle.
+                    // The body observer only discovers new roots and top-level content.
+                    if (!insideProtyle) {
+                        if (node.matches(PROTYLE_SELECTOR)) observeProtyle(node);
+                        node.querySelectorAll<HTMLElement>(PROTYLE_SELECTOR).forEach(observeProtyle);
+                        if (hasRelevantNode(node)) requiresRefresh = true;
+                    }
+                }
+            }
             if (requiresRefresh) this.scheduleRefresh(false);
         });
+        // Keep this watcher lightweight: detailed subtree observation is attached
+        // to each Protyle, while this watcher only discovers new roots.
         this.observer.observe(document.body, { childList: true, subtree: true });
     }
 
     dispose(): void {
+        this.disposed = true;
+        this.refreshVersion++;
         if (this.refreshTimer) clearTimeout(this.refreshTimer);
         if (this.autoTimer) clearInterval(this.autoTimer);
         this.observer?.disconnect();
+        this.contentObservers.forEach(observer => observer.disconnect());
+        this.contentObservers = [];
         this.refreshTimer = undefined;
         this.autoTimer = undefined;
         this.observer = undefined;
+        this.refreshForcePending = false;
+        this.refreshAfterInFlight = false;
+        this.refreshForceAfterInFlight = false;
     }
 
-    private async renderDocument(blockId: string, version: number): Promise<void> {
+    private async renderDocument(blockId: string, version: number, config: DisplayConfig, canInlineEdit: boolean): Promise<void> {
         const parents = [...document.querySelectorAll<HTMLElement>(".protyle-title[data-node-id]")]
             .filter(element => element.dataset.nodeId === blockId && !element.classList.contains("fn__none"));
-        await this.render(blockId, parents, "document", version);
+        await this.render(blockId, parents, "document", version, config, canInlineEdit);
     }
 
-    private async renderBlocks(blockIds: string[], version: number): Promise<void> {
-        const tasks = blockIds.map(blockId => async () => {
-            const parents = [...document.querySelectorAll<HTMLElement>(`[custom-avs][data-node-id="${CSS.escape(blockId)}"]`)];
-            await this.render(blockId, parents, "block", version);
+    private async renderBlocks(parentsByBlockId: Map<string, HTMLElement[]>, version: number, config: DisplayConfig, canInlineEdit: boolean): Promise<void> {
+        const tasks = [...parentsByBlockId].map(([blockId, parents]) => async () => {
+            await this.render(blockId, parents, "block", version, config, canInlineEdit);
         });
         await this.runWithConcurrency(tasks, 4);
     }
 
-    private async render(blockId: string, parents: HTMLElement[], scope: "document" | "block", version: number): Promise<void> {
+    private async render(blockId: string, parents: HTMLElement[], scope: "document" | "block", version: number, config: DisplayConfig, canInlineEdit: boolean): Promise<void> {
         if (!blockId || parents.length === 0) return;
         try {
-            const config = this.options.getConfig();
             const tables = await this.repository.getKeys(blockId);
             if (version !== this.refreshVersion) return;
             const items = extractDisplayItems(tables, scope === "document" ? config.documentFields : config.blockFields, config);
             parents.forEach(parent => this.renderer.render(parent, items, {
                 blockId,
                 config,
-                canInlineEdit: this.options.canInlineEdit(),
+                canInlineEdit,
                 onEdit: (item, element) => this.edit(blockId, item, element)
             }));
         } catch (error) {

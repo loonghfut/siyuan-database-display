@@ -4,7 +4,10 @@ import { AttributeViewTable, AttributeViewWriteValue } from "@/core/types";
 interface CacheEntry<T> {
     value: T;
     expiresAt: number;
+    accessedAt: number;
 }
+
+const MAX_CACHE_ENTRIES = 512;
 
 export class AttributeViewRepository {
     private readonly cache = new Map<string, CacheEntry<unknown>>();
@@ -40,16 +43,41 @@ export class AttributeViewRepository {
     }
 
     private async getCached<T>(key: string, ttl: number, force: boolean, load: () => Promise<T>): Promise<T> {
+        const now = Date.now();
         const cached = this.cache.get(key) as CacheEntry<T> | undefined;
-        if (!force && cached && cached.expiresAt > Date.now()) return cached.value;
+        if (!force && cached && cached.expiresAt > now) {
+            cached.accessedAt = now;
+            return cached.value;
+        }
         const existing = this.pending.get(key) as Promise<T> | undefined;
         if (existing) return existing;
         const request = load().then(value => {
-            this.cache.set(key, { value, expiresAt: Date.now() + ttl });
+            this.pruneCache();
+            const timestamp = Date.now();
+            this.cache.set(key, { value, expiresAt: timestamp + ttl, accessedAt: timestamp });
             return value;
         }).finally(() => this.pending.delete(key));
         this.pending.set(key, request);
         return request;
+    }
+
+    private pruneCache(): void {
+        const now = Date.now();
+        for (const [key, entry] of this.cache) {
+            if (entry.expiresAt <= now) this.cache.delete(key);
+        }
+        while (this.cache.size >= MAX_CACHE_ENTRIES) {
+            let leastRecentlyUsedKey: string | undefined;
+            let leastRecentlyUsedAt = Number.POSITIVE_INFINITY;
+            for (const [key, entry] of this.cache) {
+                if (entry.accessedAt < leastRecentlyUsedAt) {
+                    leastRecentlyUsedAt = entry.accessedAt;
+                    leastRecentlyUsedKey = key;
+                }
+            }
+            if (!leastRecentlyUsedKey) break;
+            this.cache.delete(leastRecentlyUsedKey);
+        }
     }
 
     private async post<T>(endpoint: string, data: unknown): Promise<T> {

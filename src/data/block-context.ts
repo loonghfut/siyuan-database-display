@@ -1,9 +1,22 @@
 import { fetchSyncPost, IWebSocketData } from "siyuan";
 
+export function getVisibleAttributeBlockParents(): Map<string, HTMLElement[]> {
+    const parentsByBlockId = new Map<string, HTMLElement[]>();
+    document.querySelectorAll<HTMLElement>("[custom-avs][data-node-id]").forEach(element => {
+        const blockId = element.dataset.nodeId;
+        if (!blockId) return;
+        const parents = parentsByBlockId.get(blockId);
+        if (parents) {
+            parents.push(element);
+        } else {
+            parentsByBlockId.set(blockId, [element]);
+        }
+    });
+    return parentsByBlockId;
+}
+
 export function getVisibleAttributeBlockIds(): string[] {
-    return [...new Set([...document.querySelectorAll<HTMLElement>("[custom-avs][data-node-id]")]
-        .map(element => element.dataset.nodeId)
-        .filter((id): id is string => Boolean(id)))];
+    return [...getVisibleAttributeBlockParents().keys()];
 }
 
 export async function resolveDocumentId(blockId: string): Promise<string> {
