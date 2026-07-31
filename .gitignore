@@ -1,7 +1,6 @@
 .idea
 .vscode
 .DS_Store
-pnpm-lock.yaml
 package-lock.json
 package.zip
 node_modules
@@ -21,3 +20,4 @@ tmp
 !.env.example
 docs/licensing.md
 scripts/generate-license-key.mjs
+docs/release.md

@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   tag:
@@ -12,34 +16,29 @@ jobs:
       tag_name: ${{ steps.create_tag.outputs.tag_name }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Git
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Check commit message for tag
-        id: check_message
-        run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          if [[ "$COMMIT_MESSAGE" == *"v"* ]]; then
-            echo "::set-output name=tag_message::$COMMIT_MESSAGE"
-          else
-            echo "No tag found in commit message"
-            exit 0
-          fi
-
-      - name: Create new tag
+      - name: Create tag from commit message
         id: create_tag
-        if: steps.check_message.outputs.tag_message
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          NEW_TAG=$(echo ${{ steps.check_message.outputs.tag_message }} | grep -o 'v[^ ]*')
-          git tag -a $NEW_TAG -m "${{ steps.check_message.outputs.tag_message }}"
-          git push origin $NEW_TAG
-          echo "::set-output name=tag_name::$NEW_TAG"
+          set -euo pipefail
+          COMMIT_SUBJECT=$(git log -1 --pretty=%s)
+          if [[ "$COMMIT_SUBJECT" =~ (^|[[:space:]])(v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?)([[:space:]]|$) ]]; then
+            NEW_TAG="${BASH_REMATCH[2]}"
+            git tag -a "$NEW_TAG" -m "$COMMIT_SUBJECT"
+            git push origin "$NEW_TAG"
+            echo "tag_name=$NEW_TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "No semantic version tag found in commit subject: $COMMIT_SUBJECT"
+            echo "tag_name=" >> "$GITHUB_OUTPUT"
+          fi
 
   release:
     needs: tag
@@ -47,20 +46,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.tag.outputs.tag_name }}
+          fetch-depth: 0
 
       - name: Install Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
-          registry-url: "https://registry.npmjs.org"
+          node-version: 24
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         id: pnpm-install
         with:
-          version: 8
+          version: 9.6.0
           run_install: false
+
+      - name: Prepare release configuration
+        env:
+          PRO_LICENSE_PUBLIC_KEY: ${{ secrets.PRO_LICENSE_PUBLIC_KEY }}
+          TRIAL_CONFIG_JSON: ${{ secrets.TRIAL_CONFIG_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "$PRO_LICENSE_PUBLIC_KEY" || { echo "Missing PRO_LICENSE_PUBLIC_KEY repository secret" >&2; exit 1; }
+          test -n "$TRIAL_CONFIG_JSON" || { echo "Missing TRIAL_CONFIG_JSON repository secret" >&2; exit 1; }
+          mkdir -p .license
+          printf '%s\n' "$PRO_LICENSE_PUBLIC_KEY" > .license/pro-license-public.pem
+          printf '%s\n' "$TRIAL_CONFIG_JSON" > .license/trial-config.json
+          node --input-type=module -e 'const fs = await import("node:fs"); const config = JSON.parse(fs.readFileSync(".license/trial-config.json", "utf8")); if (!Number.isFinite(Number(config.trialDays)) || Number(config.trialDays) <= 0 || typeof config.webhookUrl !== "string" || !config.webhookUrl.trim()) throw new Error("Invalid TRIAL_CONFIG_JSON");'
 
       - name: Get pnpm store directory
         id: pnpm-cache
@@ -69,7 +83,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
 
       - name: Setup pnpm cache
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -77,7 +91,7 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build for production
         run: pnpm build
