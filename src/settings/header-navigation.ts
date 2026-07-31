@@ -12,7 +12,7 @@ export function installSettingsHeaderNavigation(settings: SettingUtils, categori
 
     setting.open = (name: string) => {
         open(name);
-        const dialogElement = setting.dialog?.element;
+        const dialogElement = (setting as any).dialog?.element;//1
         if (dialogElement) mountNavigation(dialogElement, categories);
     };
 }
