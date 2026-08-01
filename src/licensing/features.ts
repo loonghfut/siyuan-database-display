@@ -17,7 +17,8 @@ function defineProFeatures<T extends Record<string, ProFeatureDefinition>>(featu
 
 export const PRO_FEATURES = defineProFeatures({
     "inline-edit": {},
-    relation: { fieldTypes: ["relation"] }
+    relation: { fieldTypes: ["relation"] },
+    template: { fieldTypes: ["template"] }
 } as const);
 
 export type ProFeature = keyof typeof PRO_FEATURES;
