@@ -103,4 +103,7 @@ interface Window {
         emojis: any;
     };
     Lute: any;
+    DOMPurify?: {
+        sanitize: (html: string) => string;
+    };
 }

@@ -1154,6 +1154,13 @@ span[style*="outline: 2px solid"] {
     white-space: pre-wrap;
 }
 
+.inline-edit-popup-input textarea.inline-edit-template__input {
+    width: min(60ch, calc(100vw - 42px));
+    min-width: min(32ch, calc(100vw - 42px));
+    min-height: 96px;
+    max-height: min(320px, calc(100vh - 120px));
+}
+
 .inline-edit-popup-input input:focus,
 .inline-edit-popup-input textarea:focus,
 .inline-edit-datepicker-input:focus {

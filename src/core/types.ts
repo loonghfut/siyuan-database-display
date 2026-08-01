@@ -1,4 +1,4 @@
-export const FIELD_TYPES = ["mSelect", "number", "date", "text", "mAsset", "relation", "checkbox", "phone", "url", "email", "created", "updated"] as const;
+export const FIELD_TYPES = ["mSelect", "number", "date", "text", "template", "mAsset", "relation", "checkbox", "phone", "url", "email", "created", "updated"] as const;
 
 export type FieldType = typeof FIELD_TYPES[number];
 export type CheckboxStyle = "emoji" | "symbol" | "text";
@@ -8,6 +8,7 @@ export interface AttributeViewKey {
     id: string;
     name: string;
     type: string;
+    template?: string;
     options?: SelectOption[];
     relation?: AttributeViewRelation;
 }
@@ -64,6 +65,7 @@ export interface AttributeViewValue {
     url?: { content?: string };
     email?: { content?: string };
     phone?: { content?: string };
+    template?: { content?: string };
     mSelect?: Array<{ content?: string; color?: string }>;
     mAsset?: Array<{ name?: string }>;
     relation?: RelationValue;
@@ -84,6 +86,7 @@ export interface DisplayItem {
     keyName: string;
     keyType: string;
     rawValue: unknown;
+    template?: string;
     selectOptions?: SelectOption[];
     relation?: AttributeViewRelation;
 }

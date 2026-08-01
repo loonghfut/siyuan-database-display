@@ -1,4 +1,4 @@
-import { fetchSyncPost, IWebSocketData } from "siyuan";
+import { Constants, fetchSyncPost, IWebSocketData } from "siyuan";
 import { AttributeViewTable, AttributeViewWriteValue, RelationCandidatesPage } from "@/core/types";
 
 interface CacheEntry<T> {
@@ -29,6 +29,25 @@ export class AttributeViewRepository {
 
     async setValue(avID: string, keyID: string, itemID: string, value: AttributeViewWriteValue): Promise<void> {
         await this.post("setAttributeViewBlockAttr", { avID, keyID, itemID, value });
+        this.invalidateAttributeView(avID);
+    }
+
+    async updateTemplate(avID: string, keyID: string, template: string): Promise<void> {
+        const response = await fetchSyncPost("/api/transactions", {
+            reqId: Date.now(),
+            session: Constants.SIYUAN_APPID,
+            app: Constants.SIYUAN_APPID,
+            transactions: [{
+                doOperations: [{
+                    action: "updateAttrViewColTemplate",
+                    id: keyID,
+                    avID,
+                    data: template,
+                    type: "template"
+                }]
+            }]
+        }) as IWebSocketData;
+        if (response.code !== 0) throw new Error(response.msg || "Template update failed");
         this.invalidateAttributeView(avID);
     }
 

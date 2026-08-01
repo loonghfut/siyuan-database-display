@@ -87,6 +87,7 @@ function texts(value: AttributeViewValue, type: FieldType, config: DisplayConfig
             return [end ? `${start} ~ ${end}` : start].filter(Boolean);
         }
         case "text": return value.text?.content ? [value.text.content] : [];
+        case "template": return typeof value.template?.content === "string" && value.template.content ? [value.template.content] : [];
         case "mAsset": return value.mAsset?.map(item => item.name || "").filter(Boolean) || [];
         case "relation": return relationTexts(normalizeRelation(value));
         case "checkbox": return value.checkbox ? [checkboxText(Boolean(value.checkbox.checked), config.checkboxStyle)] : [];
@@ -101,6 +102,7 @@ function texts(value: AttributeViewValue, type: FieldType, config: DisplayConfig
 function matches(value: AttributeViewValue, type: FieldType): boolean {
     if (type === "number") return value.number?.content !== undefined;
     if (type === "checkbox") return Boolean(value.checkbox);
+    if (type === "template") return typeof value.template?.content === "string";
     if (type === "mSelect" || type === "mAsset") return Boolean(value[type]);
     if (type === "relation") {
         const relation = normalizeRelation(value);
@@ -183,13 +185,13 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                     if (!matches(value, type)) continue;
                     for (const text of texts(value, type, config)) {
                         shown = true;
-                        result.push({ type, text, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: rawValue(value, type), selectOptions: key.options, relation: key.relation });
+                        result.push({ type, text, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: rawValue(value, type), template: key.template, selectOptions: key.options, relation: key.relation });
                     }
                 }
             }
             if (!shown && config.forceShowFields.has(key.name)) {
                 const type = displayType(key.type, types);
-                if (type) result.push({ type, text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null, selectOptions: key.options, relation: key.relation });
+                if (type) result.push({ type, text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null, template: key.template, selectOptions: key.options, relation: key.relation });
             }
         }
     }

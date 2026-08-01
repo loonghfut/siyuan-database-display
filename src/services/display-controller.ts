@@ -223,6 +223,23 @@ export class DisplayController {
     private async openEditor(blockId: string, item: DisplayItem, element: HTMLElement): Promise<void> {
         if (!this.canEditItem(item)) return;
         try {
+            if (item.type === "template") {
+                enableInlineEdit({
+                    element,
+                    avID: item.avID,
+                    blockID: blockId,
+                    itemID: "",
+                    keyID: item.keyID,
+                    keyName: item.keyName,
+                    keyType: item.keyType,
+                    currentValue: item.rawValue,
+                    template: item.template,
+                    selectOptions: item.selectOptions,
+                    relation: item.relation,
+                    onSave: () => this.scheduleRefresh(true)
+                });
+                return;
+            }
             const itemID = await this.repository.getItemId(item.avID, blockId);
             if (!itemID) {
                 showMessage(t("common.missingRowId"), 3000, "error");

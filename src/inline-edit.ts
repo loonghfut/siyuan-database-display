@@ -18,6 +18,7 @@ export interface InlineEditOptions {
     keyName: string;
     keyType: string;
     currentValue: any;
+    template?: string;
     selectOptions?: any[];  // 添加选择选项（用于 select 和 mSelect）
     relation?: AttributeViewRelation;
     onSave?: (newValue: any) => void;
@@ -71,11 +72,19 @@ export function enableInlineEdit(options: InlineEditOptions) {
             // 日期：显示开始/结束时间选择器
             handleDateEdit(options);
             break;
+        case 'template':
+            // 模板字段编辑的是整列模板表达式，不是当前行的计算结果
+            handleTemplateEdit(options);
+            break;
         default:
             // 其他类型：显示弹窗编辑
             handlePopupEdit(options);
             break;
     }
+}
+
+function handleTemplateEdit(options: InlineEditOptions): void {
+    handlePopupEdit({ ...options, currentValue: options.template ?? '' });
 }
 
 /**
@@ -484,6 +493,10 @@ function handlePopupEdit(options: InlineEditOptions) {
         case 'text':
             inputElement = createTextArea(currentValue);
             break;
+        case 'template':
+            inputElement = createTextArea(currentValue);
+            inputElement.classList.add('inline-edit-template__input');
+            break;
         case 'url':
         case 'email':
         case 'phone':
@@ -539,9 +552,12 @@ function handlePopupEdit(options: InlineEditOptions) {
                 avInput = { content: newValue, isNotEmpty };
             }
 
-            const value = convertToAVValue(keyType, avInput);
-
-            await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
+            if (keyType === 'template') {
+                await attributeViewRepository.updateTemplate(avID, options.keyID, String(newValue));
+            } else {
+                const value = convertToAVValue(keyType, avInput);
+                await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
+            }
 
             // 关闭弹窗
             closePopup();
