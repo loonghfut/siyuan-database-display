@@ -8,6 +8,7 @@ import { toErrorMessage } from "@/libs/error-utils";
 import { DisplayItem } from "@/core/types";
 import { AttributeRenderer } from "@/ui/attribute-renderer";
 import { t } from "@/i18n";
+import { PRO_FEATURE_KEYS, ProFeature, requiredFeaturesForField } from "@/licensing";
 
 const RELEVANT_NODE_SELECTOR = "[custom-avs], .protyle-title";
 const PROTYLE_SELECTOR = ".protyle";
@@ -21,7 +22,7 @@ export interface DisplayControllerOptions {
     getConfig: () => DisplayConfig;
     getAutoRefreshInterval: () => number;
     isObserverEnabled: () => boolean;
-    canInlineEdit: () => boolean;
+    isFeatureEnabled: (feature: ProFeature) => boolean;
 }
 
 export class DisplayController {
@@ -89,10 +90,10 @@ export class DisplayController {
         const blockParents = getVisibleAttributeBlockParents();
         const blockIds = [...blockParents.keys()];
         let config: DisplayConfig;
-        let canInlineEdit: boolean;
+        let enabledFeatures: ReadonlySet<ProFeature>;
         try {
             config = this.options.getConfig();
-            canInlineEdit = this.options.canInlineEdit();
+            enabledFeatures = new Set(PRO_FEATURE_KEYS.filter(feature => this.options.isFeatureEnabled(feature)));
         } catch (error) {
             console.warn("[DatabaseDisplay] Failed to read display configuration", error);
             return;
@@ -102,8 +103,8 @@ export class DisplayController {
             blockIds.forEach(blockId => this.repository.invalidateBlock(blockId));
         }
         await Promise.all([
-            this.renderDocument(documentId, version, config, canInlineEdit),
-            this.renderBlocks(blockParents, version, config, canInlineEdit)
+            this.renderDocument(documentId, version, config, enabledFeatures),
+            this.renderBlocks(blockParents, version, config, enabledFeatures)
         ]);
     }
 
@@ -180,29 +181,33 @@ export class DisplayController {
         this.refreshForceAfterInFlight = false;
     }
 
-    private async renderDocument(blockId: string, version: number, config: DisplayConfig, canInlineEdit: boolean): Promise<void> {
+    private async renderDocument(blockId: string, version: number, config: DisplayConfig, enabledFeatures: ReadonlySet<ProFeature>): Promise<void> {
         const parents = [...document.querySelectorAll<HTMLElement>(".protyle-title[data-node-id]")]
             .filter(element => element.dataset.nodeId === blockId && !element.classList.contains("fn__none"));
-        await this.render(blockId, parents, "document", version, config, canInlineEdit);
+        await this.render(blockId, parents, "document", version, config, enabledFeatures);
     }
 
-    private async renderBlocks(parentsByBlockId: Map<string, HTMLElement[]>, version: number, config: DisplayConfig, canInlineEdit: boolean): Promise<void> {
+    private async renderBlocks(parentsByBlockId: Map<string, HTMLElement[]>, version: number, config: DisplayConfig, enabledFeatures: ReadonlySet<ProFeature>): Promise<void> {
         const tasks = [...parentsByBlockId].map(([blockId, parents]) => async () => {
-            await this.render(blockId, parents, "block", version, config, canInlineEdit);
+            await this.render(blockId, parents, "block", version, config, enabledFeatures);
         });
         await this.runWithConcurrency(tasks, 4);
     }
 
-    private async render(blockId: string, parents: HTMLElement[], scope: "document" | "block", version: number, config: DisplayConfig, canInlineEdit: boolean): Promise<void> {
+    private async render(blockId: string, parents: HTMLElement[], scope: "document" | "block", version: number, config: DisplayConfig, enabledFeatures: ReadonlySet<ProFeature>): Promise<void> {
         if (!blockId || parents.length === 0) return;
         try {
             const tables = await this.repository.getKeys(blockId);
             if (version !== this.refreshVersion) return;
-            const items = extractDisplayItems(tables, scope === "document" ? config.documentFields : config.blockFields, config);
+            const fields = scope === "document" ? config.documentFields : config.blockFields;
+            const visibleFields = fields.filter(type =>
+                requiredFeaturesForField(type).every(feature => enabledFeatures.has(feature))
+            );
+            const items = extractDisplayItems(tables, visibleFields, config);
             parents.forEach(parent => this.renderer.render(parent, items, {
                 blockId,
                 config,
-                canInlineEdit,
+                canInlineEdit: enabledFeatures.has("inline-edit"),
                 onEdit: (item, element) => this.edit(blockId, item, element)
             }));
         } catch (error) {

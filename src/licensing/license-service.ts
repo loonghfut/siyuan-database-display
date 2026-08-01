@@ -1,4 +1,5 @@
-import { LicensePayload, LicenseStatus, ProFeature, SignedLicense } from "./types";
+import { isProFeature, ProFeature } from "./features";
+import { LicensePayload, LicenseStatus, SignedLicense } from "./types";
 
 declare const __DATABASE_DISPLAY_PRO_PUBLIC_KEY__: string;
 
@@ -63,7 +64,7 @@ export class LicenseService {
     }
 
     hasFeature(feature: ProFeature): boolean {
-        return this.status.valid && feature === "inline-edit";
+        return this.status.valid && isProFeature(feature);
     }
 
     async verify(rawLicense: unknown, userId = currentUserId()): Promise<LicenseStatus> {

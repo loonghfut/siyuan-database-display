@@ -5,13 +5,14 @@ import { DisplayController } from "@/services/display-controller";
 import { setI18n } from "@/i18n";
 import { SettingUtils } from "@/libs/setting-utils";
 import { addSettings, migrateLegacySettings } from "@/settings";
-import { LicenseService, TrialService } from "@/licensing";
+import { LicenseService, ProAccessService, TrialService } from "@/licensing";
 
 export default class DatabaseDisplay extends Plugin {
     private settings!: SettingUtils;
     private controller!: DisplayController;
     private license!: LicenseService;
     private trial!: TrialService;
+    private proAccess!: ProAccessService;
     private readonly onSwitchProtyle = (event: CustomEvent) => void this.controller.switchDocument(event.detail);
     private readonly onLoaded = () => this.controller.scheduleRefresh(false);
     private readonly onWebsocketMessage = (event: MessageEvent) => this.handleWebsocketMessage(event);
@@ -25,6 +26,7 @@ export default class DatabaseDisplay extends Plugin {
             getRecords: () => this.settings.get("pro-trial-records"),
             saveRecords: value => this.settings.setAndSave("pro-trial-records", value)
         });
+        this.proAccess = new ProAccessService(this.license, this.trial);
         addSettings(this.settings, () => this.applySettings(), this.license, this.trial);
         const savedSettings = await this.settings.load();
         if (migrateLegacySettings(this.settings, savedSettings)) await this.settings.save();
@@ -33,7 +35,7 @@ export default class DatabaseDisplay extends Plugin {
             getConfig: () => readDisplayConfig(key => this.settings.get(key)),
             getAutoRefreshInterval: () => readRefreshOptions(key => this.settings.get(key)).interval,
             isObserverEnabled: () => readRefreshOptions(key => this.settings.get(key)).observerEnabled,
-            canInlineEdit: () => this.license.hasFeature("inline-edit") || this.trial.hasActiveTrial()
+            isFeatureEnabled: feature => this.proAccess.isFeatureEnabled(feature)
         });
         this.eventBus.on("switch-protyle", this.onSwitchProtyle);
         this.eventBus.on("loaded-protyle-dynamic", this.onLoaded);

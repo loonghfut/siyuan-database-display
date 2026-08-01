@@ -1,6 +1,4 @@
-export const PRO_FEATURES = ["inline-edit"] as const;
-
-export type ProFeature = typeof PRO_FEATURES[number];
+export type { ProFeature, ProFeatureDefinition } from "./features";
 
 export interface LicensePayload {
     version: 1;

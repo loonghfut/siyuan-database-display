@@ -1,6 +1,7 @@
 import { parseCsv } from "@/config/display-config";
 import { FIELD_TYPES } from "@/core/types";
 import { bindCommit, createCheckbox, createPanel, parseObject } from "../components/controls";
+import { fieldTypeLabel } from "../field-type-label";
 import { AddPanel, SettingsPanelText } from "../types";
 
 export function addDisplayFieldsPanel(addPanel: AddPanel, text: SettingsPanelText): void {
@@ -20,7 +21,7 @@ export function addDisplayFieldsPanel(addPanel: AddPanel, text: SettingsPanelTex
                 const input = createCheckbox(selected[scope].has(type), true);
                 input.dataset.scope = scope;
                 input.dataset.type = type;
-                label.append(input, document.createTextNode(text.fieldTypes[type]));
+                label.append(input, document.createTextNode(fieldTypeLabel(type, text)));
                 chips.append(label);
             });
             section.append(heading, chips);

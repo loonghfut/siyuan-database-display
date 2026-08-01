@@ -2,6 +2,7 @@ import { DEFAULT_DARK_FIELD_BACKGROUNDS, DEFAULT_DARK_FIELD_COLORS, DEFAULT_FIEL
 import { FIELD_TYPES } from "@/core/types";
 import { createColorControl, readColorControl } from "../components/color-picker";
 import { createCheckbox, createPanel, createTextInput, parseObject } from "../components/controls";
+import { fieldTypeLabel } from "../field-type-label";
 import { AddPanel, SettingsPanelText } from "../types";
 
 type ThemeName = "light" | "dark";
@@ -91,7 +92,7 @@ export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText):
             FIELD_TYPES.forEach(type => {
                 const row = document.createElement("label");
                 row.className = "db-settings__palette-row";
-                row.append(document.createTextNode(text.fieldTypes[type]));
+                row.append(document.createTextNode(fieldTypeLabel(type, text)));
                 (["color", "bg"] as const).forEach(kind => {
                     const control = createColorControl(
                         current.types[type]?.[kind],

@@ -40,7 +40,7 @@
             "refresh": { "title": "刷新方式", "description": "通常保持默认即可；低性能设备可关闭自动补充", "interval": "定时刷新（秒，0 为关闭）", "observer": "自动补充新出现的属性" },
             "license": { "title": "Pro 授权", "description": "Pro 为一次性买断，仅绑定思源用户 ID。同一账号在所有设备上均可使用。", "apply": "申请", "statusLabel": "授权状态", "userId": "当前思源用户 ID", "copyUserId": "复制 ID", "copiedUserId": "已复制", "license": "授权码", "placeholder": "粘贴购买后收到的授权码", "verify": "保存并验证", "verifying": "验证中...", "verifySuccess": "Pro 已激活", "verifyFailed": "授权码验证失败，请检查内容和当前账号", "clear": "清除授权", "cleared": "已清除 Pro 授权", "status": { "active": "已激活 Pro", "missing": "未激活", "invalid": "授权码无效", "wrong-user": "授权账号不匹配", "unconfigured": "当前版本未配置授权", "unsupported": "当前思源版本不支持验证" } },
             "trial": { "title": "Pro 试用", "description": "可免费试用 Pro 功能 7 天，每个思源账号仅可启用一次。启用时会记录当前账号信息。", "statusLabel": "试用状态", "start": "启用 7 天试用", "starting": "启用中...", "started": "已启用 7 天 Pro 试用", "failed": "当前无法启用试用", "active": "试用中，至 ${expiresAt}", "status": { "available": "可启用 7 天试用", "used": "试用已使用", "missing-profile": "缺少思源账号 ID 或用户名", "unavailable": "当前版本未配置试用" } },
-            "fieldTypes": { "mSelect": "多选", "number": "数字", "date": "日期", "text": "文本", "mAsset": "文件", "relation": "关联", "checkbox": "复选框", "phone": "电话", "url": "链接", "email": "邮箱", "created": "创建时间", "updated": "更新时间" }
+            "fieldTypes": { "mSelect": "多选", "number": "数字", "date": "日期", "text": "文本", "mAsset": "文件", "relation": "关联", "checkbox": "复选框", "phone": "电话", "url": "链接", "email": "邮箱", "created": "创建时间", "updated": "更新时间", "pro": "（Pro）" }
         },
         "disShow": {
             "title": "文档块展示字段",

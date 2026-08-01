@@ -14,7 +14,11 @@ export class AttributeRenderer {
     render(parent: HTMLElement, items: DisplayItem[], context: RenderContext): void {
         const attributeContainer = [...parent.children].find(child => child.classList.contains("protyle-attr")) as HTMLElement | undefined;
         if (!attributeContainer) return;
-        const signature = JSON.stringify({ items, config: this.visualConfig(context.config) });
+        const signature = JSON.stringify({
+            items,
+            canInlineEdit: context.canInlineEdit,
+            config: this.visualConfig(context.config)
+        });
         if (this.signatures.get(attributeContainer) === signature) return;
         this.signatures.set(attributeContainer, signature);
 
