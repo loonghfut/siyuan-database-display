@@ -275,10 +275,51 @@
     pointer-events: none;
 }
 
+.db-settings__field-label {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: 5px;
+}
+
+.db-settings__pro-badge {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 15px;
+    padding: 0 4px;
+    border: 1px solid var(--b3-theme-primary-lightest);
+    border-radius: 3px;
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 13px;
+    cursor: help;
+}
+
+.db-settings__pro-badge[hidden] {
+    display: none;
+}
+
 .db-settings__check:has(input:checked) {
     border-color: var(--b3-theme-primary);
     background: var(--b3-theme-primary-lightest);
     color: var(--b3-theme-primary);
+}
+
+.db-settings__check:has(input:disabled) {
+    cursor: not-allowed;
+    opacity: .62;
+}
+
+.db-settings__check:has(input:disabled):has(input:checked) {
+    border-color: var(--b3-border-color);
+    background: transparent;
+    color: var(--b3-theme-on-surface);
 }
 
 .db-settings__palette {

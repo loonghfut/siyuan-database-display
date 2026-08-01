@@ -216,16 +216,19 @@ export class DisplayController {
     }
 
     private edit(blockId: string, item: DisplayItem, element: HTMLElement): void {
+        if (!this.canEditItem(item)) return;
         void this.openEditor(blockId, item, element);
     }
 
     private async openEditor(blockId: string, item: DisplayItem, element: HTMLElement): Promise<void> {
+        if (!this.canEditItem(item)) return;
         try {
             const itemID = await this.repository.getItemId(item.avID, blockId);
             if (!itemID) {
                 showMessage(t("common.missingRowId"), 3000, "error");
                 return;
             }
+            if (!this.canEditItem(item)) return;
             enableInlineEdit({
                 element,
                 avID: item.avID,
@@ -243,6 +246,11 @@ export class DisplayController {
             const message = toErrorMessage(error);
             showMessage(t("common.fetchRowIdFailed", { message }), 5000, "error");
         }
+    }
+
+    private canEditItem(item: DisplayItem): boolean {
+        return this.options.isFeatureEnabled("inline-edit") &&
+            requiredFeaturesForField(item.type).every(feature => this.options.isFeatureEnabled(feature));
     }
 
     private async runWithConcurrency(tasks: Array<() => Promise<void>>, limit: number): Promise<void> {

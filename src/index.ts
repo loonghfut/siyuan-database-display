@@ -6,6 +6,7 @@ import { setI18n } from "@/i18n";
 import { SettingUtils } from "@/libs/setting-utils";
 import { addSettings, migrateLegacySettings } from "@/settings";
 import { LicenseService, ProAccessService, TrialService } from "@/licensing";
+import type { ProFeature } from "@/licensing";
 
 export default class DatabaseDisplay extends Plugin {
     private settings!: SettingUtils;
@@ -27,7 +28,8 @@ export default class DatabaseDisplay extends Plugin {
             saveRecords: value => this.settings.setAndSave("pro-trial-records", value)
         });
         this.proAccess = new ProAccessService(this.license, this.trial);
-        addSettings(this.settings, () => this.applySettings(), this.license, this.trial);
+        addSettings(this.settings, () => this.applySettings(), this.license, this.trial,
+            (feature: ProFeature) => this.proAccess.isFeatureEnabled(feature));
         const savedSettings = await this.settings.load();
         if (migrateLegacySettings(this.settings, savedSettings)) await this.settings.save();
         await this.license.refresh(this.settings.get("pro-license"));

@@ -1,10 +1,17 @@
 import { parseCsv } from "@/config/display-config";
 import { FIELD_TYPES } from "@/core/types";
+import { requiredFeaturesForField } from "@/licensing";
+import type { ProFeature } from "@/licensing";
 import { bindCommit, createCheckbox, createPanel, parseObject } from "../components/controls";
-import { fieldTypeLabel } from "../field-type-label";
+import { createFieldTypeLabel } from "../field-type-label";
 import { AddPanel, SettingsPanelText } from "../types";
 
-export function addDisplayFieldsPanel(addPanel: AddPanel, text: SettingsPanelText): void {
+export function addDisplayFieldsPanel(
+    addPanel: AddPanel,
+    text: SettingsPanelText,
+    shouldShowProBadge: () => boolean,
+    isFeatureEnabled: (feature: ProFeature) => boolean
+): void {
     addPanel("display-fields", JSON.stringify({ document: FIELD_TYPES.join(","), block: "mSelect,text,relation" }), text.displayFields.title, text.displayFields.description, (value, commit) => {
         const state = parseObject<{ document?: string; block?: string }>(value, {});
         const panel = createPanel("db-settings--fields");
@@ -19,9 +26,16 @@ export function addDisplayFieldsPanel(addPanel: AddPanel, text: SettingsPanelTex
                 const label = document.createElement("label");
                 label.className = "db-settings__check";
                 const input = createCheckbox(selected[scope].has(type), true);
+                const requiredFeatures = requiredFeaturesForField(type);
+                const featureEnabled = requiredFeatures.every(isFeatureEnabled);
+                if (requiredFeatures.length > 0 && !featureEnabled) {
+                    input.disabled = true;
+                    label.classList.add("db-settings__check--locked");
+                    label.title = text.fieldTypes.proTooltip;
+                }
                 input.dataset.scope = scope;
                 input.dataset.type = type;
-                label.append(input, document.createTextNode(fieldTypeLabel(type, text)));
+                label.append(input, createFieldTypeLabel(type, text, shouldShowProBadge()));
                 chips.append(label);
             });
             section.append(heading, chips);

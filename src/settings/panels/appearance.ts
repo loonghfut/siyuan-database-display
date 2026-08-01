@@ -2,7 +2,7 @@ import { DEFAULT_DARK_FIELD_BACKGROUNDS, DEFAULT_DARK_FIELD_COLORS, DEFAULT_FIEL
 import { FIELD_TYPES } from "@/core/types";
 import { createColorControl, readColorControl } from "../components/color-picker";
 import { createCheckbox, createPanel, createTextInput, parseObject } from "../components/controls";
-import { fieldTypeLabel } from "../field-type-label";
+import { createFieldTypeLabel } from "../field-type-label";
 import { AddPanel, SettingsPanelText } from "../types";
 
 type ThemeName = "light" | "dark";
@@ -50,7 +50,7 @@ function activeTheme(): ThemeName {
     return document.documentElement.dataset.themeMode === "dark" ? "dark" : "light";
 }
 
-export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText): void {
+export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText, shouldShowProBadge: () => boolean): void {
     addPanel("display-appearance", JSON.stringify(defaultAppearance()), text.appearance.title, text.appearance.description, (value, commit) => {
         const state = normalizeAppearance(parseObject<object>(value, {}));
         const panel = createPanel("db-settings--appearance");
@@ -92,7 +92,7 @@ export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText):
             FIELD_TYPES.forEach(type => {
                 const row = document.createElement("label");
                 row.className = "db-settings__palette-row";
-                row.append(document.createTextNode(fieldTypeLabel(type, text)));
+                row.append(createFieldTypeLabel(type, text, shouldShowProBadge()));
                 (["color", "bg"] as const).forEach(kind => {
                     const control = createColorControl(
                         current.types[type]?.[kind],

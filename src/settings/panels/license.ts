@@ -1,5 +1,6 @@
 import { showMessage } from "siyuan";
 import { LicenseService, TrialService } from "@/licensing";
+import { createCheckbox, createLabel } from "../components/controls";
 import { AddPanel, SettingsPanelText } from "../types";
 
 // Fill this in when the Pro application page is ready.
@@ -44,7 +45,9 @@ export function addLicensePanel(
     text: SettingsPanelText,
     license: LicenseService,
     trial: TrialService,
-    onChanged: () => void
+    onChanged: () => void,
+    shouldShowProBadge: () => boolean,
+    onShowProBadgeChanged: (value: boolean) => void
 ): void {
     addPanel("pro-license", "", text.license.title, text.license.description, (value, commit) => {
         const panel = document.createElement("div");
@@ -141,6 +144,10 @@ export function addLicensePanel(
         idLabel.textContent = text.license.userId;
         idRow.append(idLabel, userRow);
 
+        const showProBadge = createCheckbox(shouldShowProBadge());
+        showProBadge.addEventListener("change", () => onShowProBadgeChanged(showProBadge.checked));
+        const showProBadgeRow = createLabel(text.license.showProBadge, showProBadge);
+
         const licenseInput = document.createElement("input");
         licenseInput.id = "db-pro-license-input";
         licenseInput.className = "b3-text-field fn__block";
@@ -194,7 +201,7 @@ export function addLicensePanel(
         licenseContent.append(licenseInput, actions);
         licenseDetails.append(licenseSummary, licenseContent);
 
-        panel.append(statusRow, idRow, licenseDetails);
+        panel.append(statusRow, showProBadgeRow, idRow, licenseDetails);
         void updateStatus();
         return panel;
     });
