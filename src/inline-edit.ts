@@ -4,9 +4,10 @@
 
 import { showMessage } from "siyuan";
 import { AttributeViewRepository } from "./data/attribute-view-repository";
-import { AttributeViewWriteValue } from "./core/types";
+import { AttributeViewRelation, AttributeViewWriteValue } from "./core/types";
 import { t } from "./i18n";
 import { toErrorMessage } from "./libs/error-utils";
+import { openRelationEditor, RelationEditorHandle } from "./ui/relation-editor";
 
 export interface InlineEditOptions {
     element: HTMLElement;
@@ -18,6 +19,7 @@ export interface InlineEditOptions {
     keyType: string;
     currentValue: any;
     selectOptions?: any[];  // 添加选择选项（用于 select 和 mSelect）
+    relation?: AttributeViewRelation;
     onSave?: (newValue: any) => void;
     onCancel?: () => void;
 }
@@ -60,6 +62,10 @@ export function enableInlineEdit(options: InlineEditOptions) {
         case 'mSelect':
             // 多选：显示多选下拉菜单
             handleMultiSelectEdit(options);
+            break;
+        case 'relation':
+            // 关联：使用思源原生关联候选接口
+            handleRelationEdit(options);
             break;
         case 'date':
             // 日期：显示开始/结束时间选择器
@@ -279,6 +285,27 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
     };
     
     currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
+}
+
+function handleRelationEdit(options: InlineEditOptions): void {
+    let editor: RelationEditorHandle | undefined;
+    editor = openRelationEditor({
+        element: options.element,
+        avID: options.avID,
+        itemID: options.itemID,
+        keyID: options.keyID,
+        keyName: options.keyName,
+        relation: options.relation,
+        currentValue: options.currentValue,
+        onSave: () => options.onSave?.(options.currentValue),
+        onCancel: () => options.onCancel?.(),
+        onClose: () => {
+            if (editor) closeEditorPanel(editor.panel);
+        }
+    });
+    if (!editor) return;
+    currentPopup = editor.panel;
+    currentPopupCleanup = editor.cleanup;
 }
 
 /**

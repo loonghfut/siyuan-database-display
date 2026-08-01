@@ -1,5 +1,5 @@
 import { fetchSyncPost, IWebSocketData } from "siyuan";
-import { AttributeViewTable, AttributeViewWriteValue } from "@/core/types";
+import { AttributeViewTable, AttributeViewWriteValue, RelationCandidatesPage } from "@/core/types";
 
 interface CacheEntry<T> {
     value: T;
@@ -30,6 +30,24 @@ export class AttributeViewRepository {
     async setValue(avID: string, keyID: string, itemID: string, value: AttributeViewWriteValue): Promise<void> {
         await this.post("setAttributeViewBlockAttr", { avID, keyID, itemID, value });
         this.invalidateAttributeView(avID);
+    }
+
+    async getRelationCandidates(
+        avID: string,
+        keyID: string,
+        keyword: string,
+        selectedBlockIDs: string[],
+        page = 1,
+        pageSize = 16
+    ): Promise<RelationCandidatesPage> {
+        return this.post<RelationCandidatesPage>("getAttributeViewRelationCandidates", {
+            avID,
+            keyID,
+            keyword,
+            page,
+            pageSize,
+            selectedBlockIDs
+        });
     }
 
     invalidateBlock(blockId: string): void {

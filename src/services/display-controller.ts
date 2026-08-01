@@ -231,6 +231,7 @@ export class DisplayController {
                 keyType: item.keyType,
                 currentValue: item.rawValue,
                 selectOptions: item.selectOptions,
+                relation: item.relation,
                 onSave: () => this.scheduleRefresh(true)
             });
         } catch (error) {

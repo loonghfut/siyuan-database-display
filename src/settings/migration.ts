@@ -25,7 +25,7 @@ export function migrateLegacySettings(settings: SettingUtils, saved: unknown): b
 
     const showTimestamps = data["show-timestamps"] !== false;
     const legacyDocumentFields = legacyFields(data["dis-show"], FIELD_TYPES.join(","), showTimestamps);
-    const legacyBlockFields = legacyFields(data["dis-show-block"], "mSelect,text", showTimestamps);
+    const legacyBlockFields = legacyFields(data["dis-show-block"], "mSelect,text,relation", showTimestamps);
     migrate("display-fields", { document: legacyDocumentFields, block: legacyBlockFields });
     migrate("field-rules", { hidden: data["hidden-fields"] || "", force: data["force-show-fields"] || "" });
     migrate("display-format", { dateFormat: data["date-format"] || "YYYY-MM-DD", includeTime: Boolean(data["include-time"]), checkboxStyle: data["checkbox-style"] || "emoji", maxDisplayLength: data["max-display-length"] || 30, showFieldNames: false });

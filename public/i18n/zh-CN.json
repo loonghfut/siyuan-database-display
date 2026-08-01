@@ -8,6 +8,8 @@
         "missingBlockId": "无法获取块 ID",
         "missingRowId": "无法获取行 ID",
         "fetchRowIdFailed": "获取行 ID 失败：${message}",
+        "relationTargetMissing": "关联目标数据库不可用",
+        "relationLoadFailed": "加载关联项失败：${message}",
         "cursorBlockId": "光标所在块 ID：${id}",
         "autoRefreshDisabled": "自动刷新已关闭",
         "autoRefreshEnabled": "自动刷新间隔 ${seconds} 秒"
@@ -23,7 +25,11 @@
         "editTitle": "编辑：${name}",
         "start": "开始",
         "end": "结束",
-        "hasEnd": "包含结束时间"
+        "hasEnd": "包含结束时间",
+        "searchRelation": "搜索关联项",
+        "loadingRelation": "正在加载关联项…",
+        "noRelationResults": "没有可关联的项目",
+        "loadMoreRelation": "加载更多"
     },
     "settings": {
         "panel": {
@@ -34,15 +40,15 @@
             "refresh": { "title": "刷新方式", "description": "通常保持默认即可；低性能设备可关闭自动补充", "interval": "定时刷新（秒，0 为关闭）", "observer": "自动补充新出现的属性" },
             "license": { "title": "Pro 授权", "description": "Pro 为一次性买断，仅绑定思源用户 ID。同一账号在所有设备上均可使用。", "apply": "申请", "statusLabel": "授权状态", "userId": "当前思源用户 ID", "copyUserId": "复制 ID", "copiedUserId": "已复制", "license": "授权码", "placeholder": "粘贴购买后收到的授权码", "verify": "保存并验证", "verifying": "验证中...", "verifySuccess": "Pro 已激活", "verifyFailed": "授权码验证失败，请检查内容和当前账号", "clear": "清除授权", "cleared": "已清除 Pro 授权", "status": { "active": "已激活 Pro", "missing": "未激活", "invalid": "授权码无效", "wrong-user": "授权账号不匹配", "unconfigured": "当前版本未配置授权", "unsupported": "当前思源版本不支持验证" } },
             "trial": { "title": "Pro 试用", "description": "可免费试用 Pro 功能 7 天，每个思源账号仅可启用一次。启用时会记录当前账号信息。", "statusLabel": "试用状态", "start": "启用 7 天试用", "starting": "启用中...", "started": "已启用 7 天 Pro 试用", "failed": "当前无法启用试用", "active": "试用中，至 ${expiresAt}", "status": { "available": "可启用 7 天试用", "used": "试用已使用", "missing-profile": "缺少思源账号 ID 或用户名", "unavailable": "当前版本未配置试用" } },
-            "fieldTypes": { "mSelect": "多选", "number": "数字", "date": "日期", "text": "文本", "mAsset": "文件", "checkbox": "复选框", "phone": "电话", "url": "链接", "email": "邮箱", "created": "创建时间", "updated": "更新时间" }
+            "fieldTypes": { "mSelect": "多选", "number": "数字", "date": "日期", "text": "文本", "mAsset": "文件", "relation": "关联", "checkbox": "复选框", "phone": "电话", "url": "链接", "email": "邮箱", "created": "创建时间", "updated": "更新时间" }
         },
         "disShow": {
             "title": "文档块展示字段",
-            "description": "输入需要展示的字段类型（mSelect、number、date、text、mAsset、checkbox、phone、url、email、created、updated），留空则展示全部支持字段。"
+            "description": "输入需要展示的字段类型（mSelect、number、date、text、mAsset、relation、checkbox、phone、url、email、created、updated），留空则展示全部支持字段。"
         },
         "disShowBlock": {
             "title": "普通块展示字段",
-            "description": "输入需要展示的字段类型（mSelect、number、date、text、mAsset、checkbox、phone、url、email、created、updated），留空则展示全部支持字段。"
+            "description": "输入需要展示的字段类型（mSelect、number、date、text、mAsset、relation、checkbox、phone、url、email、created、updated），留空则展示全部支持字段。"
         },
         "hiddenFields": {
             "title": "隐藏字段名称",
@@ -93,7 +99,7 @@
         },
         "fieldColorMap": {
             "title": "字段文字颜色 (JSON)",
-            "description": "为不同字段类型自定义文字颜色。支持：mSelect、number、date、text、mAsset、checkbox、phone、url、email、created、updated。",
+            "description": "为不同字段类型自定义文字颜色。支持：mSelect、number、date、text、mAsset、relation、checkbox、phone、url、email、created、updated。",
             "visualLabel": "可视化修改："
         },
         "fieldBgColorMap": {

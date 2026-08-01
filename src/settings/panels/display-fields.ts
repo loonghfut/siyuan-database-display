@@ -4,7 +4,7 @@ import { bindCommit, createCheckbox, createPanel, parseObject } from "../compone
 import { AddPanel, SettingsPanelText } from "../types";
 
 export function addDisplayFieldsPanel(addPanel: AddPanel, text: SettingsPanelText): void {
-    addPanel("display-fields", JSON.stringify({ document: FIELD_TYPES.join(","), block: "mSelect,text" }), text.displayFields.title, text.displayFields.description, (value, commit) => {
+    addPanel("display-fields", JSON.stringify({ document: FIELD_TYPES.join(","), block: "mSelect,text,relation" }), text.displayFields.title, text.displayFields.description, (value, commit) => {
         const state = parseObject<{ document?: string; block?: string }>(value, {});
         const panel = createPanel("db-settings--fields");
         const selected = { document: new Set(parseCsv(state.document)), block: new Set(parseCsv(state.block)) };

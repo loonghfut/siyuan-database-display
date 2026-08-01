@@ -33,22 +33,22 @@ export interface RefreshOptions {
 const fieldTypeSet = new Set<string>(FIELD_TYPES);
 
 export const DEFAULT_FIELD_COLORS: Record<string, string> = {
-    mSelect: "#4f46e5", number: "#2563eb", date: "#15803d", text: "#374151", mAsset: "#7c3aed",
+    mSelect: "#4f46e5", number: "#2563eb", date: "#15803d", text: "#374151", mAsset: "#7c3aed", relation: "#0891b2",
     checkbox: "#047857", phone: "#0f766e", url: "#b45309", email: "#be185d", created: "#64748b", updated: "#64748b"
 };
 
 export const DEFAULT_FIELD_BACKGROUNDS: Record<string, string> = {
-    mSelect: "#eef2ff", number: "#eff6ff", date: "#f0fdf4", text: "#f8fafc", mAsset: "#f5f3ff",
+    mSelect: "#eef2ff", number: "#eff6ff", date: "#f0fdf4", text: "#f8fafc", mAsset: "#f5f3ff", relation: "#ecfeff",
     checkbox: "#ecfdf5", phone: "#f0fdfa", url: "#fffbeb", email: "#fdf2f8", created: "#f8fafc", updated: "#f8fafc"
 };
 
 export const DEFAULT_DARK_FIELD_COLORS: Record<string, string> = {
-    mSelect: "#a5b4fc", number: "#93c5fd", date: "#86efac", text: "#e5e7eb", mAsset: "#c4b5fd",
+    mSelect: "#a5b4fc", number: "#93c5fd", date: "#86efac", text: "#e5e7eb", mAsset: "#c4b5fd", relation: "#67e8f9",
     checkbox: "#6ee7b7", phone: "#5eead4", url: "#fdba74", email: "#f9a8d4", created: "#94a3b8", updated: "#94a3b8"
 };
 
 export const DEFAULT_DARK_FIELD_BACKGROUNDS: Record<string, string> = {
-    mSelect: "rgba(99, 102, 241, 0.32)", number: "rgba(59, 130, 246, 0.32)", date: "rgba(34, 197, 94, 0.28)", text: "rgba(148, 163, 184, 0.2)", mAsset: "rgba(139, 92, 246, 0.3)",
+    mSelect: "rgba(99, 102, 241, 0.32)", number: "rgba(59, 130, 246, 0.32)", date: "rgba(34, 197, 94, 0.28)", text: "rgba(148, 163, 184, 0.2)", mAsset: "rgba(139, 92, 246, 0.3)", relation: "rgba(6, 182, 212, 0.28)",
     checkbox: "rgba(16, 185, 129, 0.28)", phone: "rgba(20, 184, 166, 0.28)", url: "rgba(245, 158, 11, 0.28)", email: "rgba(236, 72, 153, 0.28)", created: "rgba(100, 116, 139, 0.25)", updated: "rgba(100, 116, 139, 0.25)"
 };
 
@@ -120,7 +120,7 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
     const backgrounds = Object.fromEntries(Object.entries(typeColors).flatMap(([type, rule]) => isSafeColor(rule?.bg) ? [[type, rule.bg]] : []));
     return {
         documentFields: parseFieldTypesOrDefault(fieldSettings.document ?? get("dis-show"), [...FIELD_TYPES]),
-        blockFields: parseFieldTypesOrDefault(fieldSettings.block ?? get("dis-show-block"), ["mSelect", "text"]),
+        blockFields: parseFieldTypesOrDefault(fieldSettings.block ?? get("dis-show-block"), ["mSelect", "text", "relation"]),
         hiddenFields: new Set(parseCsv(fieldRules.hidden ?? get("hidden-fields"))),
         forceShowFields: new Set(parseCsv(fieldRules.force ?? get("force-show-fields")).filter(name => name !== "*")),
         dateFormat: ["YYYY-MM-DD", "YYYY/MM/DD", "MM/DD/YYYY", "DD/MM/YYYY", "full", "relative"].includes(String(dateFormat)) ? dateFormat as DateFormat : "YYYY-MM-DD",
