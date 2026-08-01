@@ -955,14 +955,29 @@ span[style*="outline: 2px solid"] {
 .inline-edit-datepicker {
     width: fit-content;
     min-width: 0;
-    max-width: min(360px, calc(100vw - 16px));
+    max-width: min(320px, calc(100vw - 16px));
     overflow: hidden;
-    border: 1px solid var(--b3-border-color);
-    border-radius: 6px;
-    background: var(--b3-theme-surface);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--b3-theme-surface-lighter, var(--b3-border-color));
+    border-radius: var(--b3-border-radius-b, 8px);
+    background: var(--b3-menu-background, var(--b3-theme-surface));
+    color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
+    box-shadow: var(--b3-dialog-shadow, 0 8px 24px rgba(0, 0, 0, 0.2));
+    font-family: var(--b3-font-family, inherit);
+    font-size: var(--b3-font-size, 14px);
     transform-origin: top left;
-    animation: inlineEditPanelIn 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: inlineEditPanelIn 120ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.inline-edit-popup {
+    min-width: 208px;
+}
+
+.inline-edit-dropdown {
+    width: min(240px, calc(100vw - 16px));
+}
+
+.inline-edit-datepicker {
+    width: min(260px, calc(100vw - 16px));
 }
 
 .inline-edit-panel--closing {
@@ -975,17 +990,19 @@ span[style*="outline: 2px solid"] {
     grid-template-columns: 16px minmax(0, 1fr) auto;
     align-items: center;
     gap: 7px;
-    min-height: 34px;
-    padding: 3px 5px 3px 10px;
-    border-bottom: 1px solid var(--b3-border-color);
-    color: var(--b3-theme-on-surface);
+    min-height: 36px;
+    padding: 4px 6px 4px 10px;
+    border-bottom: 1px solid var(--b3-theme-surface-lighter, var(--b3-border-color));
+    color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
     box-sizing: border-box;
+    user-select: none;
 }
 
 .inline-edit-panel__header strong {
     overflow: hidden;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 20px;
     letter-spacing: 0;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1007,7 +1024,7 @@ span[style*="outline: 2px solid"] {
 }
 
 .inline-edit-panel__field-icon {
-    color: var(--b3-theme-on-surface-light);
+    color: var(--b3-menu-icon-color, var(--b3-theme-on-surface-light));
 }
 
 .inline-edit-panel__close,
@@ -1018,17 +1035,17 @@ span[style*="outline: 2px solid"] {
     height: 26px;
     padding: 0;
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--b3-border-radius, 4px);
     background: transparent;
-    color: var(--b3-theme-on-surface-light);
+    color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
     cursor: pointer;
     transition: color 120ms ease, background-color 120ms ease, transform 100ms ease;
 }
 
 .inline-edit-panel__close:hover,
 .inline-edit-action:hover {
-    background: var(--b3-list-hover);
-    color: var(--b3-theme-on-surface);
+    background: var(--b3-list-icon-hover, var(--b3-list-hover));
+    color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
 }
 
 .inline-edit-panel__close:active,
@@ -1050,6 +1067,7 @@ span[style*="outline: 2px solid"] {
 .inline-edit-popup-input {
     margin: 0;
     padding: 10px;
+    background: var(--b3-menu-background, var(--b3-theme-surface));
 }
 
 .inline-edit-popup-input input,
@@ -1058,17 +1076,18 @@ span[style*="outline: 2px solid"] {
     width: 100%;
     min-width: 0;
     height: 32px;
-    padding: 5px 8px;
-    border: 1px solid var(--b3-border-color);
-    border-radius: 4px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: var(--b3-border-radius, 4px);
     outline: 0;
     background: var(--b3-theme-background);
-    color: var(--b3-theme-on-background);
+    color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
     box-sizing: border-box;
     font: inherit;
     font-size: 13px;
     letter-spacing: 0;
-    transition: border-color 120ms ease, box-shadow 120ms ease;
+    box-shadow: inset 0 0 0 1px var(--b3-border-color);
+    transition: box-shadow 120ms ease;
 }
 
 .inline-edit-popup-input input {
@@ -1079,8 +1098,8 @@ span[style*="outline: 2px solid"] {
 
 .inline-edit-popup-input textarea {
     display: block;
-    width: min(42ch, calc(100vw - 42px));
-    min-width: 18ch;
+    width: min(32ch, calc(100vw - 42px));
+    min-width: 16ch;
     min-height: 32px;
     max-width: 100%;
     max-height: 144px;
@@ -1093,8 +1112,19 @@ span[style*="outline: 2px solid"] {
 .inline-edit-popup-input input:focus,
 .inline-edit-popup-input textarea:focus,
 .inline-edit-datepicker-input:focus {
-    border-color: var(--b3-theme-primary);
-    box-shadow: 0 0 0 2px var(--b3-theme-primary-lightest);
+    box-shadow: inset 0 0 0 1px var(--b3-theme-primary-light), 0 0 0 .6px var(--b3-theme-primary-lighter);
+}
+
+.inline-edit-popup-input input:hover,
+.inline-edit-popup-input textarea:hover,
+.inline-edit-datepicker-input:hover {
+    box-shadow: inset 0 0 0 1px var(--b3-border-color), 0 0 0 .6px var(--b3-border-color);
+}
+
+.inline-edit-popup-input input:focus:hover,
+.inline-edit-popup-input textarea:focus:hover,
+.inline-edit-datepicker-input:focus:hover {
+    box-shadow: inset 0 0 0 1px var(--b3-theme-primary-light), 0 0 0 .6px var(--b3-theme-primary-lighter);
 }
 
 .inline-edit-action--primary {
@@ -1109,25 +1139,40 @@ span[style*="outline: 2px solid"] {
 
 .inline-edit-dropdown-list {
     max-height: min(260px, calc(100vh - 100px));
-    padding: 4px;
+    padding: 6px 8px 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.inline-edit-dropdown-list::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+.inline-edit-dropdown-list::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: var(--b3-border-radius, 4px);
+    background-clip: padding-box;
+    box-shadow: inset 0 0 2.5px 2.5px var(--b3-scroll-color, rgba(0, 0, 0, 0.24));
 }
 
 .inline-edit-dropdown-option {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 18px;
+    grid-template-columns: minmax(0, 1fr) 22px;
     align-items: center;
     gap: 8px;
     width: 100%;
-    min-height: 30px;
-    margin: 0;
-    padding: 4px 7px 4px 9px;
+    min-height: 28px;
+    margin: 1px 0;
+    padding: 0 8px;
     border: 0;
-    border-radius: 4px;
+    border-radius: var(--b3-border-radius, 4px);
     background: transparent;
-    color: var(--b3-theme-on-surface);
+    color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
     box-sizing: border-box;
     font: inherit;
-    font-size: 13px;
+    font-size: 14px;
+    line-height: 28px;
     letter-spacing: 0;
     text-align: left;
     cursor: pointer;
@@ -1150,8 +1195,10 @@ span[style*="outline: 2px solid"] {
 }
 
 .inline-edit-dropdown-option > svg {
-    justify-self: center;
-    color: var(--b3-theme-on-surface-light);
+    justify-self: end;
+    padding: 4px;
+    color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+    box-sizing: content-box;
     opacity: 0;
     transform: scale(0.7);
     transition: opacity 100ms ease, transform 120ms ease;
@@ -1173,8 +1220,12 @@ span[style*="outline: 2px solid"] {
     font-weight: 500;
 }
 
+.inline-edit-dropdown-option--selected:hover {
+    background: var(--b3-list-hover);
+}
+
 .inline-edit-dropdown-option--multi {
-    padding: 4px 7px 4px 9px;
+    padding: 0 8px;
 }
 
 .inline-edit-dropdown-option--multi input {
@@ -1193,17 +1244,21 @@ span[style*="outline: 2px solid"] {
     display: grid;
     grid-template-columns: 58px minmax(0, 1fr);
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     margin: 0;
-    padding: 5px 10px;
+    padding: 6px 10px;
 }
 
 .inline-edit-datepicker-row:first-of-type {
-    padding-top: 9px;
+    padding-top: 10px;
+}
+
+.inline-edit-datepicker-row:last-of-type {
+    padding-bottom: 10px;
 }
 
 .inline-edit-datepicker-label {
-    color: var(--b3-theme-on-surface-light);
+    color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
     font-size: 12px;
     letter-spacing: 0;
 }
@@ -1216,7 +1271,7 @@ span[style*="outline: 2px solid"] {
     display: flex;
     align-items: center;
     gap: 6px;
-    color: var(--b3-theme-on-surface);
+    color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
     cursor: pointer;
 }
 
@@ -1258,6 +1313,18 @@ span[style*="outline: 2px solid"] {
     .inline-edit-dropdown-option,
     .inline-edit-dropdown-option > svg {
         transition-duration: 1ms;
+    }
+}
+
+@media (max-width: 520px) {
+    .inline-edit-popup,
+    .inline-edit-dropdown,
+    .inline-edit-datepicker {
+        max-width: calc(100vw - 16px);
+    }
+
+    .inline-edit-popup {
+        min-width: min(208px, calc(100vw - 16px));
     }
 }
 

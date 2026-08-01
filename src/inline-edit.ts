@@ -31,7 +31,8 @@ const ICONS = {
     cancel: 'iconClose',
     check: 'iconCheck',
     clear: 'iconTrashcan',
-    edit: 'iconEdit'
+    edit: 'iconEdit',
+    selected: 'iconSelect'
 } as const;
 
 /**
@@ -724,7 +725,7 @@ function createDropdownOption(value: string, text: string, isSelected: boolean):
     option.dataset.value = value;
     const label = document.createElement('span');
     label.textContent = text;
-    const iconName = value ? ICONS.check : ICONS.clear;
+    const iconName = value ? (isSelected ? ICONS.selected : ICONS.check) : ICONS.clear;
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
     use.setAttribute('href', `#${iconName}`);
@@ -751,8 +752,8 @@ function createMultiSelectOption(value: string, text: string, isSelected: boolea
 
     const mark = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    use.setAttribute('href', `#${ICONS.check}`);
-    use.setAttribute('xlink:href', `#${ICONS.check}`);
+    use.setAttribute('href', `#${ICONS.selected}`);
+    use.setAttribute('xlink:href', `#${ICONS.selected}`);
     mark.appendChild(use);
     
     option.appendChild(checkbox);
