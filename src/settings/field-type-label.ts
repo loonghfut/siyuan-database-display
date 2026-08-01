@@ -6,7 +6,7 @@ export function createFieldTypeLabel(type: FieldType, text: SettingsPanelText, s
     const label = document.createElement("span");
     label.className = "db-settings__field-label";
     label.append(document.createTextNode(text.fieldTypes[type]));
-    if (!showProBadge || requiredFeaturesForField(type).length === 0) return label;
+    if (requiredFeaturesForField(type).length === 0) return label;
 
     const badge = document.createElement("span");
     badge.className = "db-settings__pro-badge";
