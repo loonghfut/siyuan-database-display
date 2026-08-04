@@ -86,7 +86,7 @@
 
 .db-display__chip {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     max-width: min(100%, 280px);
     min-height: 16px;
     padding: 0 3px;
@@ -103,6 +103,7 @@
     text-align: left;
     text-decoration: none;
     text-overflow: ellipsis;
+    vertical-align: middle;
     white-space: nowrap;
     cursor: pointer;
     transition: color 0.15s ease, text-decoration-color 0.15s ease;
@@ -120,6 +121,15 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.db-display__chip[data-field-type="template"] .db-display__value {
+    display: inline-flex;
+    align-items: center;
+}
+
+.db-display__chip[data-field-type="template"] .db-display__value > * {
+    margin-block: 0;
 }
 
 .db-display__chip[data-field-type="text"] .db-display__value {
