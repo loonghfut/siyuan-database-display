@@ -2,6 +2,7 @@ import { DisplayConfig, isSafeColor } from "@/config/display-config";
 import { AssetReference, DisplayItem, DisplayNavigationTarget, isInlineEditableField } from "@/core/types";
 import { t } from "@/i18n";
 import { assetLabel, assetThumbnailUrl } from "@/ui/asset-utils";
+import { createIconButton, iconElement } from "@/libs/dom";
 
 export interface RenderContext {
     blockId: string;
@@ -13,15 +14,7 @@ export interface RenderContext {
     onHideContentPreview: () => void;
     onShowRollupSources: (item: DisplayItem, element: HTMLElement) => void;
     onPreviewAsset: (item: DisplayItem, element: HTMLElement, event: MouseEvent) => void;
-}
-
-function iconElement(iconName: string): SVGSVGElement {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    use.setAttribute("href", `#${iconName}`);
-    use.setAttribute("xlink:href", `#${iconName}`);
-    svg.appendChild(use);
-    return svg;
+    onContextMenu: (item: DisplayItem, element: HTMLElement, event: MouseEvent) => void;
 }
 
 export class AttributeRenderer {
@@ -35,12 +28,17 @@ export class AttributeRenderer {
             canInlineEdit: context.canInlineEdit,
             config: this.visualConfig(context.config)
         });
-        if (this.signatures.get(attributeContainer) === signature) return;
+        // 容器必须仍然存在且签名一致才跳过渲染：思源会在 updateAttrs 等事务中
+        // 用 innerHTML 重建 .protyle-attr 内部（容器元素对象不变），清掉我们注入的
+        // 节点，此时 WeakMap 中的旧签名已失效，必须重新注入。
+        const existing = attributeContainer.querySelector<HTMLElement>(":scope > .my-protyle-attr--av");
+        if (existing && this.signatures.get(attributeContainer) === signature) return;
         this.signatures.set(attributeContainer, signature);
 
-        const existing = attributeContainer.querySelector<HTMLElement>(":scope > .my-protyle-attr--av");
         const container = existing || document.createElement("div");
         container.className = "my-protyle-attr--av";
+        // 容器随旧块被思源替换/重建时，据此定位所属块以支持一帧内快速恢复
+        container.dataset.blockId = context.blockId;
         container.replaceChildren(...this.createItems(items, context));
         if (!existing) attributeContainer.insertBefore(container, attributeContainer.firstChild);
     }
@@ -104,7 +102,7 @@ export class AttributeRenderer {
         items.forEach(item => group.appendChild(this.createRelationChip(item, context)));
 
         if (context.canInlineEdit && isInlineEditableField("relation")) {
-            const edit = this.createIconButton("iconEdit", t("common.edit"), "db-display__relation-edit");
+            const edit = createIconButton("iconEdit", t("common.edit"), "db-display__relation-edit");
             edit.addEventListener("click", event => {
                 event.stopPropagation();
                 context.onEdit(items[0], edit);
@@ -231,6 +229,7 @@ export class AttributeRenderer {
             }
             context.onPreviewAsset(item, preview, event);
         });
+        this.enableContextMenu(preview, item, context);
         wrapper.appendChild(preview);
         return wrapper;
     }
@@ -244,12 +243,6 @@ export class AttributeRenderer {
         element.rel = "noopener noreferrer";
         element.setAttribute("aria-label", this.chipLabel(item, plainText, true));
         this.applyColors(element, item, context.config);
-        if (this.isEditable(item, context)) {
-            element.addEventListener("contextmenu", event => {
-                event.preventDefault();
-                context.onEdit(item, element);
-            });
-        }
         return element;
     }
 
@@ -312,6 +305,7 @@ export class AttributeRenderer {
             element.appendChild(value);
         }
         element.dataset.fieldType = item.type;
+        this.enableContextMenu(element, item, context);
         return plainText;
     }
 
@@ -330,14 +324,12 @@ export class AttributeRenderer {
         return context.canInlineEdit && isInlineEditableField(item.type) && item.type !== "relation";
     }
 
-    private createIconButton(icon: string, label: string, className: string): HTMLButtonElement {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `${className} ariaLabel`;
-        button.title = label;
-        button.setAttribute("aria-label", label);
-        button.appendChild(iconElement(icon));
-        return button;
+    private enableContextMenu(element: HTMLElement, item: DisplayItem, context: RenderContext): void {
+        element.addEventListener("contextmenu", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            context.onContextMenu(item, element, event);
+        });
     }
 
     private renderTemplateValue(value: HTMLElement, content: string, maxLength: number): string {

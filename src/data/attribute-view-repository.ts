@@ -123,3 +123,9 @@ export class AttributeViewRepository {
         return response.data as T;
     }
 }
+
+/**
+ * 全局共享的仓储实例：显示控制器与各编辑器共用同一缓存，
+ * 写入后的缓存失效对所有调用方生效。
+ */
+export const attributeViewRepository = new AttributeViewRepository();

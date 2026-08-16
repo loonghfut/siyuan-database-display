@@ -67,7 +67,7 @@ function parseFieldTypesOrDefault(value: unknown, fallback: FieldType[]): FieldT
     return parseFieldTypes(value);
 }
 
-function parseJsonObject<T extends object>(value: unknown, fallback: T): T {
+export function parseJsonObject<T extends object>(value: unknown, fallback: T): T {
     if (typeof value !== "string" || !value.trim()) return fallback;
     try {
         const parsed = JSON.parse(value);

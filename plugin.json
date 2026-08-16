@@ -23,11 +23,6 @@
     "default": "README.md",
     "zh-CN": "README.zh-CN.md"
   },
-  "funding": {
-    "custom": [
-      ""
-    ]
-  },
   "keywords": [
     "database",
     "display",

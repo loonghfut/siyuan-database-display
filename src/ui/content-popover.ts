@@ -2,6 +2,7 @@ import { fetchSyncPost, IWebSocketData } from "siyuan";
 import { DisplayItem, DisplayNavigationTarget } from "@/core/types";
 import { t } from "@/i18n";
 import { assetLabel } from "@/ui/asset-utils";
+import { createIconButton, positionPanelNear } from "@/libs/dom";
 
 const PREVIEW_DELAY = 260;
 const HIDE_DELAY = 160;
@@ -20,15 +21,6 @@ interface ContentPopoverOptions {
 
 function escapeSqlLiteral(value: string): string {
     return value.replace(/'/g, "''");
-}
-
-function iconElement(iconName: string): SVGSVGElement {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    use.setAttribute("href", `#${iconName}`);
-    use.setAttribute("xlink:href", `#${iconName}`);
-    svg.appendChild(use);
-    return svg;
 }
 
 export class ContentPopover {
@@ -109,7 +101,7 @@ export class ContentPopover {
         const header = this.createHeader(assetLabel(asset));
         const actions = header.querySelector(".db-display__popover-actions");
         if (canEdit) {
-            const edit = this.createIconButton("iconEdit", t("common.edit"));
+            const edit = createIconButton("iconEdit", t("common.edit"), "db-display__popover-action");
             edit.addEventListener("click", event => {
                 event.stopPropagation();
                 this.hideImmediately();
@@ -117,7 +109,7 @@ export class ContentPopover {
             });
             actions?.prepend(edit);
         }
-        const open = this.createIconButton("iconOpen", t("common.openFile"));
+        const open = createIconButton("iconOpen", t("common.openFile"), "db-display__popover-action");
         open.addEventListener("click", event => {
             event.stopPropagation();
             this.options.onNavigate({ kind: "asset", path: asset.content! }, event.ctrlKey || event.metaKey);
@@ -177,7 +169,7 @@ export class ContentPopover {
         const content = document.createElement("div");
         content.className = "db-display__popover-content";
         const header = this.createHeader(preview?.title || target.blockId);
-        const open = this.createIconButton("iconOpen", t("common.openBlock"));
+        const open = createIconButton("iconOpen", t("common.openBlock"), "db-display__popover-action");
         open.addEventListener("click", event => {
             event.stopPropagation();
             this.options.onNavigate(target, event.ctrlKey || event.metaKey);
@@ -206,7 +198,7 @@ export class ContentPopover {
         heading.textContent = title;
         const actions = document.createElement("span");
         actions.className = "db-display__popover-actions";
-        const close = this.createIconButton("iconClose", t("common.cancel"));
+        const close = createIconButton("iconClose", t("common.cancel"), "db-display__popover-action");
         close.addEventListener("click", event => {
             event.stopPropagation();
             this.hideImmediately();
@@ -214,16 +206,6 @@ export class ContentPopover {
         actions.appendChild(close);
         header.append(heading, actions);
         return header;
-    }
-
-    private createIconButton(icon: string, label: string): HTMLButtonElement {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "db-display__popover-action ariaLabel";
-        button.title = label;
-        button.setAttribute("aria-label", label);
-        button.appendChild(iconElement(icon));
-        return button;
     }
 
     private show(content: HTMLElement, anchor: HTMLElement, kind: string): void {
@@ -263,14 +245,7 @@ export class ContentPopover {
 
     private readonly position = (): void => {
         if (!this.root || this.root.hidden || !this.currentAnchor?.isConnected) return;
-        const anchor = this.currentAnchor.getBoundingClientRect();
-        const popover = this.root.getBoundingClientRect();
-        let top = anchor.bottom + 6;
-        let left = anchor.left;
-        if (top + popover.height > window.innerHeight - 8) top = anchor.top - popover.height - 6;
-        if (left + popover.width > window.innerWidth - 8) left = window.innerWidth - popover.width - 8;
-        this.root.style.top = `${Math.max(8, top)}px`;
-        this.root.style.left = `${Math.max(8, left)}px`;
+        positionPanelNear(this.root, this.currentAnchor, 6);
     };
 
     private async loadBlockPreview(blockId: string): Promise<BlockPreview | undefined> {

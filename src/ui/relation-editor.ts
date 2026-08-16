@@ -1,8 +1,9 @@
 import { showMessage } from "siyuan";
 import { AttributeViewRelation, AttributeViewWriteValue, RelationContent, RelationValue, RelationCandidateRow } from "@/core/types";
-import { AttributeViewRepository } from "@/data/attribute-view-repository";
+import { attributeViewRepository } from "@/data/attribute-view-repository";
 import { toErrorMessage } from "@/libs/error-utils";
 import { t } from "@/i18n";
+import { createIconButton, iconElement, positionPanelNear } from "@/libs/dom";
 
 const PAGE_SIZE = 16;
 const SEARCH_DELAY = 180;
@@ -32,26 +33,7 @@ interface RelationSelection {
     isDetached?: boolean;
 }
 
-const repository = new AttributeViewRepository();
-
-function iconElement(iconName: string): SVGSVGElement {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    use.setAttribute("href", `#${iconName}`);
-    use.setAttribute("xlink:href", `#${iconName}`);
-    svg.appendChild(use);
-    return svg;
-}
-
-function iconButton(iconName: string, label: string, className: string): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `${className} ariaLabel`;
-    button.setAttribute("aria-label", label);
-    button.title = label;
-    button.appendChild(iconElement(iconName));
-    return button;
-}
+const repository = attributeViewRepository;
 
 function normalizeRelation(value: unknown): RelationValue {
     const source = value && typeof value === "object" && "relation" in value
@@ -99,14 +81,7 @@ function selectionFromRow(row: RelationCandidateRow): RelationSelection {
 }
 
 function positionPanel(panel: HTMLElement, target: HTMLElement): void {
-    const rect = target.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-    let top = rect.bottom + 4;
-    let left = rect.left;
-    if (top + panelRect.height > window.innerHeight) top = rect.top - panelRect.height - 4;
-    if (left + panelRect.width > window.innerWidth) left = window.innerWidth - panelRect.width - 8;
-    panel.style.top = `${Math.max(8, Math.min(top, window.innerHeight - panelRect.height - 8))}px`;
-    panel.style.left = `${Math.max(8, left)}px`;
+    positionPanelNear(panel, target, 4);
 }
 
 export function openRelationEditor(options: RelationEditorOptions): RelationEditorHandle | undefined {
@@ -128,8 +103,8 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
     title.textContent = options.keyName;
     const actions = document.createElement("span");
     actions.className = "inline-edit-panel__actions";
-    const closeButton = iconButton("iconClose", t("common.cancel"), "inline-edit-panel__close");
-    const saveButton = iconButton("iconCheck", t("common.save"), "inline-edit-action inline-edit-action--primary");
+    const closeButton = createIconButton("iconClose", t("common.cancel"), "inline-edit-panel__close");
+    const saveButton = createIconButton("iconCheck", t("common.save"), "inline-edit-action inline-edit-action--primary");
     actions.append(closeButton, saveButton);
     header.append(fieldIcon, title, actions);
 

@@ -23,7 +23,20 @@
         "previewUnavailable": "Preview unavailable",
         "addAsset": "Add asset",
         "removeAsset": "Remove",
-        "noAssets": "No assets"
+        "noAssets": "No assets",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "tomorrow": "Tomorrow",
+        "daysAgo": "${days} days ago",
+        "daysLater": "in ${days} days",
+        "checked": "Checked",
+        "unchecked": "Unchecked",
+        "copyValue": "Copy value",
+        "valueCopied": "Value copied",
+        "copyFailed": "Copy failed",
+        "hideField": "Hide this field",
+        "fieldHidden": "Field hidden: ${name}",
+        "openInSplit": "Open in split view"
     },
     "messages": {
         "fieldColorParseFailed": "Failed to parse field color JSON",
@@ -40,7 +53,9 @@
         "searchRelation": "Search related items",
         "loadingRelation": "Loading related items…",
         "noRelationResults": "No related items found",
-        "loadMoreRelation": "Load more"
+        "loadMoreRelation": "Load more",
+        "confirmTemplateTitle": "Confirm template change",
+        "confirmTemplateContent": "The template expression applies to every row of this column. Continue?"
     },
     "settings": {
         "panel": {

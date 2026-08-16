@@ -3,12 +3,14 @@
  */
 
 import { fetchSyncPost, IWebSocketData, showMessage } from "siyuan";
-import { AttributeViewRepository } from "./data/attribute-view-repository";
+import { attributeViewRepository } from "./data/attribute-view-repository";
 import { AssetReference, AttributeViewRelation, AttributeViewWriteValue } from "./core/types";
 import { t } from "./i18n";
 import { toErrorMessage } from "./libs/error-utils";
 import { openRelationEditor, RelationEditorHandle } from "./ui/relation-editor";
 import { assetLabel } from "./ui/asset-utils";
+import { createIconButton, iconElement, positionPanelNear } from "./libs/dom";
+import { confirmDialog } from "./libs/confirm";
 
 export interface InlineEditOptions {
     element: HTMLElement;
@@ -29,7 +31,6 @@ export interface InlineEditOptions {
 // 存储当前打开的弹窗引用
 let currentPopup: HTMLElement | null = null;
 let currentPopupCleanup: (() => void) | null = null;
-const attributeViewRepository = new AttributeViewRepository();
 
 const ICONS = {
     cancel: 'iconClose',
@@ -89,6 +90,20 @@ export function enableInlineEdit(options: InlineEditOptions) {
             handlePopupEdit(options);
             break;
     }
+}
+
+/**
+ * 关闭当前打开的编辑弹窗，并清理残留的关闭动画节点。
+ * 供插件卸载（onunload）时调用，避免弹窗泄漏。
+ */
+export function closeInlineEdit(): void {
+    currentPopupCleanup?.();
+    currentPopupCleanup = null;
+    if (currentPopup) {
+        currentPopup.remove();
+        currentPopup = null;
+    }
+    document.querySelectorAll('.inline-edit-panel--closing').forEach(element => element.remove());
 }
 
 function handleTemplateEdit(options: InlineEditOptions): void {
@@ -457,15 +472,6 @@ async function uploadAsset(file: File): Promise<AssetReference> {
     };
 }
 
-function iconElement(iconName: string): SVGSVGElement {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    use.setAttribute('href', `#${iconName}`);
-    use.setAttribute('xlink:href', `#${iconName}`);
-    svg.appendChild(use);
-    return svg;
-}
-
 /**
  * 处理日期编辑
  */
@@ -702,6 +708,12 @@ function handlePopupEdit(options: InlineEditOptions) {
             }
 
             if (keyType === 'template') {
+                // 模板表达式作用于整列，保存前需要用户确认
+                const confirmed = await confirmDialog(t('inlineEdit.confirmTemplateTitle'), t('inlineEdit.confirmTemplateContent'));
+                if (!confirmed) {
+                    isSaving = false;
+                    return;
+                }
                 await attributeViewRepository.updateTemplate(avID, options.keyID, String(newValue));
             } else {
                 const value = convertToAVValue(keyType, avInput);
@@ -772,64 +784,14 @@ function handlePopupEdit(options: InlineEditOptions) {
  * 定位弹窗到元素附近
  */
 function positionPopup(popup: HTMLElement, target: HTMLElement) {
-    const rect = target.getBoundingClientRect();
-    const popupRect = popup.getBoundingClientRect();
-    
-    // 默认显示在元素下方
-    let top = rect.bottom + 5;
-    let left = rect.left;
-    
-    // 检查是否超出视口底部
-    if (top + popupRect.height > window.innerHeight) {
-        // 显示在元素上方
-        top = rect.top - popupRect.height - 5;
-    }
-    
-    // 检查是否超出视口右侧
-    if (left + popupRect.width > window.innerWidth) {
-        left = window.innerWidth - popupRect.width - 10;
-    }
-    
-    // 检查是否超出视口左侧
-    if (left < 10) {
-        left = 10;
-    }
-    
-    top = Math.max(8, Math.min(top, window.innerHeight - popupRect.height - 8));
-    popup.style.top = `${top}px`;
-    popup.style.left = `${left}px`;
+    positionPanelNear(popup, target, 5);
 }
 
 /**
  * 定位下拉菜单
  */
 function positionDropdown(dropdown: HTMLElement, target: HTMLElement) {
-    const rect = target.getBoundingClientRect();
-    const dropdownRect = dropdown.getBoundingClientRect();
-    
-    // 默认显示在元素下方
-    let top = rect.bottom + 2;
-    let left = rect.left;
-    
-    // 检查是否超出视口底部
-    if (top + dropdownRect.height > window.innerHeight) {
-        // 显示在元素上方
-        top = rect.top - dropdownRect.height - 2;
-    }
-    
-    // 检查是否超出视口右侧
-    if (left + dropdownRect.width > window.innerWidth) {
-        left = window.innerWidth - dropdownRect.width - 10;
-    }
-    
-    // 检查是否超出视口左侧
-    if (left < 10) {
-        left = 10;
-    }
-    
-    top = Math.max(8, Math.min(top, window.innerHeight - dropdownRect.height - 8));
-    dropdown.style.top = `${top}px`;
-    dropdown.style.left = `${left}px`;
+    positionPanelNear(dropdown, target, 2);
 }
 
 /**
@@ -856,21 +818,6 @@ function bindOutsideDismiss(handler: (event: MouseEvent) => void): () => void {
         window.clearTimeout(timer);
         document.removeEventListener('mousedown', handler);
     };
-}
-
-function createIconButton(icon: string, label: string, className: string): HTMLButtonElement {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `${className} ariaLabel`;
-    button.setAttribute('aria-label', label);
-    button.title = label;
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    use.setAttribute('href', `#${icon}`);
-    use.setAttribute('xlink:href', `#${icon}`);
-    svg.appendChild(use);
-    button.appendChild(svg);
-    return button;
 }
 
 function prepareEditorPanel(panel: HTMLElement, label: string): void {

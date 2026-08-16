@@ -1,8 +1,8 @@
-import { openTab, Plugin } from "siyuan";
+import { openTab, Plugin, showMessage } from "siyuan";
 import "@/index.scss";
-import { readDisplayConfig, readRefreshOptions } from "@/config/display-config";
+import { parseCsv, parseJsonObject, readDisplayConfig, readRefreshOptions } from "@/config/display-config";
 import { DisplayController } from "@/services/display-controller";
-import { setI18n } from "@/i18n";
+import { setI18n, t } from "@/i18n";
 import { SettingUtils } from "@/libs/setting-utils";
 import { addSettings, migrateLegacySettings } from "@/settings";
 import { LicenseService, ProAccessService, TrialService } from "@/licensing";
@@ -39,7 +39,8 @@ export default class DatabaseDisplay extends Plugin {
             isObserverEnabled: () => readRefreshOptions(key => this.settings.get(key)).observerEnabled,
             isFeatureEnabled: feature => this.proAccess.isFeatureEnabled(feature),
             openBlock: (blockId, openInSplit) => this.openBlock(blockId, openInSplit),
-            openAsset: (path, openInSplit) => this.openAsset(path, openInSplit)
+            openAsset: (path, openInSplit) => this.openAsset(path, openInSplit),
+            hideField: fieldName => this.hideField(fieldName)
         });
         this.eventBus.on("switch-protyle", this.onSwitchProtyle);
         this.eventBus.on("loaded-protyle-dynamic", this.onLoaded);
@@ -74,11 +75,37 @@ export default class DatabaseDisplay extends Plugin {
         try {
             const message = JSON.parse(event.data);
             if (message.cmd !== "transactions") return;
-            const operations = message.data?.flatMap((item: { doOperations?: Array<{ action?: string }> }) => item.doOperations || []) || [];
-            if (operations.some((operation: { action?: string }) => operation.action?.startsWith("updateAttrView"))) this.controller.scheduleRefresh(true);
+            const operations = message.data?.flatMap((item: { doOperations?: Array<Record<string, unknown>> }) => item.doOperations || []) || [];
+            const relevant = operations.filter(operation =>
+                typeof operation.action === "string" && operation.action.startsWith("updateAttrView")
+            );
+            if (relevant.length === 0) return;
+            // 只关心与当前可见内容相关的属性视图，减少无关刷新
+            const attributeViewIds: string[] = [];
+            for (const operation of relevant) {
+                const avID = operation.avID;
+                if (typeof avID === "string" && avID && !attributeViewIds.includes(avID)) {
+                    attributeViewIds.push(avID);
+                }
+            }
+            this.controller.handleAttributeViewUpdate(attributeViewIds);
         } catch {
             // Ignore non-JSON websocket traffic.
         }
+    }
+
+    /**
+     * 右键菜单"隐藏此字段"：合并新旧隐藏规则后写回设置。
+     */
+    private hideField(fieldName: string): void {
+        if (!fieldName) return;
+        const fieldRules = parseJsonObject<{ hidden?: string; force?: string }>(this.settings.get("field-rules"), {});
+        const hidden = new Set([...parseCsv(fieldRules.hidden), ...parseCsv(this.settings.get("hidden-fields")), fieldName]);
+        fieldRules.hidden = [...hidden].join(",");
+        void this.settings.setAndSave("field-rules", JSON.stringify(fieldRules)).then(() => {
+            showMessage(t("common.fieldHidden", { name: fieldName }), 3000, "info");
+            this.controller?.scheduleRefresh(true);
+        });
     }
 
     private openBlock(blockId: string, openInSplit: boolean): void {

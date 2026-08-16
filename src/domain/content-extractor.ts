@@ -15,16 +15,17 @@ import {
     RelationValue
 } from "@/core/types";
 import { DisplayConfig } from "@/config/display-config";
+import { t } from "@/i18n";
 
 function formatDate(value: number, format: DateFormat, includeTime: boolean, isNotTime = false): string {
     const date = new Date(value > 10000000000 ? value : value * 1000);
     if (Number.isNaN(date.getTime())) return "";
     if (format === "relative") {
         const days = Math.floor((new Date().getTime() - date.getTime()) / 86400000);
-        if (days === 0) return "今天";
-        if (days === 1) return "昨天";
-        if (days === -1) return "明天";
-        return days > 0 ? `${days} 天前` : `${Math.abs(days)} 天后`;
+        if (days === 0) return t("common.today");
+        if (days === 1) return t("common.yesterday");
+        if (days === -1) return t("common.tomorrow");
+        return days > 0 ? t("common.daysAgo", { days }) : t("common.daysLater", { days: Math.abs(days) });
     }
     const parts = { year: String(date.getFullYear()), month: String(date.getMonth() + 1).padStart(2, "0"), day: String(date.getDate()).padStart(2, "0") };
     const content = format === "YYYY/MM/DD" ? `${parts.year}/${parts.month}/${parts.day}`
@@ -37,7 +38,7 @@ function formatDate(value: number, format: DateFormat, includeTime: boolean, isN
 
 function checkboxText(checked: boolean, style: CheckboxStyle): string {
     if (style === "symbol") return checked ? "☑" : "☐";
-    if (style === "text") return checked ? "已选中" : "未选中";
+    if (style === "text") return checked ? t("common.checked") : t("common.unchecked");
     return checked ? "✅" : "❌";
 }
 

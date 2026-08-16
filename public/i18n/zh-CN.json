@@ -23,7 +23,20 @@
         "previewUnavailable": "无法加载预览",
         "addAsset": "添加资源",
         "removeAsset": "移除",
-        "noAssets": "暂无资源"
+        "noAssets": "暂无资源",
+        "today": "今天",
+        "yesterday": "昨天",
+        "tomorrow": "明天",
+        "daysAgo": "${days} 天前",
+        "daysLater": "${days} 天后",
+        "checked": "已选中",
+        "unchecked": "未选中",
+        "copyValue": "复制值",
+        "valueCopied": "已复制",
+        "copyFailed": "复制失败",
+        "hideField": "隐藏此字段",
+        "fieldHidden": "已隐藏字段：${name}",
+        "openInSplit": "在分屏打开"
     },
     "messages": {
         "fieldColorParseFailed": "解析字段颜色 JSON 失败",
@@ -40,7 +53,9 @@
         "searchRelation": "搜索关联项",
         "loadingRelation": "正在加载关联项…",
         "noRelationResults": "没有可关联的项目",
-        "loadMoreRelation": "加载更多"
+        "loadMoreRelation": "加载更多",
+        "confirmTemplateTitle": "确认修改模板",
+        "confirmTemplateContent": "模板表达式会应用到该列的每一行，确定继续吗？"
     },
     "settings": {
         "panel": {

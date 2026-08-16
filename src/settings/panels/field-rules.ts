@@ -36,10 +36,11 @@ function renderRuleRow(section: RuleSection, index: number, onRemove: () => void
     section.list.append(row);
 }
 
-function renderSection(section: RuleSection): void {
+function renderSection(section: RuleSection, onChanged: () => void): void {
     section.list.replaceChildren();
     section.rules.forEach((_, index) => renderRuleRow(section, index, () => {
-        renderSection(section);
+        renderSection(section, onChanged);
+        onChanged();
     }));
 }
 
@@ -70,12 +71,12 @@ export function addFieldRulesPanel(addPanel: AddPanel, text: SettingsPanelText):
         const hiddenSectionData: RuleSection = { rules: hiddenRules, list: hiddenList, placeholder: text.fieldRules.hiddenPlaceholder };
         addHidden.addEventListener("click", () => {
             hiddenRules.push("");
-            renderSection(hiddenSectionData);
+            renderSection(hiddenSectionData, save);
             save();
             const inputs = hiddenList.querySelectorAll<HTMLInputElement>(".b3-text-field");
             inputs[inputs.length - 1]?.focus();
         });
-        renderSection(hiddenSectionData);
+        renderSection(hiddenSectionData, save);
         hiddenSection.append(hiddenTitle, hiddenList, addHidden);
 
         const forceSection = document.createElement("section");
@@ -91,12 +92,12 @@ export function addFieldRulesPanel(addPanel: AddPanel, text: SettingsPanelText):
         const forceSectionData: RuleSection = { rules: forceRules, list: forceList, placeholder: text.fieldRules.forcePlaceholder };
         addForce.addEventListener("click", () => {
             forceRules.push("");
-            renderSection(forceSectionData);
+            renderSection(forceSectionData, save);
             save();
             const inputs = forceList.querySelectorAll<HTMLInputElement>(".b3-text-field");
             inputs[inputs.length - 1]?.focus();
         });
-        renderSection(forceSectionData);
+        renderSection(forceSectionData, save);
         forceSection.append(forceTitle, forceList, addForce);
 
         panel.addEventListener("change", save);
