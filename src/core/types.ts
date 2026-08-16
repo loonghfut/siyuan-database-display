@@ -1,8 +1,14 @@
-export const FIELD_TYPES = ["mSelect", "number", "date", "text", "template", "mAsset", "relation", "checkbox", "phone", "url", "email", "created", "updated"] as const;
+export const FIELD_TYPES = ["mSelect", "number", "date", "text", "template", "mAsset", "relation", "rollup", "block", "lineNumber", "checkbox", "phone", "url", "email", "created", "updated"] as const;
 
 export type FieldType = typeof FIELD_TYPES[number];
 export type CheckboxStyle = "emoji" | "symbol" | "text";
 export type DateFormat = "YYYY-MM-DD" | "YYYY/MM/DD" | "MM/DD/YYYY" | "DD/MM/YYYY" | "full" | "relative";
+
+const READ_ONLY_FIELD_TYPES: readonly FieldType[] = ["block", "rollup", "lineNumber", "mAsset", "created", "updated"];
+
+export function isInlineEditableField(type: FieldType): boolean {
+    return !READ_ONLY_FIELD_TYPES.includes(type);
+}
 
 export interface AttributeViewKey {
     id: string;
@@ -26,9 +32,21 @@ export interface AttributeViewRelation {
     isTwoWay?: boolean;
 }
 
+export interface BlockReference {
+    id?: string;
+    content?: string;
+    icon?: string;
+}
+
+export interface AssetReference {
+    content?: string;
+    name?: string;
+    type?: "file" | "image" | string;
+}
+
 export interface RelationContent {
     type?: "block" | string;
-    block?: { id?: string; content?: string };
+    block?: BlockReference;
     isDetached?: boolean;
 }
 
@@ -39,7 +57,7 @@ export interface RelationValue {
 
 export interface RelationCandidateValue extends AttributeViewValue {
     type?: string;
-    block?: { id?: string; content?: string };
+    block?: BlockReference;
     isDetached?: boolean;
 }
 
@@ -58,6 +76,10 @@ export interface RelationCandidatesPage {
 }
 
 export interface AttributeViewValue {
+    type?: string;
+    blockID?: string;
+    id?: string;
+    isDetached?: boolean;
     text?: { content?: string };
     number?: { content?: number };
     date?: { content?: number; content2?: number; hasEndDate?: boolean; isNotTime?: boolean };
@@ -67,7 +89,9 @@ export interface AttributeViewValue {
     phone?: { content?: string };
     template?: { content?: string };
     mSelect?: Array<{ content?: string; color?: string }>;
-    mAsset?: Array<{ name?: string }>;
+    mAsset?: AssetReference[];
+    block?: BlockReference;
+    rollup?: { contents?: AttributeViewValue[] };
     relation?: RelationValue;
     created?: { content?: number };
     updated?: { content?: number };
@@ -76,6 +100,17 @@ export interface AttributeViewValue {
 export interface AttributeViewTable {
     avID: string;
     keyValues: Array<{ key: AttributeViewKey; values: AttributeViewValue[] }>;
+    blockIDs?: string[];
+}
+
+export type DisplayNavigationTarget =
+    | { kind: "block"; blockId: string }
+    | { kind: "asset"; path: string };
+
+export interface DisplaySource {
+    text: string;
+    type?: string;
+    target?: DisplayNavigationTarget;
 }
 
 export interface DisplayItem {
@@ -89,6 +124,9 @@ export interface DisplayItem {
     template?: string;
     selectOptions?: SelectOption[];
     relation?: AttributeViewRelation;
+    navigation?: DisplayNavigationTarget;
+    asset?: AssetReference;
+    sources?: DisplaySource[];
 }
 
 export type AttributeViewWriteValue =
@@ -100,4 +138,5 @@ export type AttributeViewWriteValue =
     | { url: { content: string } }
     | { email: { content: string } }
     | { phone: { content: string } }
-    | { relation: { blockIDs: string[]; contents: RelationContent[] } };
+    | { relation: { blockIDs: string[]; contents: RelationContent[] } }
+    | { mAsset: AssetReference[] };

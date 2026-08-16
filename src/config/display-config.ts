@@ -34,22 +34,22 @@ const fieldTypeSet = new Set<string>(FIELD_TYPES);
 
 export const DEFAULT_FIELD_COLORS: Record<string, string> = {
     mSelect: "#4f46e5", number: "#2563eb", date: "#15803d", text: "#374151", template: "#9333ea", mAsset: "#7c3aed", relation: "#0891b2",
-    checkbox: "#047857", phone: "#0f766e", url: "#b45309", email: "#be185d", created: "#64748b", updated: "#64748b"
+    rollup: "#a16207", block: "#c2410c", lineNumber: "#64748b", checkbox: "#047857", phone: "#0f766e", url: "#b45309", email: "#be185d", created: "#64748b", updated: "#64748b"
 };
 
 export const DEFAULT_FIELD_BACKGROUNDS: Record<string, string> = {
     mSelect: "#eef2ff", number: "#eff6ff", date: "#f0fdf4", text: "#f8fafc", template: "#faf5ff", mAsset: "#f5f3ff", relation: "#ecfeff",
-    checkbox: "#ecfdf5", phone: "#f0fdfa", url: "#fffbeb", email: "#fdf2f8", created: "#f8fafc", updated: "#f8fafc"
+    rollup: "#fefce8", block: "#fff7ed", lineNumber: "#f8fafc", checkbox: "#ecfdf5", phone: "#f0fdfa", url: "#fffbeb", email: "#fdf2f8", created: "#f8fafc", updated: "#f8fafc"
 };
 
 export const DEFAULT_DARK_FIELD_COLORS: Record<string, string> = {
     mSelect: "#a5b4fc", number: "#93c5fd", date: "#86efac", text: "#e5e7eb", template: "#d8b4fe", mAsset: "#c4b5fd", relation: "#67e8f9",
-    checkbox: "#6ee7b7", phone: "#5eead4", url: "#fdba74", email: "#f9a8d4", created: "#94a3b8", updated: "#94a3b8"
+    rollup: "#fde68a", block: "#fdba74", lineNumber: "#94a3b8", checkbox: "#6ee7b7", phone: "#5eead4", url: "#fdba74", email: "#f9a8d4", created: "#94a3b8", updated: "#94a3b8"
 };
 
 export const DEFAULT_DARK_FIELD_BACKGROUNDS: Record<string, string> = {
     mSelect: "rgba(99, 102, 241, 0.32)", number: "rgba(59, 130, 246, 0.32)", date: "rgba(34, 197, 94, 0.28)", text: "rgba(148, 163, 184, 0.2)", template: "rgba(168, 85, 247, 0.3)", mAsset: "rgba(139, 92, 246, 0.3)", relation: "rgba(6, 182, 212, 0.28)",
-    checkbox: "rgba(16, 185, 129, 0.28)", phone: "rgba(20, 184, 166, 0.28)", url: "rgba(245, 158, 11, 0.28)", email: "rgba(236, 72, 153, 0.28)", created: "rgba(100, 116, 139, 0.25)", updated: "rgba(100, 116, 139, 0.25)"
+    rollup: "rgba(234, 179, 8, 0.24)", block: "rgba(249, 115, 22, 0.25)", lineNumber: "rgba(100, 116, 139, 0.25)", checkbox: "rgba(16, 185, 129, 0.28)", phone: "rgba(20, 184, 166, 0.28)", url: "rgba(245, 158, 11, 0.28)", email: "rgba(236, 72, 153, 0.28)", created: "rgba(100, 116, 139, 0.25)", updated: "rgba(100, 116, 139, 0.25)"
 };
 
 export function parseCsv(value: unknown): string[] {

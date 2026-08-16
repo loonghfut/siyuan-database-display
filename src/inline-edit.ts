@@ -2,12 +2,13 @@
  * 直接编辑模式 - 在字段周围弹出小窗口编辑（伪直接编辑）
  */
 
-import { showMessage } from "siyuan";
+import { fetchSyncPost, IWebSocketData, showMessage } from "siyuan";
 import { AttributeViewRepository } from "./data/attribute-view-repository";
-import { AttributeViewRelation, AttributeViewWriteValue } from "./core/types";
+import { AssetReference, AttributeViewRelation, AttributeViewWriteValue } from "./core/types";
 import { t } from "./i18n";
 import { toErrorMessage } from "./libs/error-utils";
 import { openRelationEditor, RelationEditorHandle } from "./ui/relation-editor";
+import { assetLabel } from "./ui/asset-utils";
 
 export interface InlineEditOptions {
     element: HTMLElement;
@@ -35,7 +36,10 @@ const ICONS = {
     check: 'iconCheck',
     clear: 'iconTrashcan',
     edit: 'iconEdit',
-    selected: 'iconSelect'
+    selected: 'iconSelect',
+    add: 'iconAdd',
+    file: 'iconFile',
+    image: 'iconImage'
 } as const;
 
 /**
@@ -67,6 +71,10 @@ export function enableInlineEdit(options: InlineEditOptions) {
         case 'relation':
             // 关联：使用思源原生关联候选接口
             handleRelationEdit(options);
+            break;
+        case 'mAsset':
+            // 资源：列表增删 + 上传
+            handleAssetEdit(options);
             break;
         case 'date':
             // 日期：显示开始/结束时间选择器
@@ -315,6 +323,147 @@ function handleRelationEdit(options: InlineEditOptions): void {
     if (!editor) return;
     currentPopup = editor.panel;
     currentPopupCleanup = editor.cleanup;
+}
+
+/**
+ * 处理资源（mAsset）编辑：列出当前资源，支持移除与上传新增
+ */
+function handleAssetEdit(options: InlineEditOptions): void {
+    const { element, avID, itemID, keyName, currentValue, onSave, onCancel } = options;
+    const assets: AssetReference[] = Array.isArray(currentValue)
+        ? currentValue.map(asset => ({ ...asset }))
+        : [];
+
+    const popup = document.createElement('div');
+    popup.className = 'inline-edit-popup inline-edit-asset';
+    prepareEditorPanel(popup, keyName);
+    currentPopup = popup;
+
+    const header = createPanelHeader(keyName, () => {
+        closePopup();
+        onCancel?.();
+    });
+    const saveButton = createIconButton(ICONS.check, t('common.save'), 'inline-edit-action inline-edit-action--primary');
+    appendHeaderAction(header, saveButton);
+    popup.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'inline-edit-asset__list';
+    const renderList = () => {
+        list.replaceChildren();
+        if (!assets.length) {
+            const empty = document.createElement('span');
+            empty.className = 'inline-edit-asset__empty';
+            empty.textContent = t('common.noAssets');
+            list.appendChild(empty);
+            return;
+        }
+        assets.forEach((asset, index) => {
+            const row = document.createElement('div');
+            row.className = 'inline-edit-asset__row';
+            const icon = iconElement(asset.type === 'image' ? ICONS.image : ICONS.file);
+            icon.classList.add('inline-edit-asset__icon');
+            const name = document.createElement('span');
+            name.className = 'inline-edit-asset__name';
+            name.textContent = assetLabel(asset);
+            const remove = createIconButton(ICONS.clear, t('common.removeAsset'), 'inline-edit-asset__remove');
+            remove.addEventListener('click', event => {
+                event.stopPropagation();
+                assets.splice(index, 1);
+                renderList();
+            });
+            row.append(icon, name, remove);
+            list.appendChild(row);
+        });
+    };
+    renderList();
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.className = 'inline-edit-asset__file';
+    fileInput.setAttribute('aria-label', t('common.addAsset'));
+    const addButton = createIconButton(ICONS.add, t('common.addAsset'), 'inline-edit-action inline-edit-action--primary inline-edit-asset__add');
+    addButton.addEventListener('click', event => {
+        event.stopPropagation();
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files?.[0];
+        fileInput.value = '';
+        if (!file) return;
+        void uploadAsset(file).then(asset => {
+            assets.push(asset);
+            renderList();
+        }).catch(error => {
+            const message = toErrorMessage(error);
+            console.error(t('common.saveFailed', { message }), error);
+            showMessage(t('common.saveFailed', { message }), 5000, 'error');
+        });
+    });
+    const addRow = document.createElement('div');
+    addRow.className = 'inline-edit-asset__add-row';
+    addRow.append(fileInput, addButton);
+    popup.append(list, addRow);
+
+    document.body.appendChild(popup);
+    positionPopup(popup, element);
+
+    let isSaving = false;
+    const save = async () => {
+        if (isSaving) return;
+        isSaving = true;
+        try {
+            const value: AttributeViewWriteValue = { mAsset: assets };
+            await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
+            closePopup();
+            showMessage(t('common.saveSuccess'), 2000, 'info');
+            onSave?.(assets);
+        } catch (error) {
+            const message = toErrorMessage(error);
+            console.error(t('common.saveFailed', { message }), error);
+            showMessage(t('common.saveFailed', { message }), 5000, 'error');
+            isSaving = false;
+        }
+    };
+    saveButton.addEventListener('click', event => {
+        event.stopPropagation();
+        void save();
+    });
+
+    const closePopup = () => closeEditorPanel(popup);
+    const cancel = () => {
+        closePopup();
+        onCancel?.();
+    };
+    const handleClickOutside = (event: MouseEvent) => {
+        const target = event.target as Node;
+        if (!popup.contains(target) && !element.contains(target)) cancel();
+    };
+    currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
+}
+
+async function uploadAsset(file: File): Promise<AssetReference> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetchSyncPost('/api/asset/upload', formData) as IWebSocketData;
+    if (response.code !== 0) throw new Error(response.msg || 'Asset upload failed');
+    const data = response.data as { path?: string } | undefined;
+    const path = data?.path;
+    if (!path) throw new Error('Asset upload returned no path');
+    return {
+        name: file.name,
+        content: path,
+        type: file.type.startsWith('image/') ? 'image' : 'file'
+    };
+}
+
+function iconElement(iconName: string): SVGSVGElement {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `#${iconName}`);
+    use.setAttribute('xlink:href', `#${iconName}`);
+    svg.appendChild(use);
+    return svg;
 }
 
 /**

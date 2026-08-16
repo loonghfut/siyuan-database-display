@@ -1,4 +1,4 @@
-import { Plugin } from "siyuan";
+import { openTab, Plugin } from "siyuan";
 import "@/index.scss";
 import { readDisplayConfig, readRefreshOptions } from "@/config/display-config";
 import { DisplayController } from "@/services/display-controller";
@@ -37,7 +37,9 @@ export default class DatabaseDisplay extends Plugin {
             getConfig: () => readDisplayConfig(key => this.settings.get(key)),
             getAutoRefreshInterval: () => readRefreshOptions(key => this.settings.get(key)).interval,
             isObserverEnabled: () => readRefreshOptions(key => this.settings.get(key)).observerEnabled,
-            isFeatureEnabled: feature => this.proAccess.isFeatureEnabled(feature)
+            isFeatureEnabled: feature => this.proAccess.isFeatureEnabled(feature),
+            openBlock: (blockId, openInSplit) => this.openBlock(blockId, openInSplit),
+            openAsset: (path, openInSplit) => this.openAsset(path, openInSplit)
         });
         this.eventBus.on("switch-protyle", this.onSwitchProtyle);
         this.eventBus.on("loaded-protyle-dynamic", this.onLoaded);
@@ -77,5 +79,21 @@ export default class DatabaseDisplay extends Plugin {
         } catch {
             // Ignore non-JSON websocket traffic.
         }
+    }
+
+    private openBlock(blockId: string, openInSplit: boolean): void {
+        void openTab({
+            app: this.app,
+            doc: { id: blockId },
+            ...(openInSplit ? { position: "right" as const } : {})
+        }).catch(error => console.warn("[DatabaseDisplay] Failed to open block", error));
+    }
+
+    private openAsset(path: string, openInSplit: boolean): void {
+        void openTab({
+            app: this.app,
+            asset: { path },
+            ...(openInSplit ? { position: "right" as const } : {})
+        }).catch(error => console.warn("[DatabaseDisplay] Failed to open asset", error));
     }
 }

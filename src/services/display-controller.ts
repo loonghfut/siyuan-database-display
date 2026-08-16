@@ -5,8 +5,9 @@ import { AttributeViewRepository } from "@/data/attribute-view-repository";
 import { extractDisplayItems } from "@/domain/content-extractor";
 import { enableInlineEdit } from "@/inline-edit";
 import { toErrorMessage } from "@/libs/error-utils";
-import { DisplayItem } from "@/core/types";
+import { DisplayItem, DisplayNavigationTarget, isInlineEditableField } from "@/core/types";
 import { AttributeRenderer } from "@/ui/attribute-renderer";
+import { ContentPopover } from "@/ui/content-popover";
 import { t } from "@/i18n";
 import { PRO_FEATURE_KEYS, ProFeature, requiredFeaturesForField } from "@/licensing";
 
@@ -23,11 +24,14 @@ export interface DisplayControllerOptions {
     getAutoRefreshInterval: () => number;
     isObserverEnabled: () => boolean;
     isFeatureEnabled: (feature: ProFeature) => boolean;
+    openBlock: (blockId: string, openInSplit: boolean) => void;
+    openAsset: (path: string, openInSplit: boolean) => void;
 }
 
 export class DisplayController {
     private readonly repository = new AttributeViewRepository();
     private readonly renderer = new AttributeRenderer();
+    private readonly popover: ContentPopover;
     private documentId = "";
     private refreshTimer: ReturnType<typeof setTimeout> | undefined;
     private autoTimer: ReturnType<typeof setInterval> | undefined;
@@ -40,7 +44,12 @@ export class DisplayController {
     private refreshForceAfterInFlight = false;
     private disposed = false;
 
-    constructor(private readonly options: DisplayControllerOptions) {}
+    constructor(private readonly options: DisplayControllerOptions) {
+        this.popover = new ContentPopover({
+            onNavigate: (target, openInSplit) => this.navigate(target, openInSplit),
+            onEditAsset: (item, element) => this.editAsset(item, element)
+        });
+    }
 
     async switchDocument(detail: unknown): Promise<void> {
         const blockId = getCurrentDocumentId(detail);
@@ -179,6 +188,7 @@ export class DisplayController {
         this.refreshForcePending = false;
         this.refreshAfterInFlight = false;
         this.refreshForceAfterInFlight = false;
+        this.popover.dispose();
     }
 
     private async renderDocument(blockId: string, version: number, config: DisplayConfig, enabledFeatures: ReadonlySet<ProFeature>): Promise<void> {
@@ -203,12 +213,17 @@ export class DisplayController {
             const visibleFields = fields.filter(type =>
                 requiredFeaturesForField(type).every(feature => enabledFeatures.has(feature))
             );
-            const items = extractDisplayItems(tables, visibleFields, config);
+            const items = extractDisplayItems(tables, visibleFields, config, blockId);
             parents.forEach(parent => this.renderer.render(parent, items, {
                 blockId,
                 config,
                 canInlineEdit: enabledFeatures.has("inline-edit"),
-                onEdit: (item, element) => this.edit(blockId, item, element)
+                onEdit: (item, element) => this.edit(blockId, item, element),
+                onNavigate: (target, event) => this.navigate(target, event.ctrlKey || event.metaKey),
+                onShowBlockPreview: (target, element) => this.popover.showBlockPreview(target, element),
+                onHideContentPreview: () => this.popover.hide(),
+                onShowRollupSources: (item, element) => this.popover.showRollupSources(item, element),
+                onPreviewAsset: (item, element) => this.popover.showAssetPreview(item, element, this.options.isFeatureEnabled("inline-edit"))
             }));
         } catch (error) {
             console.warn("[DatabaseDisplay] Failed to render attribute values", error);
@@ -220,8 +235,18 @@ export class DisplayController {
         void this.openEditor(blockId, item, element);
     }
 
-    private async openEditor(blockId: string, item: DisplayItem, element: HTMLElement): Promise<void> {
-        if (!this.canEditItem(item)) return;
+    private editAsset(item: DisplayItem, element: HTMLElement): void {
+        if (!this.options.isFeatureEnabled("inline-edit")) return;
+        const blockId = element.closest<HTMLElement>("[data-node-id]")?.dataset.nodeId || this.documentId;
+        if (!blockId) {
+            showMessage(t("common.missingBlockId"), 3000, "error");
+            return;
+        }
+        void this.openEditor(blockId, item, element, true);
+    }
+
+    private async openEditor(blockId: string, item: DisplayItem, element: HTMLElement, allowReadOnlyField = false): Promise<void> {
+        if (!this.canEditItem(item, allowReadOnlyField)) return;
         try {
             if (item.type === "template") {
                 enableInlineEdit({
@@ -245,7 +270,7 @@ export class DisplayController {
                 showMessage(t("common.missingRowId"), 3000, "error");
                 return;
             }
-            if (!this.canEditItem(item)) return;
+            if (!this.canEditItem(item, allowReadOnlyField)) return;
             enableInlineEdit({
                 element,
                 avID: item.avID,
@@ -265,9 +290,18 @@ export class DisplayController {
         }
     }
 
-    private canEditItem(item: DisplayItem): boolean {
-        return this.options.isFeatureEnabled("inline-edit") &&
+    private canEditItem(item: DisplayItem, allowReadOnlyField = false): boolean {
+        return (allowReadOnlyField || isInlineEditableField(item.type)) &&
+            this.options.isFeatureEnabled("inline-edit") &&
             requiredFeaturesForField(item.type).every(feature => this.options.isFeatureEnabled(feature));
+    }
+
+    private navigate(target: DisplayNavigationTarget, openInSplit: boolean): void {
+        if (target.kind === "block") {
+            this.options.openBlock(target.blockId, openInSplit);
+            return;
+        }
+        this.options.openAsset(target.path, openInSplit);
     }
 
     private async runWithConcurrency(tasks: Array<() => Promise<void>>, limit: number): Promise<void> {

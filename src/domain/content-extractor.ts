@@ -1,4 +1,19 @@
-import { AttributeViewTable, AttributeViewValue, CheckboxStyle, DateFormat, DisplayItem, FieldType, RelationValue } from "@/core/types";
+import {
+    AssetReference,
+    AttributeViewKey,
+    AttributeViewTable,
+    AttributeViewValue,
+    BlockReference,
+    CheckboxStyle,
+    DateFormat,
+    DisplayItem,
+    DisplayNavigationTarget,
+    DisplaySource,
+    FIELD_TYPES,
+    FieldType,
+    RelationContent,
+    RelationValue
+} from "@/core/types";
 import { DisplayConfig } from "@/config/display-config";
 
 function formatDate(value: number, format: DateFormat, includeTime: boolean, isNotTime = false): string {
@@ -46,25 +61,95 @@ function normalizeRelation(value: AttributeViewValue): RelationValue {
     };
 }
 
-function relationTexts(relation: RelationValue): string[] {
+interface RelationEntry {
+    text: string;
+    target?: DisplayNavigationTarget;
+}
+
+function relationEntries(relation: RelationValue): RelationEntry[] {
     const blockIDs = relation.blockIDs || [];
     const contents = relation.contents || [];
     const length = Math.max(blockIDs.length, contents.length);
-    return Array.from({ length }, (_, index) => contents[index]?.block?.content || blockIDs[index] || "")
-        .filter(Boolean);
+    return Array.from({ length }, (_, index): RelationEntry | undefined => {
+        const content = contents[index];
+        const rowID = blockIDs[index] || "";
+        const blockID = content?.block?.id || rowID;
+        const text = content?.block?.content || rowID || blockID;
+        if (!text) return undefined;
+        return {
+            text,
+            target: !content?.isDetached && blockID ? { kind: "block", blockId: blockID } : undefined
+        };
+    }).filter((entry): entry is RelationEntry => Boolean(entry));
 }
 
 function mergeRelations(values: AttributeViewValue[]): RelationValue {
-    const blockIDs: string[] = [];
-    const contents: NonNullable<RelationValue["contents"]> = [];
+    const entries = new Map<string, RelationContent | undefined>();
     values.forEach(value => {
         const relation = normalizeRelation(value);
-        (relation.blockIDs || []).forEach(blockID => {
-            if (!blockIDs.includes(blockID)) blockIDs.push(blockID);
-        });
-        contents.push(...(relation.contents || []));
+        const length = Math.max(relation.blockIDs?.length || 0, relation.contents?.length || 0);
+        for (let index = 0; index < length; index++) {
+            const content = relation.contents?.[index];
+            const rowID = relation.blockIDs?.[index] || content?.block?.id;
+            if (!rowID) continue;
+            const existing = entries.get(rowID);
+            const shouldReplace = !existing?.block?.content && Boolean(content?.block?.content);
+            if (!entries.has(rowID) || shouldReplace) entries.set(rowID, content);
+        }
     });
-    return { blockIDs, contents };
+    return {
+        blockIDs: [...entries.keys()],
+        contents: [...entries.values()]
+    };
+}
+
+function blockTarget(block: BlockReference | undefined, isDetached = false): DisplayNavigationTarget | undefined {
+    if (!block?.id || isDetached) return undefined;
+    return { kind: "block", blockId: block.id };
+}
+
+function assetTarget(asset: AssetReference): DisplayNavigationTarget | undefined {
+    if (!asset.content) return undefined;
+    return { kind: "asset", path: asset.content };
+}
+
+function normalizeFieldType(type: string | undefined): FieldType | undefined {
+    const normalized = type === "select" ? "mSelect" : type;
+    return FIELD_TYPES.find(fieldType => fieldType.toLowerCase() === normalized?.toLowerCase());
+}
+
+const MAX_ROLLUP_DEPTH = 7;
+
+function rollupSources(value: AttributeViewValue, config: DisplayConfig): DisplaySource[] {
+    return expandRollupSources(value, config, 0);
+}
+
+function expandRollupSources(value: AttributeViewValue, config: DisplayConfig, depth: number): DisplaySource[] {
+    if (depth > MAX_ROLLUP_DEPTH) return [];
+    return (value.rollup?.contents || []).flatMap(source => {
+        const type = normalizeFieldType(source.type);
+        if (!type) return [];
+        return sourceItems(source, type, config, depth);
+    });
+}
+
+function sourceItems(value: AttributeViewValue, type: FieldType, config: DisplayConfig, depth = 0): DisplaySource[] {
+    if (type === "rollup") return expandRollupSources(value, config, depth + 1);
+    if (type === "relation") {
+        return relationEntries(normalizeRelation(value)).map(entry => ({ text: entry.text, type, target: entry.target }));
+    }
+    if (type === "block") {
+        const text = value.block?.content || value.block?.id || "";
+        return text ? [{ text, type, target: blockTarget(value.block, value.isDetached) }] : [];
+    }
+    if (type === "mAsset") {
+        return (value.mAsset || []).map(asset => ({
+            text: asset.name || asset.content || "",
+            type,
+            target: assetTarget(asset)
+        })).filter(source => Boolean(source.text));
+    }
+    return texts(value, type, config).map(text => ({ text, type }));
 }
 
 function rawValue(value: AttributeViewValue, type: FieldType): unknown {
@@ -72,6 +157,9 @@ function rawValue(value: AttributeViewValue, type: FieldType): unknown {
     if (type === "checkbox") return Boolean(value.checkbox?.checked);
     if (type === "date") return value.date ? { ...value.date } : null;
     if (type === "relation") return normalizeRelation(value);
+    if (type === "mAsset") return value.mAsset ? [...value.mAsset] : [];
+    if (type === "block") return value.block ? { ...value.block } : null;
+    if (type === "rollup") return value.rollup ? { ...value.rollup } : null;
     const field = value[type as keyof AttributeViewValue] as { content?: unknown } | undefined;
     return field?.content ?? "";
 }
@@ -81,21 +169,27 @@ function texts(value: AttributeViewValue, type: FieldType, config: DisplayConfig
         case "mSelect": return value.mSelect?.map(item => item.content || "").filter(Boolean) || [];
         case "number": return value.number?.content !== undefined ? [String(value.number.content)] : [];
         case "date": {
-            if (!value.date?.content) return [];
+            if (value.date?.content === undefined) return [];
             const start = formatDate(value.date.content, config.dateFormat, config.includeTime, value.date.isNotTime);
-            const end = value.date.hasEndDate && value.date.content2 ? formatDate(value.date.content2, config.dateFormat, config.includeTime, value.date.isNotTime) : "";
+            const end = value.date.hasEndDate && value.date.content2 !== undefined ? formatDate(value.date.content2, config.dateFormat, config.includeTime, value.date.isNotTime) : "";
             return [end ? `${start} ~ ${end}` : start].filter(Boolean);
         }
         case "text": return value.text?.content ? [value.text.content] : [];
         case "template": return typeof value.template?.content === "string" && value.template.content ? [value.template.content] : [];
-        case "mAsset": return value.mAsset?.map(item => item.name || "").filter(Boolean) || [];
-        case "relation": return relationTexts(normalizeRelation(value));
+        case "mAsset": return value.mAsset?.map(item => item.name || item.content || "").filter(Boolean) || [];
+        case "block": return value.block?.content || value.block?.id ? [value.block.content || value.block.id || ""] : [];
+        case "rollup": {
+            const content = rollupSources(value, config).map(source => source.text).filter(Boolean).join(", ");
+            return content ? [content] : [];
+        }
+        case "relation": return relationEntries(normalizeRelation(value)).map(entry => entry.text);
         case "checkbox": return value.checkbox ? [checkboxText(Boolean(value.checkbox.checked), config.checkboxStyle)] : [];
         case "phone": return value.phone?.content ? [value.phone.content] : [];
         case "url": return value.url?.content ? [value.url.content] : [];
         case "email": return value.email?.content ? [value.email.content] : [];
         case "created": return value.created?.content ? [formatDate(value.created.content, config.dateFormat, config.includeTime)] : [];
         case "updated": return value.updated?.content ? [formatDate(value.updated.content, config.dateFormat, config.includeTime)] : [];
+        case "lineNumber": return [];
     }
 }
 
@@ -103,7 +197,11 @@ function matches(value: AttributeViewValue, type: FieldType): boolean {
     if (type === "number") return value.number?.content !== undefined;
     if (type === "checkbox") return Boolean(value.checkbox);
     if (type === "template") return typeof value.template?.content === "string";
-    if (type === "mSelect" || type === "mAsset") return Boolean(value[type]);
+    if (type === "mSelect") return Boolean(value.mSelect?.length);
+    if (type === "mAsset") return Boolean(value.mAsset?.length);
+    if (type === "block") return Boolean(value.block?.content || value.block?.id);
+    if (type === "rollup") return Boolean(value.rollup?.contents?.length);
+    if (type === "lineNumber") return false;
     if (type === "relation") {
         const relation = normalizeRelation(value);
         return Boolean(relation.blockIDs?.length || relation.contents?.length);
@@ -112,27 +210,55 @@ function matches(value: AttributeViewValue, type: FieldType): boolean {
 }
 
 function displayType(keyType: string, types: FieldType[]): FieldType | undefined {
-    const normalized = keyType === "select" ? "mSelect" : keyType;
-    return types.find(type => type.toLowerCase() === normalized.toLowerCase());
+    const normalized = normalizeFieldType(keyType);
+    return normalized && types.includes(normalized) ? normalized : undefined;
 }
 
 function isSelectKey(keyType: string): boolean {
     return keyType === "select" || keyType === "mSelect";
 }
 
-export function extractDisplayItems(tables: AttributeViewTable[], types: FieldType[], config: DisplayConfig): DisplayItem[] {
+function createDisplayItem(
+    table: AttributeViewTable,
+    key: AttributeViewKey,
+    value: AttributeViewValue,
+    type: FieldType,
+    text: string,
+    config: DisplayConfig,
+    raw = rawValue(value, type)
+): DisplayItem {
+    const item: DisplayItem = {
+        type,
+        text,
+        avID: table.avID,
+        keyID: key.id,
+        keyName: key.name,
+        keyType: key.type,
+        rawValue: raw,
+        template: key.template,
+        selectOptions: key.options,
+        relation: key.relation
+    };
+    if (type === "block") item.navigation = blockTarget(value.block, value.isDetached);
+    if (type === "rollup") item.sources = rollupSources(value, config);
+    return item;
+}
+
+function lineNumber(table: AttributeViewTable, blockId: string): number | undefined {
+    if (!blockId) return undefined;
+    const index = table.blockIDs?.indexOf(blockId) ?? -1;
+    return index >= 0 ? index + 1 : undefined;
+}
+
+export function extractDisplayItems(tables: AttributeViewTable[], types: FieldType[], config: DisplayConfig, blockId = ""): DisplayItem[] {
     const result: DisplayItem[] = [];
     for (const table of tables || []) {
         for (const keyValue of table.keyValues || []) {
             const key = keyValue.key;
             if (!key || config.hiddenFields.has(key.name)) continue;
 
-            // Select values are represented by one database property, even when
-            // multiple options are selected. Keep that relationship intact so
-            // rendering and editing both operate on one independent item.
             if (isSelectKey(key.type)) {
-                const selected = (keyValue.values || [])
-                    .flatMap(value => texts(value, "mSelect", config));
+                const selected = (keyValue.values || []).flatMap(value => texts(value, "mSelect", config));
                 if (types.includes("mSelect") && selected.length > 0) {
                     result.push({
                         type: "mSelect",
@@ -152,17 +278,20 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
 
             if (key.type === "relation") {
                 const relation = mergeRelations(keyValue.values || []);
-                const selected = relationTexts(relation);
-                if (types.includes("relation") && selected.length > 0) {
-                    result.push({
-                        type: "relation",
-                        text: selected.join("、"),
-                        avID: table.avID,
-                        keyID: key.id,
-                        keyName: key.name,
-                        keyType: key.type,
-                        rawValue: relation,
-                        relation: key.relation
+                const entries = relationEntries(relation);
+                if (types.includes("relation") && entries.length > 0) {
+                    entries.forEach(entry => {
+                        result.push({
+                            type: "relation",
+                            text: entry.text,
+                            avID: table.avID,
+                            keyID: key.id,
+                            keyName: key.name,
+                            keyType: key.type,
+                            rawValue: relation,
+                            relation: key.relation,
+                            navigation: entry.target
+                        });
                     });
                 } else if (config.forceShowFields.has(key.name) && types.includes("relation")) {
                     result.push({
@@ -179,13 +308,60 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                 continue;
             }
 
+            if (key.type === "mAsset") {
+                let shown = false;
+                if (types.includes("mAsset")) {
+                    for (const value of keyValue.values || []) {
+                        const allAssets = value.mAsset ? [...value.mAsset] : [];
+                        for (const asset of allAssets) {
+                            const text = asset.name || asset.content || "";
+                            if (!text) continue;
+                            shown = true;
+                            result.push({
+                                type: "mAsset",
+                                text,
+                                avID: table.avID,
+                                keyID: key.id,
+                                keyName: key.name,
+                                keyType: key.type,
+                                rawValue: allAssets,
+                                asset,
+                                navigation: assetTarget(asset)
+                            });
+                        }
+                    }
+                }
+                if (!shown && config.forceShowFields.has(key.name) && types.includes("mAsset")) {
+                    result.push({ type: "mAsset", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null });
+                }
+                continue;
+            }
+
+            if (key.type === "lineNumber") {
+                const value = lineNumber(table, blockId);
+                if (types.includes("lineNumber") && value !== undefined) {
+                    result.push({
+                        type: "lineNumber",
+                        text: String(value),
+                        avID: table.avID,
+                        keyID: key.id,
+                        keyName: key.name,
+                        keyType: key.type,
+                        rawValue: value
+                    });
+                } else if (config.forceShowFields.has(key.name) && types.includes("lineNumber")) {
+                    result.push({ type: "lineNumber", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null });
+                }
+                continue;
+            }
+
             let shown = false;
             for (const value of keyValue.values || []) {
                 for (const type of types) {
                     if (!matches(value, type)) continue;
                     for (const text of texts(value, type, config)) {
                         shown = true;
-                        result.push({ type, text, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: rawValue(value, type), template: key.template, selectOptions: key.options, relation: key.relation });
+                        result.push(createDisplayItem(table, key, value, type, text, config));
                     }
                 }
             }
