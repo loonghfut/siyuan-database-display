@@ -113,6 +113,14 @@ export interface DisplaySource {
     target?: DisplayNavigationTarget;
 }
 
+/**
+ * 多选字段的单个选项片段：文本 + 思源调色板颜色索引（1-14，见内核 FilterColorValue）。
+ */
+export interface DisplaySegment {
+    text: string;
+    color?: string;
+}
+
 export interface DisplayItem {
     type: FieldType;
     text: string;
@@ -127,6 +135,10 @@ export interface DisplayItem {
     navigation?: DisplayNavigationTarget;
     asset?: AssetReference;
     sources?: DisplaySource[];
+    /** 多选字段的分段显示数据（每个选项一个色点+文本） */
+    segments?: DisplaySegment[];
+    /** 目标块图标（unicode 码点串或资源路径），用于 relation/block 字段 */
+    icon?: string;
 }
 
 export type AttributeViewWriteValue =

@@ -1,58 +1,29 @@
-import { fetchSyncPost, IWebSocketData } from "siyuan";
+/**
+ * 内容浮层：汇总字段来源列表、图片资源预览（点击触发）。
+ * 不包含块预览——主键/块字段的悬浮预览面板已移除。
+ */
+
 import { DisplayItem, DisplayNavigationTarget } from "@/core/types";
 import { t } from "@/i18n";
 import { assetLabel } from "@/ui/asset-utils";
 import { createIconButton, positionPanelNear } from "@/libs/dom";
 
-const PREVIEW_DELAY = 260;
 const HIDE_DELAY = 160;
-const MAX_PREVIEW_CACHE = 128;
-
-interface BlockPreview {
-    title: string;
-    path?: string;
-    content?: string;
-}
 
 interface ContentPopoverOptions {
     onNavigate: (target: DisplayNavigationTarget, openInSplit: boolean) => void;
     onEditAsset: (item: DisplayItem, element: HTMLElement) => void;
 }
 
-function escapeSqlLiteral(value: string): string {
-    return value.replace(/'/g, "''");
-}
-
 export class ContentPopover {
     private root: HTMLElement | undefined;
     private currentAnchor: HTMLElement | undefined;
-    private previewTimer: number | undefined;
     private hideTimer: number | undefined;
     private requestVersion = 0;
-    private readonly previewCache = new Map<string, BlockPreview | undefined>();
 
     constructor(private readonly options: ContentPopoverOptions) {}
 
-    showBlockPreview(target: DisplayNavigationTarget, anchor: HTMLElement): void {
-        if (target.kind !== "block") return;
-        this.cancelHide();
-        if (this.currentAnchor === anchor && this.root && !this.root.hidden) return;
-        this.currentAnchor = anchor;
-        this.cancelPreview();
-        const requestVersion = ++this.requestVersion;
-        this.previewTimer = window.setTimeout(() => {
-            this.previewTimer = undefined;
-            if (requestVersion !== this.requestVersion || !anchor.isConnected) return;
-            this.showBlockLoading(target, anchor);
-            void this.loadBlockPreview(target.blockId).then(preview => {
-                if (requestVersion !== this.requestVersion || this.currentAnchor !== anchor) return;
-                this.showBlockPreviewContent(target, anchor, preview);
-            });
-        }, PREVIEW_DELAY);
-    }
-
     showRollupSources(item: DisplayItem, anchor: HTMLElement): void {
-        this.cancelPreview();
         this.cancelHide();
         this.requestVersion++;
         this.currentAnchor = anchor;
@@ -91,7 +62,6 @@ export class ContentPopover {
     showAssetPreview(item: DisplayItem, anchor: HTMLElement, canEdit: boolean): void {
         const asset = item.asset;
         if (!asset?.content) return;
-        this.cancelPreview();
         this.cancelHide();
         this.requestVersion++;
         this.currentAnchor = anchor;
@@ -137,13 +107,11 @@ export class ContentPopover {
     }
 
     hide(): void {
-        this.cancelPreview();
         if (!this.root || this.root.hidden || this.hideTimer) return;
         this.hideTimer = window.setTimeout(() => this.hideImmediately(), HIDE_DELAY);
     }
 
     dispose(): void {
-        this.cancelPreview();
         this.cancelHide();
         this.root?.remove();
         document.removeEventListener("pointerdown", this.handlePointerDown, true);
@@ -151,44 +119,6 @@ export class ContentPopover {
         window.removeEventListener("resize", this.position);
         this.root = undefined;
         this.currentAnchor = undefined;
-        this.previewCache.clear();
-    }
-
-    private showBlockLoading(target: Extract<DisplayNavigationTarget, { kind: "block" }>, anchor: HTMLElement): void {
-        const content = document.createElement("div");
-        content.className = "db-display__popover-content";
-        content.appendChild(this.createHeader(target.blockId));
-        const loading = document.createElement("span");
-        loading.className = "db-display__popover-empty";
-        loading.textContent = t("common.loadingPreview");
-        content.appendChild(loading);
-        this.show(content, anchor, "block");
-    }
-
-    private showBlockPreviewContent(target: Extract<DisplayNavigationTarget, { kind: "block" }>, anchor: HTMLElement, preview: BlockPreview | undefined): void {
-        const content = document.createElement("div");
-        content.className = "db-display__popover-content";
-        const header = this.createHeader(preview?.title || target.blockId);
-        const open = createIconButton("iconOpen", t("common.openBlock"), "db-display__popover-action");
-        open.addEventListener("click", event => {
-            event.stopPropagation();
-            this.options.onNavigate(target, event.ctrlKey || event.metaKey);
-            this.hideImmediately();
-        });
-        header.querySelector(".db-display__popover-actions")?.prepend(open);
-        content.appendChild(header);
-
-        if (preview?.path) {
-            const path = document.createElement("div");
-            path.className = "db-display__popover-path";
-            path.textContent = preview.path;
-            content.appendChild(path);
-        }
-        const body = document.createElement("div");
-        body.className = preview?.content ? "db-display__popover-preview" : "db-display__popover-empty";
-        body.textContent = preview?.content || t("common.previewUnavailable");
-        content.appendChild(body);
-        this.show(content, anchor, "block");
     }
 
     private createHeader(title: string): HTMLElement {
@@ -248,47 +178,12 @@ export class ContentPopover {
         positionPanelNear(this.root, this.currentAnchor, 6);
     };
 
-    private async loadBlockPreview(blockId: string): Promise<BlockPreview | undefined> {
-        if (this.previewCache.has(blockId)) return this.previewCache.get(blockId);
-        let preview: BlockPreview | undefined;
-        try {
-            const response = await fetchSyncPost("/api/query/sql", {
-                stmt: `SELECT content, markdown, hpath FROM blocks WHERE id = '${escapeSqlLiteral(blockId)}' LIMIT 1`
-            }) as IWebSocketData;
-            const row = response.code === 0 && Array.isArray(response.data) ? response.data[0] as Record<string, unknown> | undefined : undefined;
-            if (row) {
-                const title = typeof row.content === "string" ? row.content.trim() : "";
-                const markdown = typeof row.markdown === "string" ? row.markdown.trim() : "";
-                preview = {
-                    title: title || blockId,
-                    path: typeof row.hpath === "string" ? row.hpath : undefined,
-                    content: markdown || title
-                };
-            }
-        } catch (error) {
-            console.warn("[DatabaseDisplay] Failed to load block preview", error);
-        }
-        this.previewCache.set(blockId, preview);
-        while (this.previewCache.size > MAX_PREVIEW_CACHE) {
-            const oldest = this.previewCache.keys().next().value;
-            if (!oldest) break;
-            this.previewCache.delete(oldest);
-        }
-        return preview;
-    }
-
-    private cancelPreview(): void {
-        if (this.previewTimer) window.clearTimeout(this.previewTimer);
-        this.previewTimer = undefined;
-    }
-
     private cancelHide(): void {
         if (this.hideTimer) window.clearTimeout(this.hideTimer);
         this.hideTimer = undefined;
     }
 
     private hideImmediately(): void {
-        this.cancelPreview();
         this.cancelHide();
         this.requestVersion++;
         if (this.root) this.root.hidden = true;

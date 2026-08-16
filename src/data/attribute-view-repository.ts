@@ -51,6 +51,34 @@ export class AttributeViewRepository {
         this.invalidateAttributeView(avID);
     }
 
+    /**
+     * 修改 select/mSelect 列的某个选项颜色（作用于整列，影响所有行）。
+     * 颜色为思源调色板索引 1-14 或空字符串。
+     */
+    async updateSelectOptionColor(avID: string, keyID: string, optionName: string, oldColor: string, newColor: string): Promise<void> {
+        const response = await fetchSyncPost("/api/transactions", {
+            reqId: Date.now(),
+            session: Constants.SIYUAN_APPID,
+            app: Constants.SIYUAN_APPID,
+            transactions: [{
+                doOperations: [{
+                    action: "updateAttrViewColOption",
+                    id: keyID,
+                    avID,
+                    data: {
+                        oldName: optionName,
+                        newName: optionName,
+                        oldColor,
+                        newColor,
+                        newDesc: ""
+                    }
+                }]
+            }]
+        }) as IWebSocketData;
+        if (response.code !== 0) throw new Error(response.msg || "Select option color update failed");
+        this.invalidateAttributeView(avID);
+    }
+
     async getRelationCandidates(
         avID: string,
         keyID: string,

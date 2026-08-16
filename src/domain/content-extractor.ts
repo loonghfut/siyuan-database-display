@@ -8,6 +8,7 @@ import {
     DateFormat,
     DisplayItem,
     DisplayNavigationTarget,
+    DisplaySegment,
     DisplaySource,
     FIELD_TYPES,
     FieldType,
@@ -65,6 +66,7 @@ function normalizeRelation(value: AttributeViewValue): RelationValue {
 interface RelationEntry {
     text: string;
     target?: DisplayNavigationTarget;
+    icon?: string;
 }
 
 function relationEntries(relation: RelationValue): RelationEntry[] {
@@ -79,6 +81,7 @@ function relationEntries(relation: RelationValue): RelationEntry[] {
         if (!text) return undefined;
         return {
             text,
+            icon: content?.block?.icon,
             target: !content?.isDetached && blockID ? { kind: "block", blockId: blockID } : undefined
         };
     }).filter((entry): entry is RelationEntry => Boolean(entry));
@@ -241,6 +244,7 @@ function createDisplayItem(
         relation: key.relation
     };
     if (type === "block") item.navigation = blockTarget(value.block, value.isDetached);
+    if (type === "block") item.icon = value.block?.icon;
     if (type === "rollup") item.sources = rollupSources(value, config);
     return item;
 }
@@ -259,7 +263,11 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
             if (!key || config.hiddenFields.has(key.name)) continue;
 
             if (isSelectKey(key.type)) {
-                const selected = (keyValue.values || []).flatMap(value => texts(value, "mSelect", config));
+                // 每个选中选项一个分段，携带选项颜色索引用于渲染色点
+                const segments: DisplaySegment[] = (keyValue.values || [])
+                    .flatMap(value => (value.mSelect || []).map(item => ({ text: item.content || "", color: item.color })))
+                    .filter(segment => Boolean(segment.text));
+                const selected = segments.map(segment => segment.text);
                 if (types.includes("mSelect") && selected.length > 0) {
                     result.push({
                         type: "mSelect",
@@ -269,7 +277,8 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                         keyName: key.name,
                         keyType: key.type,
                         rawValue: selected,
-                        selectOptions: key.options
+                        selectOptions: key.options,
+                        segments
                     });
                 } else if (config.forceShowFields.has(key.name) && types.includes("mSelect")) {
                     result.push({ type: "mSelect", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: [], selectOptions: key.options });
@@ -291,7 +300,8 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                             keyType: key.type,
                             rawValue: relation,
                             relation: key.relation,
-                            navigation: entry.target
+                            navigation: entry.target,
+                            icon: entry.icon
                         });
                     });
                 } else if (config.forceShowFields.has(key.name) && types.includes("relation")) {

@@ -332,8 +332,6 @@ export class DisplayController {
             canInlineEdit,
             onEdit: (item, element) => this.edit(blockId, item, element),
             onNavigate: (target, event) => this.navigate(target, event.ctrlKey || event.metaKey),
-            onShowBlockPreview: (target, element) => this.popover.showBlockPreview(target, element),
-            onHideContentPreview: () => this.popover.hide(),
             onShowRollupSources: (item, element) => this.popover.showRollupSources(item, element),
             onPreviewAsset: (item, element) => this.popover.showAssetPreview(item, element, this.options.isFeatureEnabled("inline-edit")),
             onContextMenu: (item, element, event) => this.openChipMenu(item, element, event)

@@ -1,5 +1,5 @@
 import { DisplayConfig, isSafeColor } from "@/config/display-config";
-import { AssetReference, DisplayItem, DisplayNavigationTarget, isInlineEditableField } from "@/core/types";
+import { AssetReference, DisplayItem, DisplayNavigationTarget, DisplaySegment, isInlineEditableField } from "@/core/types";
 import { t } from "@/i18n";
 import { assetLabel, assetThumbnailUrl } from "@/ui/asset-utils";
 import { createIconButton, iconElement } from "@/libs/dom";
@@ -10,8 +10,6 @@ export interface RenderContext {
     canInlineEdit: boolean;
     onEdit: (item: DisplayItem, element: HTMLElement) => void;
     onNavigate: (target: DisplayNavigationTarget, event: MouseEvent) => void;
-    onShowBlockPreview: (target: DisplayNavigationTarget, element: HTMLElement) => void;
-    onHideContentPreview: () => void;
     onShowRollupSources: (item: DisplayItem, element: HTMLElement) => void;
     onPreviewAsset: (item: DisplayItem, element: HTMLElement, event: MouseEvent) => void;
     onContextMenu: (item: DisplayItem, element: HTMLElement, event: MouseEvent) => void;
@@ -113,7 +111,7 @@ export class AttributeRenderer {
     }
 
     private createRelationChip(item: DisplayItem, context: RenderContext): HTMLElement {
-        if (item.navigation?.kind === "block") return this.createNavigationChip(item, context, false, false);
+        if (item.navigation?.kind === "block") return this.createNavigationChip(item, context, false);
         return this.createReadonlyChip(item, context, false);
     }
 
@@ -125,11 +123,15 @@ export class AttributeRenderer {
         return this.createEditableOrReadonlyChip(item, context);
     }
 
-    private createNavigationChip(item: DisplayItem, context: RenderContext, includeFieldName: boolean, withHoverPreview = true): HTMLButtonElement {
+    private createNavigationChip(item: DisplayItem, context: RenderContext, includeFieldName: boolean): HTMLButtonElement {
         const element = document.createElement("button");
         element.type = "button";
         element.className = "db-display__chip db-display__chip--navigation ariaLabel";
         const plainText = this.populateChip(element, item, context, includeFieldName);
+        // relation/block 字段显示目标块图标
+        if (item.icon) {
+            element.querySelector<HTMLElement>(".db-display__value")?.insertAdjacentElement("beforebegin", this.createBlockIcon(item.icon));
+        }
         const target = item.navigation!;
         const label = target.kind === "block" ? t("common.openBlock") : t("common.openFile");
         element.title = label;
@@ -139,10 +141,6 @@ export class AttributeRenderer {
             event.stopPropagation();
             context.onNavigate(target, event);
         });
-        if (target.kind === "block" && withHoverPreview) {
-            element.addEventListener("pointerenter", () => context.onShowBlockPreview(target, element));
-            element.addEventListener("pointerleave", () => context.onHideContentPreview());
-        }
         return element;
     }
 
@@ -298,7 +296,13 @@ export class AttributeRenderer {
         const plainText = isTemplate
             ? this.renderTemplateValue(value, item.text, context.config.maxDisplayLength)
             : normalizeDisplayText(item.text);
-        if (!isTemplate) value.textContent = truncateDisplayText(plainText, context.config.maxDisplayLength);
+        if (isTemplate) {
+            // 模板值已由 renderTemplateValue 填充
+        } else if (item.segments?.length) {
+            this.renderSegments(value, item.segments, context.config.maxDisplayLength);
+        } else {
+            value.textContent = truncateDisplayText(plainText, context.config.maxDisplayLength);
+        }
         if (includeFieldName && context.config.showFieldNames) {
             element.append(this.createFieldName(item.keyName), value);
         } else {
@@ -307,6 +311,57 @@ export class AttributeRenderer {
         element.dataset.fieldType = item.type;
         this.enableContextMenu(element, item, context);
         return plainText;
+    }
+
+    /**
+     * 多选字段分段渲染：每个选项一个色块（背景/文字色来自思源调色板，
+     * 与数据库单元格内的原生选项样式一致），总长超出上限时逐段截断。
+     */
+    private renderSegments(value: HTMLElement, segments: DisplaySegment[], maxLength: number): void {
+        const totalLength = segments.reduce((sum, segment) => sum + segment.text.length, 0);
+        const full = totalLength <= maxLength;
+        let remaining = maxLength;
+        segments.forEach(segment => {
+            if (!full && remaining <= 0) return;
+            const chip = document.createElement("span");
+            chip.className = "db-display__option-chip";
+            if (/^[1-9]$|^1[0-4]$/.test(segment.color || "")) {
+                chip.style.backgroundColor = `var(--b3-font-background${segment.color})`;
+                chip.style.color = `var(--b3-font-color${segment.color})`;
+            }
+            const text = document.createElement("span");
+            if (full) {
+                text.textContent = segment.text;
+            } else {
+                if (segment.text.length > remaining) {
+                    text.textContent = `${segment.text.slice(0, Math.max(0, remaining - 1))}…`;
+                    remaining = 0;
+                } else {
+                    text.textContent = segment.text;
+                    remaining -= segment.text.length;
+                }
+            }
+            chip.appendChild(text);
+            value.appendChild(chip);
+        });
+    }
+
+    /**
+     * 目标块图标：unicode 码点串（如 "1f600"）或资源路径。
+     */
+    private createBlockIcon(icon: string): HTMLElement {
+        if (icon.includes("/")) {
+            const image = document.createElement("img");
+            image.className = "db-display__block-icon";
+            image.alt = "";
+            image.src = encodeURI(icon);
+            image.addEventListener("error", () => image.remove(), { once: true });
+            return image;
+        }
+        const span = document.createElement("span");
+        span.className = "db-display__block-icon db-display__block-icon--emoji";
+        span.textContent = emojiFromUnicode(icon);
+        return span;
     }
 
     private createFieldName(keyName: string): HTMLSpanElement {
@@ -383,6 +438,19 @@ export class AttributeRenderer {
 
 function normalizeDisplayText(value: string): string {
     return value.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * 思源块图标的 unicode 码点串（如 "1f600" 或 "1f3c3-1f3fb"）转 emoji 文本；
+ * 解析失败时原样返回。
+ */
+function emojiFromUnicode(unicode: string): string {
+    try {
+        const result = unicode.split("-").map(part => String.fromCodePoint(parseInt(part.length < 5 ? `0${part}` : part, 16))).join("");
+        return result.includes("\uFFFD") ? unicode : result;
+    } catch {
+        return unicode;
+    }
 }
 
 function truncateDisplayText(value: string, maxLength: number): string {

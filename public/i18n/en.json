@@ -19,7 +19,6 @@
         "previewImage": "Preview image",
         "viewSourceValues": "View source values",
         "noSourceValues": "No source values to display",
-        "loadingPreview": "Loading preview…",
         "previewUnavailable": "Preview unavailable",
         "addAsset": "Add asset",
         "removeAsset": "Remove",
@@ -54,6 +53,7 @@
         "loadingRelation": "Loading related items…",
         "noRelationResults": "No related items found",
         "loadMoreRelation": "Load more",
+        "optionColor": "Option color",
         "confirmTemplateTitle": "Confirm template change",
         "confirmTemplateContent": "The template expression applies to every row of this column. Continue?"
     },

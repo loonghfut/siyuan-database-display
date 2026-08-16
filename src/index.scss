@@ -53,6 +53,37 @@
     white-space: nowrap;
 }
 
+/* 多选选项色块：背景/文字色来自思源调色板 var(--b3-font-background{1..14})，
+   与数据库单元格内的原生选项样式一致；无颜色时跟随思源默认 chip 背景 */
+.db-display__option-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 4px;
+    margin: 1px 2px 1px 0;
+    border-radius: var(--b3-border-radius);
+    background-color: var(--b3-list-hover);
+    line-height: 16px;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+/* 关联/块字段的目标块图标 */
+.db-display__block-icon {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 3px;
+    flex: 0 0 auto;
+    vertical-align: middle;
+    object-fit: contain;
+}
+
+.db-display__block-icon--emoji {
+    line-height: 14px;
+    font-size: 12px;
+    text-align: center;
+}
+
 .db-display__chip[data-field-type="template"] .db-display__value {
     display: inline-flex;
     align-items: center;
@@ -260,25 +291,6 @@
     display: inline-flex;
     flex: 0 0 auto;
     gap: 1px;
-}
-
-.db-display__popover-path {
-    overflow: hidden;
-    color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
-    line-height: 16px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.db-display__popover-preview {
-    display: -webkit-box;
-    overflow: hidden;
-    font-size: 12px;
-    line-height: 18px;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 6;
-    white-space: pre-wrap;
 }
 
 .db-display__popover-list {
@@ -1610,10 +1622,9 @@ span[style*="outline: 2px solid"] {
 }
 
 .inline-edit-dropdown-option {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 22px;
+    display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
     min-height: 28px;
     margin: 1px 0;
@@ -1630,6 +1641,70 @@ span[style*="outline: 2px solid"] {
     text-align: left;
     cursor: pointer;
     transition: background-color 110ms ease, color 110ms ease, transform 100ms ease;
+}
+
+.inline-edit-dropdown-option > .inline-edit-dropdown-option__label {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+.inline-edit-dropdown-option > svg {
+    flex: 0 0 auto;
+}
+
+/* 选项色块：显示选项颜色，点击打开调色板编辑 */
+.inline-edit-dropdown-option > .inline-edit-option-color {
+    flex: 0 0 auto;
+}
+
+.inline-edit-option-color {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--b3-theme-on-surface-light, var(--b3-theme-border));
+    border-radius: 3px;
+    box-sizing: border-box;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.inline-edit-option-color--none {
+    background-color: transparent;
+    border-style: dashed;
+    opacity: 0.7;
+}
+
+/* 选项调色板：思源 14 色调色板 */
+.inline-edit-palette {
+    position: fixed;
+    z-index: 10001;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid var(--b3-theme-border);
+    border-radius: 4px;
+    background-color: var(--b3-menu-background);
+    box-shadow: var(--b3-dialog-shadow);
+}
+
+.inline-edit-palette__swatch {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 24px;
+    text-align: center;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.inline-edit-palette__swatch--current {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 1px;
 }
 
 .inline-edit-dropdown-option:hover {

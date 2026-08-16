@@ -19,7 +19,6 @@
         "previewImage": "预览图片",
         "viewSourceValues": "查看来源",
         "noSourceValues": "没有可显示的来源值",
-        "loadingPreview": "正在加载预览…",
         "previewUnavailable": "无法加载预览",
         "addAsset": "添加资源",
         "removeAsset": "移除",
@@ -54,6 +53,7 @@
         "loadingRelation": "正在加载关联项…",
         "noRelationResults": "没有可关联的项目",
         "loadMoreRelation": "加载更多",
+        "optionColor": "选项颜色",
         "confirmTemplateTitle": "确认修改模板",
         "confirmTemplateContent": "模板表达式会应用到该列的每一行，确定继续吗？"
     },

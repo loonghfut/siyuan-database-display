@@ -32,6 +32,10 @@ export interface InlineEditOptions {
 let currentPopup: HTMLElement | null = null;
 let currentPopupCleanup: (() => void) | null = null;
 
+// 当前打开的选项调色板浮层
+let currentPalette: HTMLElement | null = null;
+let currentPaletteCleanup: (() => void) | null = null;
+
 const ICONS = {
     cancel: 'iconClose',
     check: 'iconCheck',
@@ -54,6 +58,7 @@ export function enableInlineEdit(options: InlineEditOptions) {
         currentPopup = null;
         currentPopupCleanup = null;
     }
+    closeOptionColorPalette();
     
     // 根据字段类型选择编辑方式
     switch (options.keyType) {
@@ -103,6 +108,7 @@ export function closeInlineEdit(): void {
         currentPopup.remove();
         currentPopup = null;
     }
+    closeOptionColorPalette();
     document.querySelectorAll('.inline-edit-panel--closing').forEach(element => element.remove());
 }
 
@@ -141,13 +147,13 @@ async function handleCheckboxEdit(options: InlineEditOptions) {
 function handleSelectEdit(options: InlineEditOptions) {
     const { element, avID, itemID, currentValue, selectOptions, onSave, onCancel } = options;
     const selectedValue = Array.isArray(currentValue) ? currentValue[0] : currentValue;
-    
+
     // 创建下拉菜单容器
     const dropdown = document.createElement('div');
     dropdown.className = 'inline-edit-dropdown';
     prepareEditorPanel(dropdown, options.keyName);
     currentPopup = dropdown;
-    
+
     // 创建选项列表
     const optionsList = document.createElement('div');
     optionsList.className = 'inline-edit-dropdown-list';
@@ -157,37 +163,66 @@ function handleSelectEdit(options: InlineEditOptions) {
         onCancel?.();
     });
     dropdown.appendChild(header);
-    
-    // 添加空选项
-    const emptyOption = createDropdownOption('', t('common.clear'), selectedValue === '' || !selectedValue);
-    optionsList.appendChild(emptyOption);
-    
-    // 添加备选项
-    (selectOptions || []).forEach(option => {
-        // 选项值：优先使用 name，然后 id，最后 content
-        const optionId = option.name || option.id || option.content;
-        const optionText = option.name || option.content || option.id;
-        const isSelected = (optionId === selectedValue);
-        
-        const optionElement = createDropdownOption(optionId, optionText, isSelected);
-        optionsList.appendChild(optionElement);
-    });
-    
+
+    // 修改选项颜色：写回内核并刷新选项列表与文档显示
+    const editOptionColor = (option: any) => (swatch: HTMLElement) => {
+        const optionName = String(option.name || option.content || option.id || '');
+        openOptionColorPalette({
+            swatch,
+            avID,
+            keyID: options.keyID,
+            optionName,
+            color: String(option.color || ''),
+            onApplied: (newColor) => {
+                void (async () => {
+                    try {
+                        await attributeViewRepository.updateSelectOptionColor(avID, options.keyID, optionName, String(option.color || ''), newColor);
+                        option.color = newColor;
+                        renderOptions();
+                        showMessage(t('common.saveSuccess'), 2000, 'info');
+                        onSave?.(selectedValue);
+                    } catch (error) {
+                        const message = toErrorMessage(error);
+                        console.error(t('common.saveFailed', { message }), error);
+                        showMessage(t('common.saveFailed', { message }), 5000, 'error');
+                    }
+                })();
+            }
+        });
+    };
+
+    const renderOptions = () => {
+        optionsList.replaceChildren();
+        // 添加空选项
+        const emptyOption = createDropdownOption('', t('common.clear'), selectedValue === '' || !selectedValue);
+        optionsList.appendChild(emptyOption);
+        // 添加备选项
+        (selectOptions || []).forEach(option => {
+            // 选项值：优先使用 name，然后 id，最后 content
+            const optionId = option.name || option.id || option.content;
+            const optionText = option.name || option.content || option.id;
+            const isSelected = (optionId === selectedValue);
+            const optionElement = createDropdownOption(optionId, optionText, isSelected, option.color, editOptionColor(option));
+            optionsList.appendChild(optionElement);
+        });
+    };
+    renderOptions();
+
     dropdown.appendChild(optionsList);
     document.body.appendChild(dropdown);
-    
+
     // 定位下拉菜单
     positionDropdown(dropdown, element);
-    
+
     // 保存函数
     const save = async (selectedValue: string) => {
         try {
             const value = convertToAVValue('select', selectedValue);
             await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
-            
+
             closeDropdown(dropdown);
             showMessage(t('common.saveSuccess'), 2000, 'info');
-            
+
             if (onSave) {
                 onSave(selectedValue);
             }
@@ -197,7 +232,7 @@ function handleSelectEdit(options: InlineEditOptions) {
             showMessage(t('common.saveFailed', { message }), 5000, 'error');
         }
     };
-    
+
     // 点击选项事件
     optionsList.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
@@ -207,16 +242,17 @@ function handleSelectEdit(options: InlineEditOptions) {
             save(value);
         }
     });
-    
+
     // 点击外部关闭
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
+        if (currentPalette?.contains(target)) return;
         if (!dropdown.contains(target) && !element.contains(target)) {
             closeDropdown(dropdown);
             if (onCancel) onCancel();
         }
     };
-    
+
     currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
 }
 
@@ -225,16 +261,16 @@ function handleSelectEdit(options: InlineEditOptions) {
  */
 function handleMultiSelectEdit(options: InlineEditOptions) {
     const { element, avID, itemID, currentValue, selectOptions, onSave, onCancel } = options;
-    
+
     // 创建多选容器
     const dropdown = document.createElement('div');
     dropdown.className = 'inline-edit-dropdown inline-edit-dropdown--multi';
     prepareEditorPanel(dropdown, options.keyName);
     currentPopup = dropdown;
-    
+
     // 当前选中的值
     const selectedValues = new Set(Array.isArray(currentValue) ? currentValue : (currentValue ? [currentValue] : []));
-    
+
     // 创建选项列表
     const optionsList = document.createElement('div');
     optionsList.className = 'inline-edit-dropdown-list';
@@ -244,53 +280,84 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
         onCancel?.();
     });
     dropdown.appendChild(header);
-    
-    // 添加备选项（带复选框）
-    (selectOptions || []).forEach(option => {
-        // 选项值：优先使用 name，然后 id，最后 content
-        const optionId = option.name || option.id || option.content;
-        const optionText = option.name || option.content || option.id;
-        const isSelected = selectedValues.has(optionId);
-        
-        const optionElement = createMultiSelectOption(optionId, optionText, isSelected);
-        optionsList.appendChild(optionElement);
-        
-        // 点击切换选中状态
-        optionElement.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const checkbox = optionElement.querySelector('input[type="checkbox"]') as HTMLInputElement;
-            checkbox.checked = !checkbox.checked;
-            optionElement.classList.toggle('inline-edit-dropdown-option--selected', checkbox.checked);
-            
-            if (checkbox.checked) {
-                selectedValues.add(optionId);
-            } else {
-                selectedValues.delete(optionId);
+
+    // 修改选项颜色：写回内核并刷新选项列表与文档显示
+    const editOptionColor = (option: any) => (swatch: HTMLElement) => {
+        const optionName = String(option.name || option.content || option.id || '');
+        openOptionColorPalette({
+            swatch,
+            avID,
+            keyID: options.keyID,
+            optionName,
+            color: String(option.color || ''),
+            onApplied: (newColor) => {
+                void (async () => {
+                    try {
+                        await attributeViewRepository.updateSelectOptionColor(avID, options.keyID, optionName, String(option.color || ''), newColor);
+                        option.color = newColor;
+                        renderOptions();
+                        showMessage(t('common.saveSuccess'), 2000, 'info');
+                        onSave?.(Array.from(selectedValues));
+                    } catch (error) {
+                        const message = toErrorMessage(error);
+                        console.error(t('common.saveFailed', { message }), error);
+                        showMessage(t('common.saveFailed', { message }), 5000, 'error');
+                    }
+                })();
             }
         });
-    });
-    
+    };
+
+    // 添加备选项（带复选框）
+    const renderOptions = () => {
+        optionsList.replaceChildren();
+        (selectOptions || []).forEach(option => {
+            // 选项值：优先使用 name，然后 id，最后 content
+            const optionId = option.name || option.id || option.content;
+            const optionText = option.name || option.content || option.id;
+            const isSelected = selectedValues.has(optionId);
+
+            const optionElement = createMultiSelectOption(optionId, optionText, isSelected, option.color, editOptionColor(option));
+            optionsList.appendChild(optionElement);
+
+            // 点击切换选中状态
+            optionElement.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const checkbox = optionElement.querySelector('input[type="checkbox"]') as HTMLInputElement;
+                checkbox.checked = !checkbox.checked;
+                optionElement.classList.toggle('inline-edit-dropdown-option--selected', checkbox.checked);
+
+                if (checkbox.checked) {
+                    selectedValues.add(optionId);
+                } else {
+                    selectedValues.delete(optionId);
+                }
+            });
+        });
+    };
+    renderOptions();
+
     dropdown.appendChild(optionsList);
-    
+
     const saveButton = createIconButton(ICONS.check, t('common.save'), 'inline-edit-action inline-edit-action--primary');
     appendHeaderAction(header, saveButton);
-    
+
     document.body.appendChild(dropdown);
-    
+
     // 定位下拉菜单
     positionDropdown(dropdown, element);
-    
+
     // 保存函数
     const save = async () => {
         try {
             const values = Array.from(selectedValues);
             const value = convertToAVValue('mSelect', values);
             await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
-            
+
             closeDropdown(dropdown);
             showMessage(t('common.saveSuccess'), 2000, 'info');
-            
+
             if (onSave) {
                 onSave(values);
             }
@@ -300,22 +367,23 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
             showMessage(t('common.saveFailed', { message }), 5000, 'error');
         }
     };
-    
+
     // 按钮事件
     saveButton.addEventListener('click', (e) => {
         e.stopPropagation();
         save();
     });
-    
+
     // 点击外部关闭
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
+        if (currentPalette?.contains(target)) return;
         if (!dropdown.contains(target) && !element.contains(target)) {
             closeDropdown(dropdown);
             if (onCancel) onCancel();
         }
     };
-    
+
     currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
 }
 
@@ -808,8 +876,66 @@ function closeEditorPanel(panel: HTMLElement) {
         currentPopupCleanup = null;
         currentPopup = null;
     }
+    closeOptionColorPalette();
     panel.classList.add('inline-edit-panel--closing');
     window.setTimeout(() => panel.remove(), 120);
+}
+
+/**
+ * 关闭当前打开的选项调色板浮层
+ */
+function closeOptionColorPalette(): void {
+    currentPaletteCleanup?.();
+    currentPaletteCleanup = null;
+    currentPalette?.remove();
+    currentPalette = null;
+}
+
+/**
+ * 打开选项调色板（思源 14 色调色板，与原生 color__square 一致），
+ * 选择后回调应用新颜色并关闭。
+ */
+function openOptionColorPalette(options: {
+    swatch: HTMLElement;
+    avID: string;
+    keyID: string;
+    optionName: string;
+    color: string;
+    onApplied: (newColor: string) => void;
+}): void {
+    closeOptionColorPalette();
+    const palette = document.createElement('div');
+    palette.className = 'inline-edit-palette';
+    palette.setAttribute('role', 'dialog');
+    palette.setAttribute('aria-label', t('inlineEdit.optionColor'));
+    for (let index = 1; index <= 14; index++) {
+        const square = document.createElement('button');
+        square.type = 'button';
+        square.className = 'inline-edit-palette__swatch' + (String(index) === options.color ? ' inline-edit-palette__swatch--current' : '');
+        square.dataset.color = String(index);
+        square.style.color = `var(--b3-font-color${index})`;
+        square.style.backgroundColor = `var(--b3-font-background${index})`;
+        square.textContent = 'A';
+        square.setAttribute('aria-label', t('inlineEdit.optionColor') + ` ${index}`);
+        square.addEventListener('click', event => {
+            event.stopPropagation();
+            const newColor = square.dataset.color || '';
+            if (newColor !== options.color) {
+                options.onApplied(newColor);
+            }
+            closeOptionColorPalette();
+        });
+        palette.appendChild(square);
+    }
+    document.body.appendChild(palette);
+    positionPanelNear(palette, options.swatch, 4);
+    currentPalette = palette;
+    currentPaletteCleanup = bindOutsideDismiss((event: MouseEvent) => {
+        const target = event.target as Node;
+        if (!palette.contains(target) && !options.swatch.contains(target)) {
+            closeOptionColorPalette();
+        }
+    });
 }
 
 function bindOutsideDismiss(handler: (event: MouseEvent) => void): () => void {
@@ -855,14 +981,39 @@ function appendHeaderAction(header: HTMLElement, action: HTMLButtonElement): voi
 }
 
 /**
+ * 创建选项色块：显示选项颜色（思源调色板索引），点击时回调打开调色板编辑。
+ */
+function createOptionColorSwatch(color: string | undefined, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
+    const swatch = document.createElement('span');
+    swatch.className = 'inline-edit-option-color';
+    if (/^[1-9]$|^1[0-4]$/.test(color || '')) {
+        swatch.style.backgroundColor = `var(--b3-font-color${color})`;
+    } else {
+        swatch.classList.add('inline-edit-option-color--none');
+    }
+    swatch.title = t('inlineEdit.optionColor');
+    swatch.setAttribute('aria-label', t('inlineEdit.optionColor'));
+    if (onColorEdit) {
+        swatch.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            onColorEdit(swatch);
+        });
+    }
+    return swatch;
+}
+
+/**
  * 创建下拉选项元素
  */
-function createDropdownOption(value: string, text: string, isSelected: boolean): HTMLElement {
+function createDropdownOption(value: string, text: string, isSelected: boolean, color?: string, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
     const option = document.createElement('button');
     option.type = 'button';
     option.className = 'inline-edit-dropdown-option' + (isSelected ? ' inline-edit-dropdown-option--selected' : '');
     option.dataset.value = value;
+    if (onColorEdit) option.appendChild(createOptionColorSwatch(color, onColorEdit));
     const label = document.createElement('span');
+    label.className = 'inline-edit-dropdown-option__label';
     label.textContent = text;
     const iconName = value ? (isSelected ? ICONS.selected : ICONS.check) : ICONS.clear;
     const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -877,16 +1028,19 @@ function createDropdownOption(value: string, text: string, isSelected: boolean):
 /**
  * 创建多选下拉选项元素
  */
-function createMultiSelectOption(value: string, text: string, isSelected: boolean): HTMLElement {
+function createMultiSelectOption(value: string, text: string, isSelected: boolean, color?: string, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
     const option = document.createElement('label');
     option.className = 'inline-edit-dropdown-option inline-edit-dropdown-option--multi' + (isSelected ? ' inline-edit-dropdown-option--selected' : '');
-    
+
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = isSelected;
     checkbox.dataset.value = value;
-    
+
+    if (onColorEdit) option.appendChild(createOptionColorSwatch(color, onColorEdit));
+
     const label = document.createElement('span');
+    label.className = 'inline-edit-dropdown-option__label';
     label.textContent = text;
 
     const mark = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -894,12 +1048,13 @@ function createMultiSelectOption(value: string, text: string, isSelected: boolea
     use.setAttribute('href', `#${ICONS.selected}`);
     use.setAttribute('xlink:href', `#${ICONS.selected}`);
     mark.appendChild(use);
-    
+
     option.appendChild(checkbox);
     option.append(label, mark);
-    
+
     return option;
 }
+
 /**
  * 创建文本输入框
  */
