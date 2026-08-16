@@ -43,6 +43,8 @@
     flex: 0 0 auto;
     opacity: 0.7;
     white-space: nowrap;
+    /* 与 chip 一致的字段背景渐变：保证字段名（含 relation/asset 组内的）也有背景色块 */
+    background-image: linear-gradient(to bottom, transparent 20%, var(--db-chip-background, transparent) 20% 88%, transparent 88%);
 }
 
 .db-display__value {

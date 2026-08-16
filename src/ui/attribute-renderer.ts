@@ -19,6 +19,7 @@ export class AttributeRenderer {
     private readonly signatures = new WeakMap<HTMLElement, string>();
 
     render(parent: HTMLElement, items: DisplayItem[], context: RenderContext): void {
+        // 容器挂在 .protyle-attr 内（思源识别的属性容器，编辑/合并/序列化时被安全忽略）
         const attributeContainer = [...parent.children].find(child => child.classList.contains("protyle-attr")) as HTMLElement | undefined;
         if (!attributeContainer) return;
         const signature = JSON.stringify({
@@ -30,21 +31,26 @@ export class AttributeRenderer {
         // 用 innerHTML 重建 .protyle-attr 内部（容器元素对象不变），清掉我们注入的
         // 节点，此时 WeakMap 中的旧签名已失效，必须重新注入。
         const existing = attributeContainer.querySelector<HTMLElement>(":scope > .my-protyle-attr--av");
-        if (existing && this.signatures.get(attributeContainer) === signature) return;
-        this.signatures.set(attributeContainer, signature);
-
+        // 无内容且尚无容器时不创建（避免残留空白）
+        if (items.length === 0 && !existing) return;
         const container = existing || document.createElement("div");
+        if (existing && this.signatures.get(container) === signature) return;
+        this.signatures.set(container, signature);
+
         container.className = "my-protyle-attr--av";
         // 容器随旧块被思源替换/重建时，据此定位所属块以支持一帧内快速恢复
         container.dataset.blockId = context.blockId;
         container.replaceChildren(...this.createItems(items, context));
-        if (!existing) attributeContainer.insertBefore(container, attributeContainer.firstChild);
+        // 容器始终位于 .protyle-attr 首位（原生徽标之前）；位置不对时归位
+        if (container.parentElement !== attributeContainer || container.previousElementSibling !== null) {
+            attributeContainer.insertBefore(container, attributeContainer.firstChild);
+        }
     }
 
     clear(parent: HTMLElement): void {
-        const attributeContainer = [...parent.children].find(child => child.classList.contains("protyle-attr")) as HTMLElement | undefined;
-        attributeContainer?.querySelector(":scope > .my-protyle-attr--av")?.remove();
-        if (attributeContainer) this.signatures.delete(attributeContainer);
+        const container = parent.querySelector<HTMLElement>(":scope > .protyle-attr > .my-protyle-attr--av");
+        container?.remove();
+        if (container) this.signatures.delete(container);
     }
 
     private createItems(items: DisplayItem[], context: RenderContext): HTMLElement[] {
@@ -88,7 +94,7 @@ export class AttributeRenderer {
     private createAssetGroup(items: DisplayItem[], context: RenderContext): HTMLElement {
         const group = document.createElement("span");
         group.className = "db-display__asset-group";
-        if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName));
+        if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName, items[0], context.config));
         items.forEach(item => group.appendChild(this.createAssetItem(item, context, false)));
         return group;
     }
@@ -96,7 +102,7 @@ export class AttributeRenderer {
     private createRelationGroup(items: DisplayItem[], context: RenderContext): HTMLElement {
         const group = document.createElement("span");
         group.className = "db-display__relation-group";
-        if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName));
+        if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName, items[0], context.config));
         items.forEach(item => group.appendChild(this.createRelationChip(item, context)));
 
         if (context.canInlineEdit && isInlineEditableField("relation")) {
@@ -192,7 +198,7 @@ export class AttributeRenderer {
     private createImageAsset(item: DisplayItem, asset: AssetReference, context: RenderContext, includeFieldName = true): HTMLElement {
         const wrapper = document.createElement("span");
         wrapper.className = "db-display__asset db-display__asset--image";
-        if (includeFieldName && context.config.showFieldNames) wrapper.appendChild(this.createFieldName(item.keyName));
+        if (includeFieldName && context.config.showFieldNames) wrapper.appendChild(this.createFieldName(item.keyName, item, context.config));
 
         const preview = document.createElement("button");
         preview.type = "button";
@@ -304,7 +310,7 @@ export class AttributeRenderer {
             value.textContent = truncateDisplayText(plainText, context.config.maxDisplayLength);
         }
         if (includeFieldName && context.config.showFieldNames) {
-            element.append(this.createFieldName(item.keyName), value);
+            element.append(this.createFieldName(item.keyName, item, context.config), value);
         } else {
             element.appendChild(value);
         }
@@ -364,11 +370,26 @@ export class AttributeRenderer {
         return span;
     }
 
-    private createFieldName(keyName: string): HTMLSpanElement {
+    private createFieldName(keyName: string, item: DisplayItem, config: DisplayConfig): HTMLSpanElement {
         const name = document.createElement("span");
         name.className = "db-display__field-name";
         name.textContent = `${keyName}: `;
+        // 字段名统一应用字段背景色与字段色，与所在 chip 保持一致
+        // （relation/asset 组的字段名挂在组容器上，若不单独设置则没有背景）
+        this.applyFieldNameColors(name, item, config);
         return name;
+    }
+
+    /**
+     * 字段名样式：背景与所在 chip 一致（含按值覆盖的背景），颜色恒为字段色。
+     */
+    private applyFieldNameColors(element: HTMLElement, item: DisplayItem, config: DisplayConfig): void {
+        const valueRule = config.valueColors[item.text];
+        const rule = typeof valueRule === "string" ? { color: valueRule } : valueRule;
+        const color = config.fieldColors[item.type];
+        const background = rule?.bg || config.fieldBackgrounds[item.type];
+        if (isSafeColor(color)) element.style.color = color;
+        if (isSafeColor(background)) element.style.setProperty("--db-chip-background", background);
     }
 
     private chipLabel(item: DisplayItem, text: string, includeFieldName: boolean): string {
