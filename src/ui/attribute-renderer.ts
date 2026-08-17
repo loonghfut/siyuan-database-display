@@ -17,6 +17,7 @@ export interface RenderContext {
 
 export class AttributeRenderer {
     private readonly signatures = new WeakMap<HTMLElement, string>();
+    private readonly protectedContainers = new WeakSet<HTMLElement>();
     private readonly itemSignatures = new WeakMap<DisplayItem[], string>();
     private readonly configSignatures = new WeakMap<DisplayConfig, string>();
     private readonly listMetrics = new WeakMap<HTMLElement, { height: number; fieldNameWidth: number; contentHeight?: number }>();
@@ -40,10 +41,12 @@ export class AttributeRenderer {
         // 容器挂在 .protyle-attr 内（思源识别的属性容器，编辑/合并/序列化时被安全忽略）
         const attributeContainer = [...parent.children].find(child => child.classList.contains("protyle-attr")) as HTMLElement | undefined;
         if (!attributeContainer) return;
+        // 清理旧版本留下的宿主状态；之后仅操作 .protyle-attr 内的展示节点。
+        parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below");
+        attributeContainer.classList.remove("db-display--has-list");
         const useList = context.config.layout !== "inline"
             && items.length > 0
             && !parent.classList.contains("protyle-title");
-        this.syncLayoutClasses(parent, attributeContainer, useList, context.config.layout);
         // A block can have multiple visible parents. Share the expensive item
         // serialization between those parents.
         let itemSignature = this.itemSignatures.get(items);
@@ -63,8 +66,8 @@ export class AttributeRenderer {
         const existing = attributeContainer.querySelector<HTMLElement>(":scope > .my-protyle-attr--av");
         // 无内容且尚无容器时不创建（避免残留空白）
         if (items.length === 0 && !existing) return;
-        parent.classList.add("db-display--rendered");
         const container = existing || document.createElement("div");
+        this.protectTransientContainer(container);
         if (existing && this.signatures.get(container) === signature) {
             // The block can be rebuilt while the injected container survives.
             // Restore cached CSS values without forcing another layout read.
@@ -108,6 +111,7 @@ export class AttributeRenderer {
         }
         parent.style.removeProperty("--db-attr-list-space");
         parent.style.removeProperty("--db-attr-block-height");
+        // 清理旧版本曾写入宿主块的状态 class，插件不再修改思源块节点。
         parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below");
     }
 
@@ -147,10 +151,33 @@ export class AttributeRenderer {
         }
     }
 
-    private syncLayoutClasses(parent: HTMLElement, attributeContainer: HTMLElement, useList: boolean, layout: DisplayConfig["layout"]): void {
-        parent.classList.toggle("db-display--list-above", useList && layout === "above");
-        parent.classList.toggle("db-display--list-below", useList && layout === "below");
-        attributeContainer.classList.toggle("db-display--has-list", useList);
+    /**
+     * 展示属性不是块正文。显式隔离它，避免思源在字段附近接收到 Enter、
+     * Backspace 等编辑事件后把注入 DOM 作为正文块的一部分进行转换。
+     */
+    private protectTransientContainer(container: HTMLElement): void {
+        container.contentEditable = "false";
+        container.spellcheck = false;
+        container.dataset.dbDisplayTransient = "true";
+        if (this.protectedContainers.has(container)) return;
+        this.protectedContainers.add(container);
+        container.addEventListener("mousedown", event => {
+            if (event.button !== 0) return;
+            event.preventDefault();
+            event.stopPropagation();
+        }, true);
+        // 字段自身的 click 处理器会先执行；这里只阻止事件继续进入编辑器。
+        container.addEventListener("click", event => event.stopPropagation());
+        container.addEventListener("beforeinput", event => {
+            event.preventDefault();
+            event.stopPropagation();
+        });
+        // 保留字段自己的键盘处理（模板编辑等），阻止其冒泡到思源正文。
+        container.addEventListener("keydown", event => event.stopPropagation());
+        container.addEventListener("dragstart", event => {
+            event.preventDefault();
+            event.stopPropagation();
+        });
     }
 
     /** 将同一列表中的字段名统一为最长标签宽度，使所有字段值从同一列开始显示。 */

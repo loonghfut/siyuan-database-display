@@ -1,5 +1,10 @@
 /* 行内模式（默认）：随思源原生 .protyle-attr 显示在块右上角，横排换行 */
 .my-protyle-attr--av {
+    /* 展示节点不属于块正文，不能成为浏览器的复制/编辑选区。 */
+    user-select: none;
+    -webkit-user-select: none;
+    /* .protyle-attr 的空白区域允许点击穿透，但展示字段自身必须接收事件。 */
+    pointer-events: auto;
     flex: 0 1 auto;
     width: fit-content;
     min-width: 0;
@@ -22,11 +27,11 @@
 
 /* 列表模式：属性 DOM 仍保留在 .protyle-attr 内，不移动节点。
    根据位置为块预留对应方向的空间；折叠块的属性被思源隐藏，不预留。 */
-[data-node-id].db-display--list-below:not([fold="1"]) {
+[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-below) {
     padding-bottom: calc(var(--db-attr-list-space, 18px) + 10px);
 }
 
-[data-node-id].db-display--list-above:not([fold="1"]) {
+[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-above) {
     padding-top: calc(var(--db-attr-list-space, 18px) + 10px);
 }
 
@@ -40,7 +45,7 @@
 
 /* 列表模式：宿主容器拉满块宽，作为列表左对齐的定位基准；
    原生徽标仍靠右，视觉位置不变 */
-.protyle-attr.db-display--has-list {
+.protyle-attr:has(> .my-protyle-attr--av--list) {
     left: 0;
     right: 0;
     justify-content: flex-end;
@@ -56,33 +61,6 @@
         flex: 0 1 auto;
     }
 
-    /* The list fills the block width for layout, but only its actual content
-       should receive pointer events. The host attribute bar stays interactive. */
-    > .my-protyle-attr--av--list {
-        pointer-events: none;
-
-        > .db-display__chip,
-        > .db-display__relation-group,
-        > .db-display__asset-group {
-            pointer-events: none;
-        }
-
-        .db-display__field-name,
-        .db-display__value,
-        .db-display__asset-thumbnail {
-            pointer-events: auto;
-        }
-
-        .db-display__group-values,
-        .db-display__asset--image {
-            pointer-events: none;
-        }
-
-        .db-display__group-values > *,
-        .db-display__asset--image > * {
-            pointer-events: auto;
-        }
-    }
 }
 
 /* 下方列表模式：宿主容器的顶边通常位于块顶上方约 12px，因此用块自身高度计算

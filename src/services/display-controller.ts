@@ -30,38 +30,20 @@ function hasRelevantNode(node: Node): boolean {
  */
 function findLostContainerBlockIds(records: MutationRecord[]): Set<string> {
     const blockIds = new Set<string>();
-    const addBlockId = (blockId: string | undefined): void => {
-        if (blockId) blockIds.add(blockId);
-    };
-    const addRenderedBlock = (element: HTMLElement): void => addBlockId(element.dataset.nodeId);
-    const visit = (node: Node, targetBlockId: string | undefined): void => {
+    const visit = (node: Node): void => {
         if (!(node instanceof HTMLElement)) return;
         if (node.classList.contains("my-protyle-attr--av")) {
-            addBlockId(node.dataset.blockId || targetBlockId);
-            return;
+            const blockId = node.dataset.blockId;
+            if (blockId) blockIds.add(blockId);
         }
-        // The renderer marks only host blocks that have injected content.
-        // Checking that sparse marker avoids querying every removed editor node.
-        if (node.classList.contains("db-display--rendered")) {
-            addRenderedBlock(node);
-            node.querySelectorAll<HTMLElement>(".db-display--rendered").forEach(addRenderedBlock);
-            return;
-        }
-        const directContainer = [...node.children].find(child => child.classList.contains("my-protyle-attr--av")) as HTMLElement | undefined;
-        if (directContainer) {
-            addBlockId(directContainer.dataset.blockId || targetBlockId);
-            return;
-        }
-        if (node.childElementCount > 0) {
-            node.querySelectorAll<HTMLElement>(".db-display--rendered").forEach(addRenderedBlock);
-        }
+        node.querySelectorAll<HTMLElement>(".my-protyle-attr--av").forEach(container => {
+            const blockId = container.dataset.blockId;
+            if (blockId) blockIds.add(blockId);
+        });
     };
     for (const record of records) {
         if (record.type !== "childList") continue;
-        const targetBlockId = record.target instanceof HTMLElement
-            ? record.target.closest<HTMLElement>("[data-node-id]")?.dataset.nodeId
-            : undefined;
-        record.removedNodes.forEach(node => visit(node, targetBlockId));
+        record.removedNodes.forEach(visit);
     }
     return blockIds;
 }
