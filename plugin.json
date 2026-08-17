@@ -13,7 +13,7 @@
   ],
   "displayName": {
     "default": "Database Display",
-    "zh-CN": "数据库数据展示"
+    "zh-CN": "数据库属性展示"
   },
   "description": {
     "default": "Advanced database attribute display plugin with field hiding, date formatting, checkbox beautification, and customizable settings. Supports 99% of blocks!",
