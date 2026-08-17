@@ -14,6 +14,7 @@ import { PRO_FEATURE_KEYS, ProFeature, requiredFeaturesForField } from "@/licens
 
 const RELEVANT_NODE_SELECTOR = "[custom-avs], .protyle-title";
 const PROTYLE_SELECTOR = ".protyle";
+const DISPLAY_CONTAINER_SELECTOR = ".my-protyle-attr--av";
 // 思源编辑块内容时会替换整个块 DOM，注入的属性容器随旧块一起消失。
 // 立即恢复会造成"消失-恢复"闪烁，延迟到编辑静默后再恢复。
 const QUIET_REFRESH_DELAY = 300;
@@ -46,6 +47,48 @@ function findLostContainerBlockIds(records: MutationRecord[]): Set<string> {
         record.removedNodes.forEach(visit);
     }
     return blockIds;
+}
+
+/**
+ * 复制块时，思源可能会把 .protyle-attr 内的临时展示节点一并带入新块；
+ * 但新块并不一定继承数据库属性。展示节点若残留在这种块中，会被编辑器
+ * 当作普通内容处理，进而有机会转换为 HTML 块。
+ *
+ * 这里只检查本次新增的 DOM，避免每次编辑都遍历全文。文档标题的属性容器
+ * 不带 custom-avs 属性，由标题组件单独维护，因此不参与本项块级校验。
+ */
+function findInvalidDisplayContainerParents(nodes: Iterable<Node>): Map<HTMLElement, boolean> {
+    const invalidParents = new Map<HTMLElement, boolean>();
+    const inspect = (container: HTMLElement): void => {
+        const parent = container.closest<HTMLElement>("[data-node-id]");
+        if (!parent) {
+            container.remove();
+            return;
+        }
+        if (parent.classList.contains("protyle-title")) return;
+        const hasDatabaseAttributes = parent.hasAttribute("custom-avs");
+        const belongsToParent = !container.dataset.blockId || container.dataset.blockId === parent.dataset.nodeId;
+        if (!hasDatabaseAttributes || !belongsToParent) {
+            // true means the host still has attributes and needs a normal refresh
+            // after stale copied content has been removed.
+            invalidParents.set(parent, hasDatabaseAttributes);
+        }
+    };
+    const inspectNode = (node: Node): void => {
+        if (!(node instanceof HTMLElement)) return;
+        if (node.matches(DISPLAY_CONTAINER_SELECTOR)) inspect(node);
+        node.querySelectorAll<HTMLElement>(DISPLAY_CONTAINER_SELECTOR).forEach(inspect);
+    };
+    for (const node of nodes) inspectNode(node);
+    return invalidParents;
+}
+
+function findInvalidDisplayContainerParentsFromRecords(records: MutationRecord[]): Map<HTMLElement, boolean> {
+    const addedNodes: Node[] = [];
+    records.forEach(record => {
+        if (record.type === "childList") addedNodes.push(...record.addedNodes);
+    });
+    return findInvalidDisplayContainerParents(addedNodes);
 }
 
 /**
@@ -181,6 +224,8 @@ export class DisplayController {
 
     private async performRefresh(force: boolean, targetBlockIds?: ReadonlySet<string>): Promise<void> {
         if (this.disposed || !this.documentId) return;
+        // 即使关闭了自动补充观察，也要在手动/定时刷新时清掉复制遗留的展示 DOM。
+        this.clearInvalidDisplayContainers(document.querySelectorAll<HTMLElement>(DISPLAY_CONTAINER_SELECTOR));
         const version = ++this.refreshVersion;
         const documentId = this.documentId;
         const allBlockParents = getVisibleAttributeBlockParents();
@@ -262,10 +307,15 @@ export class DisplayController {
         this.contentObservers.forEach(observer => observer.disconnect());
         this.contentObservers.clear();
         this.observer = undefined;
-        if (!this.options.isObserverEnabled()) return;
+        // 即使用户关闭自动刷新，仍保留仅用于移除复制残留 DOM 的轻量观察；
+        // 这属于编辑器稳定性保护，不会触发数据库读取或常规渲染。
+        const refreshObservationEnabled = this.options.isObserverEnabled();
 
         const observedRoots = new Set<HTMLElement>();
         const scheduleForRelevantNodes = (records: MutationRecord[]): void => {
+            const invalidDisplayParents = findInvalidDisplayContainerParentsFromRecords(records);
+            const repairBlockIds = this.clearInvalidDisplayContainers(invalidDisplayParents.keys(), invalidDisplayParents);
+            if (!refreshObservationEnabled) return;
             const lostBlockIds = findLostContainerBlockIds(records);
             let relevantAdded = false;
             // 从本次事务涉及的节点中收集新块，避免整篇文档查询：
@@ -292,6 +342,8 @@ export class DisplayController {
                 // 再安排静默刷新兜底（拉取最新数据 + 覆盖未命中内存状态的块）。
                 this.restoreLostContainers(lostBlockIds, newBlockElements);
                 this.scheduleQuietRefresh();
+            } else if (repairBlockIds.size > 0) {
+                this.scheduleRefresh(false, repairBlockIds);
             } else if (relevantAdded) {
                 this.scheduleRefresh(false);
             }
@@ -435,6 +487,20 @@ export class DisplayController {
             const context = this.createRenderContext(blockId, state.config, state.canInlineEdit);
             parents.forEach(parent => this.renderer.render(parent, state.items, context));
         }
+    }
+
+    /** Removes copied or stale display containers and returns valid hosts to re-render. */
+    private clearInvalidDisplayContainers(
+        containers: Iterable<HTMLElement>,
+        invalidParents = findInvalidDisplayContainerParents(containers)
+    ): Set<string> {
+        const repairBlockIds = new Set<string>();
+        for (const [parent, needsRefresh] of invalidParents) {
+            const blockId = parent.dataset.nodeId;
+            this.renderer.clear(parent);
+            if (needsRefresh && blockId) repairBlockIds.add(blockId);
+        }
+        return repairBlockIds;
     }
 
     /** Removes stale AV-to-block mappings before a targeted block refresh. */
