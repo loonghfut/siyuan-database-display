@@ -22,11 +22,11 @@
 
 /* 列表模式：属性 DOM 仍保留在 .protyle-attr 内，不移动节点。
    根据位置为块预留对应方向的空间；折叠块的属性被思源隐藏，不预留。 */
-[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-below) {
+[data-node-id].db-display--list-below:not([fold="1"]) {
     padding-bottom: calc(var(--db-attr-list-space, 18px) + 10px);
 }
 
-[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-above) {
+[data-node-id].db-display--list-above:not([fold="1"]) {
     padding-top: calc(var(--db-attr-list-space, 18px) + 10px);
 }
 
@@ -40,7 +40,7 @@
 
 /* 列表模式：宿主容器拉满块宽，作为列表左对齐的定位基准；
    原生徽标仍靠右，视觉位置不变 */
-.protyle-attr:has(> .my-protyle-attr--av--list) {
+.protyle-attr.db-display--has-list {
     left: 0;
     right: 0;
     justify-content: flex-end;
@@ -158,13 +158,13 @@
     box-sizing: border-box;
 }
 
-.my-protyle-attr--av--list > .db-display__relation-group:has(> .db-display__field-name) > .db-display__group-values,
-.my-protyle-attr--av--list > .db-display__asset-group:has(> .db-display__field-name) > .db-display__group-values {
+.my-protyle-attr--av--list > .db-display__relation-group--has-field-name > .db-display__group-values,
+.my-protyle-attr--av--list > .db-display__asset-group--has-field-name > .db-display__group-values {
     grid-column: 2;
 }
 
-.my-protyle-attr--av--list > .db-display__relation-group:not(:has(> .db-display__field-name)) > .db-display__group-values,
-.my-protyle-attr--av--list > .db-display__asset-group:not(:has(> .db-display__field-name)) > .db-display__group-values {
+.my-protyle-attr--av--list > .db-display__relation-group:not(.db-display__relation-group--has-field-name) > .db-display__group-values,
+.my-protyle-attr--av--list > .db-display__asset-group:not(.db-display__asset-group--has-field-name) > .db-display__group-values {
     grid-column: 1 / -1;
 }
 
@@ -557,7 +557,7 @@ button.db-display__popover-source:hover {
     box-sizing: border-box;
 }
 
-.b3-dialog__header:has(.db-settings-nav) {
+.b3-dialog__header.db-settings-header--has-nav {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -608,7 +608,7 @@ button.db-display__popover-source:hover {
 }
 
 @media (max-width: 640px) {
-    .b3-dialog__header:has(.db-settings-nav) {
+    .b3-dialog__header.db-settings-header--has-nav {
         gap: 6px;
     }
 
@@ -707,18 +707,18 @@ button.db-display__popover-source:hover {
     display: none;
 }
 
-.db-settings__check:has(input:checked) {
+.db-settings__check--checked {
     border-color: var(--b3-theme-primary);
     background: var(--b3-theme-primary-lightest);
     color: var(--b3-theme-primary);
 }
 
-.db-settings__check:has(input:disabled) {
+.db-settings__check--disabled {
     cursor: not-allowed;
     opacity: .62;
 }
 
-.db-settings__check:has(input:disabled):has(input:checked) {
+.db-settings__check--disabled.db-settings__check--checked {
     border-color: var(--b3-border-color);
     background: transparent;
     color: var(--b3-theme-on-surface);
@@ -1977,11 +1977,11 @@ span[style*="outline: 2px solid"] {
     letter-spacing: 0;
 }
 
-.inline-edit-datepicker-row:has(> .inline-edit-datepicker-label:only-child) {
+.inline-edit-datepicker-row--single {
     grid-template-columns: 1fr;
 }
 
-.inline-edit-datepicker-row .inline-edit-datepicker-label:has(input[type="checkbox"]) {
+.inline-edit-datepicker-label--checkbox {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -2048,7 +2048,7 @@ span[style*="outline: 2px solid"] {
     max-width: 560px;
 }
 
-.config-item:has(.db-settings--license) .config-name {
+.config-item--has-license .config-name {
     display: flex;
     align-items: center;
     justify-content: flex-start;

@@ -35,6 +35,12 @@ export function addDisplayFieldsPanel(
                 }
                 input.dataset.scope = scope;
                 input.dataset.type = type;
+                const syncCheckState = (): void => {
+                    label.classList.toggle("db-settings__check--checked", input.checked);
+                    label.classList.toggle("db-settings__check--disabled", input.disabled);
+                };
+                input.addEventListener("change", syncCheckState);
+                syncCheckState();
                 label.append(input, createFieldTypeLabel(type, text, shouldShowProBadge()));
                 chips.append(label);
             });

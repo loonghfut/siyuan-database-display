@@ -578,9 +578,9 @@ function handleDateEdit(options: InlineEditOptions) {
 
     // 是否有结束时间
     const rangeWrap = document.createElement('div');
-    rangeWrap.className = 'inline-edit-datepicker-row';
+    rangeWrap.className = 'inline-edit-datepicker-row inline-edit-datepicker-row--single';
     const rangeLabel = document.createElement('label');
-    rangeLabel.className = 'inline-edit-datepicker-label';
+    rangeLabel.className = 'inline-edit-datepicker-label inline-edit-datepicker-label--checkbox';
     const rangeCheckbox = document.createElement('input');
     rangeCheckbox.type = 'checkbox';
     rangeCheckbox.checked = Boolean(current.hasEndDate && current.content2);

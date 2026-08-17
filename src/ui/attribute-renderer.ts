@@ -40,6 +40,10 @@ export class AttributeRenderer {
         // 容器挂在 .protyle-attr 内（思源识别的属性容器，编辑/合并/序列化时被安全忽略）
         const attributeContainer = [...parent.children].find(child => child.classList.contains("protyle-attr")) as HTMLElement | undefined;
         if (!attributeContainer) return;
+        const useList = context.config.layout !== "inline"
+            && items.length > 0
+            && !parent.classList.contains("protyle-title");
+        this.syncLayoutClasses(parent, attributeContainer, useList, context.config.layout);
         // A block can have multiple visible parents. Share the expensive item
         // serialization between those parents.
         let itemSignature = this.itemSignatures.get(items);
@@ -70,9 +74,6 @@ export class AttributeRenderer {
 
         // 列表模式追加位置修饰类：配合 CSS 显示在块上方或下方并纵向排列；
         // 文档块（标题）不参与列表模式；无内容的容器也不参与（避免预留空白条）
-        const useList = context.config.layout !== "inline"
-            && items.length > 0
-            && !parent.classList.contains("protyle-title");
         const listPositionClass = context.config.layout === "above"
             ? "my-protyle-attr--av--list-above"
             : "my-protyle-attr--av--list-below";
@@ -106,6 +107,7 @@ export class AttributeRenderer {
         }
         parent.style.removeProperty("--db-attr-list-space");
         parent.style.removeProperty("--db-attr-block-height");
+        parent.classList.remove("db-display--list-above", "db-display--list-below");
     }
 
     dispose(): void {
@@ -139,6 +141,12 @@ export class AttributeRenderer {
             }
             this.applyListSpace(container, metrics.height);
         }
+    }
+
+    private syncLayoutClasses(parent: HTMLElement, attributeContainer: HTMLElement, useList: boolean, layout: DisplayConfig["layout"]): void {
+        parent.classList.toggle("db-display--list-above", useList && layout === "above");
+        parent.classList.toggle("db-display--list-below", useList && layout === "below");
+        attributeContainer.classList.toggle("db-display--has-list", useList);
     }
 
     /** 将同一列表中的字段名统一为最长标签宽度，使所有字段值从同一列开始显示。 */
@@ -214,7 +222,7 @@ export class AttributeRenderer {
 
     private createAssetGroup(items: DisplayItem[], context: RenderContext): HTMLElement {
         const group = document.createElement("span");
-        group.className = "db-display__asset-group";
+        group.className = `db-display__asset-group${context.config.showFieldNames ? " db-display__asset-group--has-field-name" : ""}`;
         if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName, items[0], context.config));
         const values = document.createElement("span");
         values.className = "db-display__group-values";
@@ -225,7 +233,7 @@ export class AttributeRenderer {
 
     private createRelationGroup(items: DisplayItem[], context: RenderContext): HTMLElement {
         const group = document.createElement("span");
-        group.className = "db-display__relation-group";
+        group.className = `db-display__relation-group${context.config.showFieldNames ? " db-display__relation-group--has-field-name" : ""}`;
         if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName, items[0], context.config));
         const values = document.createElement("span");
         values.className = "db-display__group-values";

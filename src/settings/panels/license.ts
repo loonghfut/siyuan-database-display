@@ -26,7 +26,9 @@ function formatExpiry(value: string): string {
 
 function addApplicationButton(panel: HTMLElement, label: string): void {
     queueMicrotask(() => {
-        const title = panel.closest<HTMLElement>(".config-item")?.querySelector<HTMLElement>(".config-name");
+        const configItem = panel.closest<HTMLElement>(".config-item");
+        configItem?.classList.add("config-item--has-license");
+        const title = configItem?.querySelector<HTMLElement>(".config-name");
         if (!title || title.querySelector(".db-license__apply")) return;
 
         const apply = document.createElement("button");

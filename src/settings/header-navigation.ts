@@ -32,6 +32,7 @@ function mountNavigation(dialogElement: HTMLElement, categories: SettingsCategor
     navigation.className = "db-settings-nav";
     navigation.setAttribute("aria-label", "Settings categories");
     header.append(navigation);
+    header.classList.add("db-settings-header--has-nav");
 
     const buttons = new Map<string, HTMLButtonElement>();
     const select = (key: string) => {
