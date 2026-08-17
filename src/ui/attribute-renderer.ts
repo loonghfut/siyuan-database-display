@@ -44,7 +44,12 @@ export class AttributeRenderer {
         // 清理旧版本留下的宿主状态；之后仅操作 .protyle-attr 内的展示节点。
         parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below");
         attributeContainer.classList.remove("db-display--has-list");
-        const useList = context.config.layout !== "inline"
+        // 思源的列表、列表项、超级块、引述和提示块属于容器。下方绝对定位
+        // 会与其子块编辑区域重叠，因此这些容器统一回退为右上角行内展示。
+        const effectiveLayout = context.config.layout === "below" && this.isContainerBlock(parent)
+            ? "inline"
+            : context.config.layout;
+        const useList = effectiveLayout !== "inline"
             && items.length > 0
             && !parent.classList.contains("protyle-title");
         // A block can have multiple visible parents. Share the expensive item
@@ -59,7 +64,7 @@ export class AttributeRenderer {
             configSignature = JSON.stringify(this.visualConfig(context.config));
             this.configSignatures.set(context.config, configSignature);
         }
-        const signature = `${itemSignature}|${context.canInlineEdit ? 1 : 0}|${configSignature}`;
+        const signature = `${itemSignature}|${context.canInlineEdit ? 1 : 0}|${effectiveLayout}|${configSignature}`;
         // 容器必须仍然存在且签名一致才跳过渲染：思源会在 updateAttrs 等事务中
         // 用 innerHTML 重建 .protyle-attr 内部（容器元素对象不变），清掉我们注入的
         // 节点，此时 WeakMap 中的旧签名已失效，必须重新注入。
@@ -78,7 +83,7 @@ export class AttributeRenderer {
 
         // 列表模式追加位置修饰类：配合 CSS 显示在块上方或下方并纵向排列；
         // 文档块（标题）不参与列表模式；无内容的容器也不参与（避免预留空白条）
-        const listPositionClass = context.config.layout === "above"
+        const listPositionClass = effectiveLayout === "above"
             ? "my-protyle-attr--av--list-above"
             : "my-protyle-attr--av--list-below";
         const listColumnsClass = context.config.listMultiColumn
@@ -178,6 +183,13 @@ export class AttributeRenderer {
             event.preventDefault();
             event.stopPropagation();
         });
+    }
+
+    /** 与思源 isContainerBlock 一致，避免下方列表覆盖容器块的子编辑区域。 */
+    private isContainerBlock(element: HTMLElement): boolean {
+        return element.classList.contains("list") || element.classList.contains("li") ||
+            element.classList.contains("sb") || element.classList.contains("bq") ||
+            element.classList.contains("callout");
     }
 
     /** 将同一列表中的字段名统一为最长标签宽度，使所有字段值从同一列开始显示。 */
