@@ -137,6 +137,8 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
     let searchTimer: number | undefined;
     let outsideTimer: number | undefined;
     let controller: AbortController | undefined;
+    let resetQueued = false;
+    let disposed = false;
 
     const hasMore = (): boolean => page * PAGE_SIZE < total;
     const renderMessage = (message: string): void => {
@@ -202,7 +204,15 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
         });
     };
     const loadPage = async (reset: boolean): Promise<void> => {
-        if ((!reset && loading) || (!reset && !hasMore())) return;
+        if (disposed) return;
+        // fetchSyncPost does not accept AbortSignal, so aborting the controller
+        // cannot stop the kernel request. Serialize reset searches instead of
+        // allowing every keystroke to create another in-flight request.
+        if (loading) {
+            if (reset) resetQueued = true;
+            return;
+        }
+        if (!reset && !hasMore()) return;
         if (reset) {
             controller?.abort();
             page = 0;
@@ -233,6 +243,10 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
             if (controller === requestController) {
                 loading = false;
                 renderList();
+                if (!disposed && resetQueued) {
+                    resetQueued = false;
+                    void loadPage(true);
+                }
             }
         }
     };
@@ -292,6 +306,8 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
     outsideTimer = window.setTimeout(() => document.addEventListener("mousedown", onOutsideClick), 100);
 
     const cleanup = (): void => {
+        disposed = true;
+        resetQueued = false;
         controller?.abort();
         if (searchTimer) window.clearTimeout(searchTimer);
         if (outsideTimer) window.clearTimeout(outsideTimer);

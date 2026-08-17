@@ -17,6 +17,9 @@ export interface RenderContext {
 
 export class AttributeRenderer {
     private readonly signatures = new WeakMap<HTMLElement, string>();
+    private readonly itemSignatures = new WeakMap<DisplayItem[], string>();
+    private readonly configSignatures = new WeakMap<DisplayConfig, string>();
+    private readonly listMetrics = new WeakMap<HTMLElement, { height: number; fieldNameWidth: number }>();
     // 列表模式：列表高度决定块底部预留空间，尺寸变化（图片懒加载、字段增删、重排）需同步
     private readonly listSpaceObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
@@ -27,6 +30,8 @@ export class AttributeRenderer {
                 continue;
             }
             if (!list.classList.contains("my-protyle-attr--av--list")) continue;
+            const metrics = this.listMetrics.get(list);
+            if (metrics) metrics.height = entry.contentRect.height;
             this.applyListSpace(list, entry.contentRect.height);
         }
     });
@@ -35,11 +40,19 @@ export class AttributeRenderer {
         // 容器挂在 .protyle-attr 内（思源识别的属性容器，编辑/合并/序列化时被安全忽略）
         const attributeContainer = [...parent.children].find(child => child.classList.contains("protyle-attr")) as HTMLElement | undefined;
         if (!attributeContainer) return;
-        const signature = JSON.stringify({
-            items,
-            canInlineEdit: context.canInlineEdit,
-            config: this.visualConfig(context.config)
-        });
+        // A block can have multiple visible parents. Share the expensive item
+        // serialization between those parents.
+        let itemSignature = this.itemSignatures.get(items);
+        if (!itemSignature) {
+            itemSignature = JSON.stringify(items);
+            this.itemSignatures.set(items, itemSignature);
+        }
+        let configSignature = this.configSignatures.get(context.config);
+        if (!configSignature) {
+            configSignature = JSON.stringify(this.visualConfig(context.config));
+            this.configSignatures.set(context.config, configSignature);
+        }
+        const signature = `${itemSignature}|${context.canInlineEdit ? 1 : 0}|${configSignature}`;
         // 容器必须仍然存在且签名一致才跳过渲染：思源会在 updateAttrs 等事务中
         // 用 innerHTML 重建 .protyle-attr 内部（容器元素对象不变），清掉我们注入的
         // 节点，此时 WeakMap 中的旧签名已失效，必须重新注入。
@@ -48,8 +61,9 @@ export class AttributeRenderer {
         if (items.length === 0 && !existing) return;
         const container = existing || document.createElement("div");
         if (existing && this.signatures.get(container) === signature) {
-            // 签名未变仍需补写预留变量：思源重建块元素后变量会随旧元素丢失
-            this.syncListSpace(container);
+            // The block can be rebuilt while the injected container survives.
+            // Restore cached CSS values without forcing another layout read.
+            this.syncListSpace(container, false);
             return;
         }
         this.signatures.set(container, signature);
@@ -80,7 +94,7 @@ export class AttributeRenderer {
         if (container.parentElement !== attributeContainer || container.previousElementSibling !== null) {
             attributeContainer.insertBefore(container, attributeContainer.firstChild);
         }
-        this.syncListSpace(container);
+        this.syncListSpace(container, true);
     }
 
     clear(parent: HTMLElement): void {
@@ -102,7 +116,7 @@ export class AttributeRenderer {
      * 列表模式：把列表当前高度写入所在块的 --db-attr-list-space，供 CSS 预留底部空间，
      * 并记录未包含列表预留区的块高度，供列表定位到块底部。行内模式需要解除旧观察和变量。
      */
-    private syncListSpace(container: HTMLElement): void {
+    private syncListSpace(container: HTMLElement, measure = true): void {
         const block = container.closest<HTMLElement>("[data-node-id]");
         if (!container.classList.contains("my-protyle-attr--av--list")) {
             this.listSpaceObserver.unobserve(container);
@@ -111,12 +125,24 @@ export class AttributeRenderer {
             return;
         }
         this.listSpaceObserver.observe(container);
-        this.syncListFieldNameWidth(container);
-        this.applyListSpace(container, container.offsetHeight);
+        const metrics = this.listMetrics.get(container);
+        if (measure || !metrics) {
+            const fieldNameWidth = this.syncListFieldNameWidth(container);
+            const height = container.offsetHeight;
+            this.listMetrics.set(container, { height, fieldNameWidth });
+            this.applyListSpace(container, height);
+        } else {
+            if (metrics.fieldNameWidth > 0) {
+                container.style.setProperty("--db-attr-field-name-width", `${Math.ceil(metrics.fieldNameWidth)}px`);
+            } else {
+                container.style.removeProperty("--db-attr-field-name-width");
+            }
+            this.applyListSpace(container, metrics.height);
+        }
     }
 
     /** 将同一列表中的字段名统一为最长标签宽度，使所有字段值从同一列开始显示。 */
-    private syncListFieldNameWidth(container: HTMLElement): void {
+    private syncListFieldNameWidth(container: HTMLElement): number {
         const widths = [...container.querySelectorAll<HTMLElement>(".db-display__field-name-label")]
             .map(name => Math.max(name.offsetWidth, name.scrollWidth));
         const width = Math.max(0, ...widths);
@@ -125,6 +151,7 @@ export class AttributeRenderer {
         } else {
             container.style.removeProperty("--db-attr-field-name-width");
         }
+        return width;
     }
 
     private applyListSpace(container: HTMLElement, height: number): void {

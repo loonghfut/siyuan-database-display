@@ -54,15 +54,17 @@ function findLostContainerBlockIds(records: MutationRecord[]): Set<string> {
  */
 function collectBlockElements(node: Node, byId: Map<string, HTMLElement[]>): void {
     if (!(node instanceof HTMLElement)) return;
-    const visit = (element: HTMLElement): void => {
-        if (element.dataset.nodeId) {
-            const list = byId.get(element.dataset.nodeId) || [];
-            list.push(element);
-            byId.set(element.dataset.nodeId, list);
-        }
-        element.querySelectorAll<HTMLElement>("[data-node-id]").forEach(visit);
+    const add = (element: HTMLElement): void => {
+        const blockId = element.dataset.nodeId;
+        if (!blockId) return;
+        const list = byId.get(blockId) || [];
+        list.push(element);
+        byId.set(blockId, list);
     };
-    visit(node);
+    // querySelectorAll already returns every descendant; recursively querying
+    // from each descendant made this scan quadratic for large inserted blocks.
+    if (node.dataset.nodeId) add(node);
+    node.querySelectorAll<HTMLElement>("[data-node-id]").forEach(add);
 }
 
 export interface DisplayControllerOptions {
@@ -84,7 +86,7 @@ export class DisplayController {
     private quietRefreshTimer: ReturnType<typeof setTimeout> | undefined;
     private autoTimer: ReturnType<typeof setInterval> | undefined;
     private observer: MutationObserver | undefined;
-    private contentObservers: MutationObserver[] = [];
+    private contentObservers = new Map<HTMLElement, MutationObserver>();
     private refreshVersion = 0;
     private refreshForcePending = false;
     private refreshInFlight = false;
@@ -204,7 +206,7 @@ export class DisplayController {
     updateObserver(): void {
         this.observer?.disconnect();
         this.contentObservers.forEach(observer => observer.disconnect());
-        this.contentObservers = [];
+        this.contentObservers.clear();
         this.observer = undefined;
         if (!this.options.isObserverEnabled()) return;
 
@@ -220,9 +222,9 @@ export class DisplayController {
                 if (record.type !== "childList") continue;
                 for (const node of record.addedNodes) {
                     if (hasRelevantNode(node)) relevantAdded = true;
-                    collectBlockElements(node, newBlockElements);
+                    if (lostBlockIds.size > 0) collectBlockElements(node, newBlockElements);
                 }
-                if (record.target instanceof HTMLElement) {
+                if (lostBlockIds.size > 0 && record.target instanceof HTMLElement) {
                     const block = record.target.closest<HTMLElement>("[data-node-id]");
                     if (block?.dataset.nodeId) {
                         const list = newBlockElements.get(block.dataset.nodeId) || [];
@@ -245,13 +247,27 @@ export class DisplayController {
             observedRoots.add(root);
             const observer = new MutationObserver(scheduleForRelevantNodes);
             observer.observe(root, { childList: true, subtree: true });
-            this.contentObservers.push(observer);
+            this.contentObservers.set(root, observer);
         };
 
         document.querySelectorAll<HTMLElement>(PROTYLE_SELECTOR).forEach(observeProtyle);
         this.observer = new MutationObserver(records => {
             let requiresRefresh = false;
             for (const record of records) {
+                if (record.type === "childList") {
+                    for (const node of record.removedNodes) {
+                        if (!(node instanceof HTMLElement)) continue;
+                        const removedRoots = node.matches(PROTYLE_SELECTOR)
+                            ? [node]
+                            : [...node.querySelectorAll<HTMLElement>(PROTYLE_SELECTOR)];
+                        removedRoots.forEach(root => {
+                            const observer = this.contentObservers.get(root);
+                            observer?.disconnect();
+                            this.contentObservers.delete(root);
+                            observedRoots.delete(root);
+                        });
+                    }
+                }
                 const target = record.target instanceof HTMLElement ? record.target : undefined;
                 const insideProtyle = Boolean(target?.closest(PROTYLE_SELECTOR));
                 for (const node of record.addedNodes) {
@@ -280,7 +296,7 @@ export class DisplayController {
         if (this.autoTimer) clearInterval(this.autoTimer);
         this.observer?.disconnect();
         this.contentObservers.forEach(observer => observer.disconnect());
-        this.contentObservers = [];
+        this.contentObservers.clear();
         this.refreshTimer = undefined;
         this.quietRefreshTimer = undefined;
         this.autoTimer = undefined;
