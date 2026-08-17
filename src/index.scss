@@ -1,3 +1,4 @@
+/* 行内模式（默认）：随思源原生 .protyle-attr 显示在块右上角，横排换行 */
 .my-protyle-attr--av {
     flex: 0 1 auto;
     width: fit-content;
@@ -11,6 +12,70 @@
     padding: 0;
     font-size: 12px;
     line-height: 16px;
+}
+
+/* 列表模式：属性 DOM 仍保留在 .protyle-attr 内，不移动节点。
+   根据位置为块预留对应方向的空间；折叠块的属性被思源隐藏，不预留。 */
+[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-below) {
+    padding-bottom: calc(var(--db-attr-list-space, 18px) + 10px);
+}
+
+[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-above) {
+    padding-top: calc(var(--db-attr-list-space, 18px) + 10px);
+}
+
+/* 折叠的容器块不预留空间（属性随折叠被思源隐藏或空间无法保证），列表一并隐藏，
+   避免悬浮列表压在折叠内容上；需 !important 压过下方列表规则的 display:flex !important */
+[data-node-id][fold="1"] > .protyle-attr > .my-protyle-attr--av--list {
+    display: none !important;
+}
+
+/* 列表显示在块内容上方或下方，不改变列表项圆点/序号/勾选框的原生位置。 */
+
+/* 列表模式：宿主容器拉满块宽，作为列表左对齐的定位基准；
+   原生徽标仍靠右，视觉位置不变 */
+.protyle-attr:has(> .my-protyle-attr--av--list) {
+    left: 0;
+    right: 0;
+    justify-content: flex-end;
+    /* 拉宽后的透明条不应拦截块首行的点击，徽标与属性列表保持可交互 */
+    pointer-events: none;
+
+    > * {
+        pointer-events: auto;
+    }
+
+    /* 书签徽标原生 flex:1 会撑满拉宽后的整行，收回为内容宽 */
+    > .protyle-attr--bookmark {
+        flex: 0 1 auto;
+    }
+}
+
+/* 下方列表模式：宿主容器的顶边通常位于块顶上方约 12px，因此用块自身高度计算
+   列表在块底部之后的偏移；列表仍是 .protyle-attr 的子节点，没有移动 DOM。 */
+.my-protyle-attr--av--list {
+    position: absolute;
+    left: 0;
+    top: calc(var(--db-attr-block-height, 0px) + 16px);
+    /* 覆盖思源 .protyle-wysiwyg--attr .protyle-attr>div 的 display:-webkit-box（单行截断） */
+    display: flex !important;
+    /* 纵向列表：每个字段独占一行，多值字段（关联/资源组）在行内换行 */
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px 8px;
+    align-items: flex-start;
+}
+
+/* 上方列表模式直接定位到块顶部预留区。 */
+.my-protyle-attr--av--list-above {
+    top: 16px;
+}
+
+/* 列表模式：行内元素改为左对齐（chip/组原为 align-self:center，列布局下会居中错位） */
+.my-protyle-attr--av--list .db-display__chip,
+.my-protyle-attr--av--list .db-display__relation-group,
+.my-protyle-attr--av--list .db-display__asset-group {
+    align-self: flex-start;
 }
 
 .db-display__chip {

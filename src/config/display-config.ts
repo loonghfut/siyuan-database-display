@@ -10,6 +10,9 @@ export interface AppearanceTheme {
     values?: Record<string, unknown>;
 }
 
+/** 属性布局：above/below = 纵向列表；inline = 思源原生右上角横排 */
+export type DisplayLayout = "inline" | "above" | "below";
+
 export interface DisplayConfig {
     documentFields: FieldType[];
     blockFields: FieldType[];
@@ -20,6 +23,7 @@ export interface DisplayConfig {
     checkboxStyle: CheckboxStyle;
     maxDisplayLength: number;
     showFieldNames: boolean;
+    layout: DisplayLayout;
     fieldColors: Record<string, string>;
     fieldBackgrounds: Record<string, string>;
     valueColors: Record<string, string | ColorRule>;
@@ -107,7 +111,7 @@ function sanitizeValueColors(value: unknown): Record<string, string | ColorRule>
 export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig {
     const fieldSettings = parseJsonObject<{ document?: string; block?: string }>(get("display-fields"), {});
     const fieldRules = parseJsonObject<{ hidden?: string; force?: string }>(get("field-rules"), {});
-    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean }>>(get("display-format"), {});
+    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; layout: DisplayLayout }>>(get("display-format"), {});
     const appearance = parseJsonObject<AppearanceTheme & { light?: AppearanceTheme; dark?: AppearanceTheme }>(get("display-appearance"), {});
     const themeMode = typeof document !== "undefined" && document.documentElement.dataset.themeMode === "dark" ? "dark" : "light";
     const themeAppearance = appearance[themeMode] || appearance;
@@ -128,6 +132,11 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
         checkboxStyle: ["emoji", "symbol", "text"].includes(String(checkboxStyle)) ? checkboxStyle as CheckboxStyle : "emoji",
         maxDisplayLength: Number.isFinite(configuredMax) ? Math.min(200, Math.max(10, configuredMax || 30)) : 30,
         showFieldNames: formatSettings.showFieldNames === true,
+        layout: formatSettings.layout === "inline"
+                    ? "inline"
+                    : formatSettings.layout === "above"
+                        ? "above"
+                        : "below",
         fieldColors: Object.keys(colors).length ? colors : sanitizeColorMap(get("field-color-map"), themeMode === "dark" ? DEFAULT_DARK_FIELD_COLORS : DEFAULT_FIELD_COLORS),
         fieldBackgrounds: Object.keys(backgrounds).length ? backgrounds : sanitizeColorMap(get("field-bg-color-map"), themeMode === "dark" ? DEFAULT_DARK_FIELD_BACKGROUNDS : DEFAULT_FIELD_BACKGROUNDS),
         valueColors: Object.keys(themeAppearance.values || {}).length ? sanitizeValueColors(JSON.stringify(themeAppearance.values)) : sanitizeValueColors(get("field-value-color-map"))

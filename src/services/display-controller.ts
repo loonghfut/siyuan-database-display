@@ -290,6 +290,7 @@ export class DisplayController {
         this.refreshForceAfterInFlight = false;
         closeInlineEdit();
         this.popover.dispose();
+        this.renderer.dispose();
     }
 
     private async renderDocument(blockId: string, version: number, config: DisplayConfig, enabledFeatures: ReadonlySet<ProFeature>): Promise<void> {
