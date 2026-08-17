@@ -30,20 +30,38 @@ function hasRelevantNode(node: Node): boolean {
  */
 function findLostContainerBlockIds(records: MutationRecord[]): Set<string> {
     const blockIds = new Set<string>();
-    const visit = (node: Node): void => {
+    const addBlockId = (blockId: string | undefined): void => {
+        if (blockId) blockIds.add(blockId);
+    };
+    const addRenderedBlock = (element: HTMLElement): void => addBlockId(element.dataset.nodeId);
+    const visit = (node: Node, targetBlockId: string | undefined): void => {
         if (!(node instanceof HTMLElement)) return;
         if (node.classList.contains("my-protyle-attr--av")) {
-            const blockId = node.dataset.blockId;
-            if (blockId) blockIds.add(blockId);
+            addBlockId(node.dataset.blockId || targetBlockId);
+            return;
         }
-        node.querySelectorAll<HTMLElement>(".my-protyle-attr--av").forEach(container => {
-            const blockId = container.dataset.blockId;
-            if (blockId) blockIds.add(blockId);
-        });
+        // The renderer marks only host blocks that have injected content.
+        // Checking that sparse marker avoids querying every removed editor node.
+        if (node.classList.contains("db-display--rendered")) {
+            addRenderedBlock(node);
+            node.querySelectorAll<HTMLElement>(".db-display--rendered").forEach(addRenderedBlock);
+            return;
+        }
+        const directContainer = [...node.children].find(child => child.classList.contains("my-protyle-attr--av")) as HTMLElement | undefined;
+        if (directContainer) {
+            addBlockId(directContainer.dataset.blockId || targetBlockId);
+            return;
+        }
+        if (node.childElementCount > 0) {
+            node.querySelectorAll<HTMLElement>(".db-display--rendered").forEach(addRenderedBlock);
+        }
     };
     for (const record of records) {
         if (record.type !== "childList") continue;
-        record.removedNodes.forEach(visit);
+        const targetBlockId = record.target instanceof HTMLElement
+            ? record.target.closest<HTMLElement>("[data-node-id]")?.dataset.nodeId
+            : undefined;
+        record.removedNodes.forEach(node => visit(node, targetBlockId));
     }
     return blockIds;
 }
@@ -89,10 +107,15 @@ export class DisplayController {
     private contentObservers = new Map<HTMLElement, MutationObserver>();
     private refreshVersion = 0;
     private refreshForcePending = false;
+    private refreshAllPending = false;
+    private readonly refreshBlockIdsPending = new Set<string>();
     private refreshInFlight = false;
     private refreshAfterInFlight = false;
     private refreshForceAfterInFlight = false;
+    private refreshAllAfterInFlight = false;
+    private readonly refreshBlockIdsAfterInFlight = new Set<string>();
     private visibleAttributeViewIds = new Set<string>();
+    private readonly visibleBlockIdsByAttributeViewId = new Map<string, Set<string>>();
     private lastRenderState = new Map<string, { items: DisplayItem[]; config: DisplayConfig; canInlineEdit: boolean }>();
     private disposed = false;
 
@@ -110,15 +133,24 @@ export class DisplayController {
         this.scheduleRefresh(true);
     }
 
-    scheduleRefresh(force = false): void {
+    scheduleRefresh(force = false, blockIds?: ReadonlySet<string>): void {
         if (this.disposed) return;
         this.refreshForcePending ||= force;
+        if (blockIds === undefined) {
+            this.refreshAllPending = true;
+            this.refreshBlockIdsPending.clear();
+        } else if (!this.refreshAllPending) {
+            blockIds.forEach(blockId => this.refreshBlockIdsPending.add(blockId));
+        }
         if (this.refreshTimer) clearTimeout(this.refreshTimer);
         this.refreshTimer = setTimeout(() => {
             this.refreshTimer = undefined;
             const requestedForce = this.refreshForcePending;
+            const requestedBlockIds = this.refreshAllPending ? undefined : new Set(this.refreshBlockIdsPending);
             this.refreshForcePending = false;
-            void this.refresh(requestedForce);
+            this.refreshAllPending = false;
+            this.refreshBlockIdsPending.clear();
+            void this.refresh(requestedForce, requestedBlockIds);
         }, 20);
     }
 
@@ -134,38 +166,58 @@ export class DisplayController {
         }, QUIET_REFRESH_DELAY);
     }
 
-    async refresh(force = false): Promise<void> {
+    async refresh(force = false, blockIds?: ReadonlySet<string>): Promise<void> {
         if (this.disposed || !this.documentId) return;
         if (this.refreshInFlight) {
             this.refreshAfterInFlight = true;
             this.refreshForceAfterInFlight ||= force;
+            if (blockIds === undefined) {
+                this.refreshAllAfterInFlight = true;
+                this.refreshBlockIdsAfterInFlight.clear();
+            } else if (!this.refreshAllAfterInFlight) {
+                blockIds.forEach(blockId => this.refreshBlockIdsAfterInFlight.add(blockId));
+            }
             return;
         }
 
         this.refreshInFlight = true;
         try {
-            await this.performRefresh(force);
+            await this.performRefresh(force, blockIds);
         } finally {
             this.refreshInFlight = false;
             if (!this.disposed && this.refreshAfterInFlight) {
                 const requestedForce = this.refreshForceAfterInFlight;
+                const requestedBlockIds = this.refreshAllAfterInFlight ? undefined : new Set(this.refreshBlockIdsAfterInFlight);
                 this.refreshAfterInFlight = false;
                 this.refreshForceAfterInFlight = false;
-                this.scheduleRefresh(requestedForce);
+                this.refreshAllAfterInFlight = false;
+                this.refreshBlockIdsAfterInFlight.clear();
+                this.scheduleRefresh(requestedForce, requestedBlockIds);
             }
         }
     }
 
-    private async performRefresh(force: boolean): Promise<void> {
+    private async performRefresh(force: boolean, targetBlockIds?: ReadonlySet<string>): Promise<void> {
         if (this.disposed || !this.documentId) return;
         const version = ++this.refreshVersion;
         const documentId = this.documentId;
-        // 可见属性视图集合随每次刷新重建，用于过滤无关的 websocket 事务；
-        // 内存渲染状态同样重建，避免在长会话中累积
-        this.visibleAttributeViewIds.clear();
-        this.lastRenderState.clear();
-        const blockParents = getVisibleAttributeBlockParents();
-        const blockIds = [...blockParents.keys()];
+        const allBlockParents = getVisibleAttributeBlockParents();
+        const isFullRefresh = targetBlockIds === undefined;
+        if (isFullRefresh) {
+            // 可见属性视图集合随全量刷新重建，用于过滤无关 websocket 事务；
+            // 内存渲染状态同样重建，避免在长会话中累积。
+            this.visibleAttributeViewIds.clear();
+            this.visibleBlockIdsByAttributeViewId.clear();
+            this.lastRenderState.clear();
+        } else {
+            targetBlockIds!.forEach(blockId => this.forgetBlockRenderState(blockId));
+        }
+        const blockParents = isFullRefresh
+            ? allBlockParents
+            : new Map([...allBlockParents].filter(([blockId]) => targetBlockIds!.has(blockId)));
+        const refreshDocument = isFullRefresh || targetBlockIds!.has(documentId);
+        const refreshedBlockIds = new Set(blockParents.keys());
+        if (refreshDocument) refreshedBlockIds.add(documentId);
         let config: DisplayConfig;
         let enabledFeatures: ReadonlySet<ProFeature>;
         try {
@@ -176,11 +228,10 @@ export class DisplayController {
             return;
         }
         if (force) {
-            this.repository.invalidateBlock(documentId);
-            blockIds.forEach(blockId => this.repository.invalidateBlock(blockId));
+            refreshedBlockIds.forEach(blockId => this.repository.invalidateBlock(blockId));
         }
         await Promise.all([
-            this.renderDocument(documentId, version, config, enabledFeatures),
+            refreshDocument ? this.renderDocument(documentId, version, config, enabledFeatures) : Promise.resolve(),
             this.renderBlocks(blockParents, version, config, enabledFeatures)
         ]);
     }
@@ -198,8 +249,24 @@ export class DisplayController {
      */
     handleAttributeViewUpdate(attributeViewIds: string[]): void {
         if (this.disposed || !this.documentId) return;
-        if (attributeViewIds.length === 0 || attributeViewIds.some(id => this.visibleAttributeViewIds.has(id))) {
+        if (attributeViewIds.length === 0) {
             this.scheduleRefresh(true);
+            return;
+        }
+        const affectedBlockIds = new Set<string>();
+        for (const attributeViewId of attributeViewIds) {
+            if (!this.visibleAttributeViewIds.has(attributeViewId)) continue;
+            const blockIds = this.visibleBlockIdsByAttributeViewId.get(attributeViewId);
+            // Mapping can be absent during the initial render; preserve the
+            // old conservative behavior rather than missing an update.
+            if (!blockIds?.size) {
+                this.scheduleRefresh(true);
+                return;
+            }
+            blockIds.forEach(blockId => affectedBlockIds.add(blockId));
+        }
+        if (affectedBlockIds.size > 0) {
+            this.scheduleRefresh(true, affectedBlockIds);
         }
     }
 
@@ -302,8 +369,15 @@ export class DisplayController {
         this.autoTimer = undefined;
         this.observer = undefined;
         this.refreshForcePending = false;
+        this.refreshAllPending = false;
+        this.refreshBlockIdsPending.clear();
         this.refreshAfterInFlight = false;
         this.refreshForceAfterInFlight = false;
+        this.refreshAllAfterInFlight = false;
+        this.refreshBlockIdsAfterInFlight.clear();
+        this.visibleAttributeViewIds.clear();
+        this.visibleBlockIdsByAttributeViewId.clear();
+        this.lastRenderState.clear();
         closeInlineEdit();
         this.popover.dispose();
         this.renderer.dispose();
@@ -327,7 +401,12 @@ export class DisplayController {
         try {
             const tables = await this.repository.getKeys(blockId);
             if (version !== this.refreshVersion) return;
-            tables.forEach(table => this.visibleAttributeViewIds.add(table.avID));
+            tables.forEach(table => {
+                this.visibleAttributeViewIds.add(table.avID);
+                const blockIds = this.visibleBlockIdsByAttributeViewId.get(table.avID) || new Set<string>();
+                blockIds.add(blockId);
+                this.visibleBlockIdsByAttributeViewId.set(table.avID, blockIds);
+            });
             const fields = scope === "document" ? config.documentFields : config.blockFields;
             const visibleFields = fields.filter(type =>
                 requiredFeaturesForField(type).every(feature => enabledFeatures.has(feature))
@@ -367,6 +446,18 @@ export class DisplayController {
             if (!state || !parents?.length) continue;
             const context = this.createRenderContext(blockId, state.config, state.canInlineEdit);
             parents.forEach(parent => this.renderer.render(parent, state.items, context));
+        }
+    }
+
+    /** Removes stale AV-to-block mappings before a targeted block refresh. */
+    private forgetBlockRenderState(blockId: string): void {
+        this.lastRenderState.delete(blockId);
+        for (const [attributeViewId, blockIds] of this.visibleBlockIdsByAttributeViewId) {
+            if (!blockIds.delete(blockId)) continue;
+            if (blockIds.size === 0) {
+                this.visibleBlockIdsByAttributeViewId.delete(attributeViewId);
+                this.visibleAttributeViewIds.delete(attributeViewId);
+            }
         }
     }
 

@@ -19,24 +19,7 @@ export class AttributeRenderer {
     private readonly signatures = new WeakMap<HTMLElement, string>();
     private readonly itemSignatures = new WeakMap<DisplayItem[], string>();
     private readonly configSignatures = new WeakMap<DisplayConfig, string>();
-    private readonly listMetrics = new WeakMap<HTMLElement, { height: number; fieldNameWidth: number }>();
-    // ariaLabel is added only after the value is known to be clipped. This
-    // avoids showing a full-content tooltip for values that fit as-is.
-    private readonly truncationObserver = new ResizeObserver(entries => {
-        for (const entry of entries) {
-            const value = entry.target as HTMLElement;
-            if (!value.isConnected) {
-                this.truncationObserver.unobserve(value);
-                continue;
-            }
-            const owner = value.closest<HTMLElement>(".db-display__chip");
-            if (!owner) continue;
-            const truncated = value.dataset.dbTruncated === "1"
-                || value.scrollWidth > value.clientWidth + 1
-                || value.scrollHeight > value.clientHeight + 1;
-            owner.classList.toggle("ariaLabel", truncated);
-        }
-    });
+    private readonly listMetrics = new WeakMap<HTMLElement, { height: number; fieldNameWidth: number; contentHeight?: number }>();
     // 列表模式：列表高度决定块底部预留空间，尺寸变化（图片懒加载、字段增删、重排）需同步
     private readonly listSpaceObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
@@ -49,7 +32,7 @@ export class AttributeRenderer {
             if (!list.classList.contains("my-protyle-attr--av--list")) continue;
             const metrics = this.listMetrics.get(list);
             if (metrics) metrics.height = entry.contentRect.height;
-            this.applyListSpace(list, entry.contentRect.height);
+            this.applyListSpace(list, entry.contentRect.height, metrics?.contentHeight);
         }
     });
 
@@ -80,6 +63,7 @@ export class AttributeRenderer {
         const existing = attributeContainer.querySelector<HTMLElement>(":scope > .my-protyle-attr--av");
         // 无内容且尚无容器时不创建（避免残留空白）
         if (items.length === 0 && !existing) return;
+        parent.classList.add("db-display--rendered");
         const container = existing || document.createElement("div");
         if (existing && this.signatures.get(container) === signature) {
             // The block can be rebuilt while the injected container survives.
@@ -124,12 +108,11 @@ export class AttributeRenderer {
         }
         parent.style.removeProperty("--db-attr-list-space");
         parent.style.removeProperty("--db-attr-block-height");
-        parent.classList.remove("db-display--list-above", "db-display--list-below");
+        parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below");
     }
 
     dispose(): void {
         this.listSpaceObserver.disconnect();
-        this.truncationObserver.disconnect();
     }
 
     /**
@@ -149,15 +132,18 @@ export class AttributeRenderer {
         if (measure || !metrics) {
             const fieldNameWidth = this.syncListFieldNameWidth(container);
             const height = container.offsetHeight;
-            this.listMetrics.set(container, { height, fieldNameWidth });
-            this.applyListSpace(container, height);
+            const contentHeight = container.classList.contains("my-protyle-attr--av--list-below")
+                ? this.measureListBlockContentHeight(container)
+                : undefined;
+            this.listMetrics.set(container, { height, fieldNameWidth, contentHeight });
+            this.applyListSpace(container, height, contentHeight);
         } else {
             if (metrics.fieldNameWidth > 0) {
                 container.style.setProperty("--db-attr-field-name-width", `${Math.ceil(metrics.fieldNameWidth)}px`);
             } else {
                 container.style.removeProperty("--db-attr-field-name-width");
             }
-            this.applyListSpace(container, metrics.height);
+            this.applyListSpace(container, metrics.height, metrics.contentHeight);
         }
     }
 
@@ -180,7 +166,17 @@ export class AttributeRenderer {
         return width;
     }
 
-    private applyListSpace(container: HTMLElement, height: number): void {
+    private measureListBlockContentHeight(container: HTMLElement): number | undefined {
+        const block = container.closest<HTMLElement>("[data-node-id]");
+        if (!block) return undefined;
+        // 下方模式的 offsetHeight 包含上一次列表预留的高度；扣除它后得到块原本的高度。
+        // 首次应用时 CSS 使用默认 18px，因此同时扣除默认间距 10px。
+        const previousHeight = Number.parseFloat(block.style.getPropertyValue("--db-attr-list-space"));
+        const previousReserved = Number.isFinite(previousHeight) ? previousHeight + 10 : 28;
+        return Math.max(0, block.offsetHeight - previousReserved);
+    }
+
+    private applyListSpace(container: HTMLElement, height: number, contentHeight?: number): void {
         const value = `${Math.ceil(height)}px`;
         const block = container.closest<HTMLElement>("[data-node-id]");
         if (block) {
@@ -188,12 +184,9 @@ export class AttributeRenderer {
                 block.style.setProperty("--db-attr-list-space", value);
                 block.style.removeProperty("--db-attr-block-height");
             } else {
-                // 下方模式的 offsetHeight 包含上一次列表预留的高度；扣除它后得到块原本的高度。
-                // 首次应用时 CSS 使用默认 18px，因此同时扣除默认间距 10px。
-                const previousHeight = Number.parseFloat(block.style.getPropertyValue("--db-attr-list-space"));
-                const previousReserved = Number.isFinite(previousHeight) ? previousHeight + 10 : 28;
-                const contentHeight = Math.max(0, block.offsetHeight - previousReserved);
-                block.style.setProperty("--db-attr-block-height", `${Math.ceil(contentHeight)}px`);
+                if (contentHeight !== undefined) {
+                    block.style.setProperty("--db-attr-block-height", `${Math.ceil(contentHeight)}px`);
+                }
                 block.style.setProperty("--db-attr-list-space", value);
             }
         }
@@ -407,7 +400,7 @@ export class AttributeRenderer {
         const isTemplate = item.type === "template";
         const editable = this.isEditable(item, context);
         const element = document.createElement(isTemplate || !editable ? "span" : "button");
-        element.className = "db-display__chip ariaLabel";
+        element.className = "db-display__chip";
         if (element instanceof HTMLButtonElement) element.type = "button";
         const plainText = this.populateChip(element, item, context, true);
         element.setAttribute("aria-label", this.chipLabel(item, plainText, true));
@@ -470,7 +463,7 @@ export class AttributeRenderer {
         element.dataset.fieldType = item.type;
         value.dataset.dbTruncated = plainText.length > context.config.maxDisplayLength ? "1" : "0";
         element.classList.toggle("ariaLabel", value.dataset.dbTruncated === "1");
-        this.truncationObserver.observe(value);
+        this.enableTruncatedTooltip(element, value);
         this.enableContextMenu(element, item, context);
         return plainText;
     }
@@ -564,6 +557,18 @@ export class AttributeRenderer {
             event.stopPropagation();
             context.onContextMenu(item, element, event);
         });
+    }
+
+    /** Checks CSS clipping only when a user actually hovers or focuses a chip. */
+    private enableTruncatedTooltip(element: HTMLElement, value: HTMLElement): void {
+        const update = (): void => {
+            const truncated = value.dataset.dbTruncated === "1"
+                || value.scrollWidth > value.clientWidth + 1
+                || value.scrollHeight > value.clientHeight + 1;
+            element.classList.toggle("ariaLabel", truncated);
+        };
+        element.addEventListener("pointerover", update);
+        element.addEventListener("focusin", update);
     }
 
     private renderTemplateValue(value: HTMLElement, content: string, maxLength: number): string {
