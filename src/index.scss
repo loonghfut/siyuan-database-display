@@ -167,6 +167,12 @@
     line-height: 1.35;
 }
 
+/* 列表模式使用网格剩余空间；覆盖行内模式为短 chip 设置的 220px 上限，
+   避免描述等长文本在右侧仍有大量空白时提前换行。 */
+.my-protyle-attr--av--list .db-display__chip[data-field-type="text"] .db-display__value {
+    max-width: 100%;
+}
+
 .my-protyle-attr--av--list .db-display__option-chip {
     font-size: inherit;
     line-height: 1.35;
