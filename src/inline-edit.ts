@@ -10,7 +10,6 @@ import { toErrorMessage } from "./libs/error-utils";
 import { openRelationEditor, RelationEditorHandle } from "./ui/relation-editor";
 import { assetLabel } from "./ui/asset-utils";
 import { createIconButton, iconElement, positionPanelNear } from "./libs/dom";
-import { confirmDialog } from "./libs/confirm";
 
 export interface InlineEditOptions {
     element: HTMLElement;
@@ -776,12 +775,6 @@ function handlePopupEdit(options: InlineEditOptions) {
             }
 
             if (keyType === 'template') {
-                // 模板表达式作用于整列，保存前需要用户确认
-                const confirmed = await confirmDialog(t('inlineEdit.confirmTemplateTitle'), t('inlineEdit.confirmTemplateContent'));
-                if (!confirmed) {
-                    isSaving = false;
-                    return;
-                }
                 await attributeViewRepository.updateTemplate(avID, options.keyID, String(newValue));
             } else {
                 const value = convertToAVValue(keyType, avInput);
