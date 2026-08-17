@@ -25,7 +25,18 @@ export function addDisplayFormatPanel(addPanel: AddPanel, text: SettingsPanelTex
         length.min = "10";
         length.max = "200";
         length.value = String(state.maxDisplayLength || 30);
-        panel.append(createLabel(text.format.layout, layout), createLabel(text.format.editTrigger, editTrigger), createLabel(text.format.fontSize, fontSize), createLabel(text.format.multiColumn, multiColumn), createLabel(text.format.date, date), createLabel(text.format.checkbox, checkbox), createLabel(text.format.time, includeTime), createLabel(text.format.fieldNames, showFieldNames), createLabel(text.format.maxLength, length));
+        const listSettings = document.createElement("div");
+        listSettings.className = "db-settings__list-options";
+        const listHint = document.createElement("p");
+        listHint.className = "db-settings__hint";
+        listHint.textContent = text.format.listHint;
+        listSettings.append(listHint, createLabel(text.format.fontSize, fontSize), createLabel(text.format.multiColumn, multiColumn));
+        const syncListSettingsVisibility = (): void => {
+            listSettings.classList.toggle("fn__none", layout.value === "inline");
+        };
+        layout.addEventListener("change", syncListSettingsVisibility);
+        syncListSettingsVisibility();
+        panel.append(createLabel(text.format.layout, layout), listSettings, createLabel(text.format.editTrigger, editTrigger), createLabel(text.format.date, date), createLabel(text.format.checkbox, checkbox), createLabel(text.format.time, includeTime), createLabel(text.format.fieldNames, showFieldNames), createLabel(text.format.maxLength, length));
         bindCommit(panel, () => {
             const nextValue = JSON.stringify({ dateFormat: date.value, checkboxStyle: checkbox.value, includeTime: includeTime.checked, maxDisplayLength: Math.min(200, Math.max(10, Number(length.value) || 30)), showFieldNames: showFieldNames.checked, listFontSize: Math.min(24, Math.max(10, Number(fontSize.value) || 12)), listMultiColumn: multiColumn.checked, editTrigger: editTrigger.value === "dblclick" ? "dblclick" : "click", layout: layout.value === "above" ? "above" : layout.value === "inline" ? "inline" : "below" });
             panel.dataset.value = nextValue;

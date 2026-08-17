@@ -663,6 +663,19 @@ button.db-display__popover-source:hover {
     box-sizing: border-box;
 }
 
+.db-settings__list-options {
+    display: grid;
+    gap: 4px;
+    padding: 2px 0;
+}
+
+.db-settings__hint {
+    margin: 0;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
 .db-settings__chips {
     display: flex;
     flex-wrap: wrap;
