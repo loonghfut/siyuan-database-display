@@ -55,6 +55,34 @@
     > .protyle-attr--bookmark {
         flex: 0 1 auto;
     }
+
+    /* The list fills the block width for layout, but only its actual content
+       should receive pointer events. The host attribute bar stays interactive. */
+    > .my-protyle-attr--av--list {
+        pointer-events: none;
+
+        > .db-display__chip,
+        > .db-display__relation-group,
+        > .db-display__asset-group {
+            pointer-events: none;
+        }
+
+        .db-display__field-name,
+        .db-display__value,
+        .db-display__asset-thumbnail {
+            pointer-events: auto;
+        }
+
+        .db-display__group-values,
+        .db-display__asset--image {
+            pointer-events: none;
+        }
+
+        .db-display__group-values > *,
+        .db-display__asset--image > * {
+            pointer-events: auto;
+        }
+    }
 }
 
 /* 下方列表模式：宿主容器的顶边通常位于块顶上方约 12px，因此用块自身高度计算
@@ -128,6 +156,8 @@
 }
 
 .my-protyle-attr--av--list .db-display__value {
+    width: fit-content;
+    max-width: 100%;
     min-width: 0;
     white-space: normal;
     overflow: visible;
@@ -285,8 +315,7 @@
 
 .db-display__chip:hover {
     color: var(--b3-protyle-inline-blockref-color) !important;
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    text-decoration: none;
 }
 
 .db-display__chip:focus-visible {

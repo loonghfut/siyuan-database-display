@@ -20,6 +20,23 @@ export class AttributeRenderer {
     private readonly itemSignatures = new WeakMap<DisplayItem[], string>();
     private readonly configSignatures = new WeakMap<DisplayConfig, string>();
     private readonly listMetrics = new WeakMap<HTMLElement, { height: number; fieldNameWidth: number }>();
+    // ariaLabel is added only after the value is known to be clipped. This
+    // avoids showing a full-content tooltip for values that fit as-is.
+    private readonly truncationObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+            const value = entry.target as HTMLElement;
+            if (!value.isConnected) {
+                this.truncationObserver.unobserve(value);
+                continue;
+            }
+            const owner = value.closest<HTMLElement>(".db-display__chip");
+            if (!owner) continue;
+            const truncated = value.dataset.dbTruncated === "1"
+                || value.scrollWidth > value.clientWidth + 1
+                || value.scrollHeight > value.clientHeight + 1;
+            owner.classList.toggle("ariaLabel", truncated);
+        }
+    });
     // 列表模式：列表高度决定块底部预留空间，尺寸变化（图片懒加载、字段增删、重排）需同步
     private readonly listSpaceObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
@@ -112,6 +129,7 @@ export class AttributeRenderer {
 
     dispose(): void {
         this.listSpaceObserver.disconnect();
+        this.truncationObserver.disconnect();
     }
 
     /**
@@ -267,7 +285,7 @@ export class AttributeRenderer {
     private createNavigationChip(item: DisplayItem, context: RenderContext, includeFieldName: boolean): HTMLButtonElement {
         const element = document.createElement("button");
         element.type = "button";
-        element.className = "db-display__chip db-display__chip--navigation ariaLabel";
+        element.className = "db-display__chip db-display__chip--navigation";
         const plainText = this.populateChip(element, item, context, includeFieldName);
         // relation/block 字段显示目标块图标
         if (item.icon) {
@@ -288,7 +306,7 @@ export class AttributeRenderer {
     private createRollupChip(item: DisplayItem, context: RenderContext): HTMLElement {
         const canShowSources = Boolean(item.sources?.length);
         const element = document.createElement(canShowSources ? "button" : "span");
-        element.className = "db-display__chip db-display__chip--rollup ariaLabel";
+        element.className = "db-display__chip db-display__chip--rollup";
         if (element instanceof HTMLButtonElement) element.type = "button";
         const plainText = this.populateChip(element, item, context, true);
         element.setAttribute("aria-label", this.chipLabel(item, plainText, true));
@@ -310,7 +328,7 @@ export class AttributeRenderer {
         if (asset.type === "image" && asset.content) return this.createImageAsset(item, asset, context, includeFieldName);
 
         const element = document.createElement(item.navigation ? "button" : "span");
-        element.className = "db-display__chip db-display__asset db-display__asset--file ariaLabel";
+        element.className = "db-display__chip db-display__asset db-display__asset--file";
         if (element instanceof HTMLButtonElement) element.type = "button";
         const icon = iconElement("iconFile");
         icon.classList.add("db-display__asset-icon");
@@ -375,7 +393,7 @@ export class AttributeRenderer {
 
     private createUrlChip(item: DisplayItem, context: RenderContext): HTMLAnchorElement {
         const element = document.createElement("a");
-        element.className = "db-display__chip ariaLabel";
+        element.className = "db-display__chip";
         const plainText = this.populateChip(element, item, context, true);
         element.href = String(item.rawValue || "");
         element.target = "_blank";
@@ -423,7 +441,7 @@ export class AttributeRenderer {
 
     private createReadonlyChip(item: DisplayItem, context: RenderContext, includeFieldName: boolean): HTMLSpanElement {
         const element = document.createElement("span");
-        element.className = "db-display__chip db-display__chip--readonly ariaLabel";
+        element.className = "db-display__chip db-display__chip--readonly";
         const plainText = this.populateChip(element, item, context, includeFieldName);
         element.setAttribute("aria-label", this.chipLabel(item, plainText, includeFieldName));
         this.applyColors(element, item, context.config);
@@ -450,6 +468,9 @@ export class AttributeRenderer {
             element.appendChild(value);
         }
         element.dataset.fieldType = item.type;
+        value.dataset.dbTruncated = plainText.length > context.config.maxDisplayLength ? "1" : "0";
+        element.classList.toggle("ariaLabel", value.dataset.dbTruncated === "1");
+        this.truncationObserver.observe(value);
         this.enableContextMenu(element, item, context);
         return plainText;
     }
