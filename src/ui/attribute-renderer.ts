@@ -9,6 +9,7 @@ export interface RenderContext {
     config: DisplayConfig;
     canInlineEdit: boolean;
     onEdit: (item: DisplayItem, element: HTMLElement) => void;
+    onInlineEditLocked: () => void;
     onNavigate: (target: DisplayNavigationTarget, event: MouseEvent) => void;
     onShowRollupSources: (item: DisplayItem, element: HTMLElement) => void;
     onPreviewAsset: (item: DisplayItem, element: HTMLElement, event: MouseEvent) => void;
@@ -453,6 +454,13 @@ export class AttributeRenderer {
         }
         if (!editable) {
             element.classList.add("db-display__chip--readonly");
+            if (!context.canInlineEdit && isInlineEditableField(item.type) && item.type !== "relation") {
+                element.addEventListener(context.config.editTrigger, event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    context.onInlineEditLocked();
+                });
+            }
             return element;
         }
         element.addEventListener(context.config.editTrigger, event => {

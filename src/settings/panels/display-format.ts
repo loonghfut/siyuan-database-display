@@ -21,6 +21,9 @@ export function addDisplayFormatPanel(
             layout.title = text.format.listProTooltip;
         }
         const editTrigger = createSelect(text.format.editTriggerOptions, state.editTrigger === "dblclick" ? "dblclick" : "click");
+        const canUseInlineEdit = isFeatureEnabled("inline-edit");
+        editTrigger.disabled = !canUseInlineEdit;
+        if (!canUseInlineEdit) editTrigger.title = text.format.inlineEditProTooltip;
         const date = createSelect(i18n.settings.dateFormat.options, state.dateFormat || "YYYY-MM-DD");
         const checkbox = createSelect(i18n.settings.checkboxStyle.options, state.checkboxStyle || "emoji");
         const includeTime = createCheckbox(Boolean(state.includeTime));
@@ -64,7 +67,17 @@ export function addDisplayFormatPanel(
         betaBadge.textContent = text.format.beta;
         betaBadge.title = text.format.listProTooltip;
         layoutTitle.append(betaBadge);
-        panel.append(layoutRow, listSettings, createLabel(text.format.editTrigger, editTrigger), createLabel(text.format.date, date), createLabel(text.format.checkbox, checkbox), createLabel(text.format.time, includeTime), createLabel(text.format.fieldNames, showFieldNames), createLabel(text.format.maxLength, length));
+        const editTriggerRow = createLabel(text.format.editTrigger, editTrigger);
+        const editTriggerTitle = editTriggerRow.firstElementChild as HTMLElement;
+        editTriggerTitle.classList.add("db-settings__field-label");
+        if (shouldShowProBadge()) {
+            const proBadge = document.createElement("span");
+            proBadge.className = "db-settings__pro-badge";
+            proBadge.textContent = text.fieldTypes.pro;
+            proBadge.title = text.format.inlineEditProTooltip;
+            editTriggerTitle.append(proBadge);
+        }
+        panel.append(layoutRow, listSettings, editTriggerRow, createLabel(text.format.date, date), createLabel(text.format.checkbox, checkbox), createLabel(text.format.time, includeTime), createLabel(text.format.fieldNames, showFieldNames), createLabel(text.format.maxLength, length));
         bindCommit(panel, () => {
             const nextValue = JSON.stringify({ dateFormat: date.value, checkboxStyle: checkbox.value, includeTime: includeTime.checked, maxDisplayLength: Math.min(200, Math.max(10, Number(length.value) || 30)), showFieldNames: showFieldNames.checked, listFontSize: Math.min(24, Math.max(10, Number(fontSize.value) || 12)), listMultiColumn: multiColumn.checked, editTrigger: editTrigger.value === "dblclick" ? "dblclick" : "click", layout: layout.value === "above" ? "above" : layout.value === "inline" ? "inline" : "below" });
             panel.dataset.value = nextValue;

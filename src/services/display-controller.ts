@@ -414,6 +414,7 @@ export class DisplayController {
             config,
             canInlineEdit,
             onEdit: (item, element) => this.edit(blockId, item, element),
+            onInlineEditLocked: () => showMessage(t("common.inlineEditRequiresPro"), 3000, "info"),
             onNavigate: (target, event) => this.navigate(target, event.ctrlKey || event.metaKey),
             onShowRollupSources: (item, element) => this.popover.showRollupSources(item, element),
             onPreviewAsset: (item, element) => this.popover.showAssetPreview(item, element, this.options.isFeatureEnabled("inline-edit")),
