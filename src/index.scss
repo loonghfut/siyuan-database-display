@@ -14,6 +14,12 @@
     line-height: 16px;
 }
 
+/* 列表模式字体大小由设置写入变量；行内模式继续使用默认字体。 */
+.my-protyle-attr--av--list {
+    font-size: var(--db-attr-list-font-size, 12px);
+    line-height: 1.35;
+}
+
 /* 列表模式：属性 DOM 仍保留在 .protyle-attr 内，不移动节点。
    根据位置为块预留对应方向的空间；折叠块的属性被思源隐藏，不预留。 */
 [data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-below) {
@@ -57,13 +63,28 @@
     position: absolute;
     left: 0;
     top: calc(var(--db-attr-block-height, 0px) + 16px);
-    /* 覆盖思源 .protyle-wysiwyg--attr .protyle-attr>div 的 display:-webkit-box（单行截断） */
-    display: flex !important;
-    /* 纵向列表：每个字段独占一行，多值字段（关联/资源组）在行内换行 */
-    flex-direction: column;
-    flex-wrap: nowrap;
-    gap: 2px 8px;
-    align-items: flex-start;
+    /* 覆盖思源 .protyle-wysiwyg--attr .protyle-attr>div 的 display:-webkit-box（单行截断）。
+       宽度足够时自动排成多列；单列不足 280px 时回落为单列，窄块不产生横向溢出。 */
+    display: grid !important;
+    width: 100%;
+    max-width: 100% !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px 12px;
+    align-items: start;
+}
+
+/* 开启后根据可用宽度自动排成多列；关闭时固定为单列。 */
+.my-protyle-attr--av--list-multi {
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+}
+
+/* 每个字段或字段分组占一个自适应网格单元。 */
+.my-protyle-attr--av--list > .db-display__chip,
+.my-protyle-attr--av--list > .db-display__relation-group,
+.my-protyle-attr--av--list > .db-display__asset-group {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 /* 上方列表模式直接定位到块顶部预留区。 */
@@ -71,12 +92,105 @@
     top: 16px;
 }
 
-/* 列表模式：行内元素改为左对齐（chip/组原为 align-self:center，列布局下会居中错位） */
+/* 列表模式：行内元素改为左对齐（chip/组原为 align-self:center，列布局下会居中错位）。
+   渲染器将最长字段名的宽度写入变量，使不同字段的值保持同一列起点。 */
 .my-protyle-attr--av--list .db-display__chip,
 .my-protyle-attr--av--list .db-display__relation-group,
 .my-protyle-attr--av--list .db-display__asset-group {
     align-self: flex-start;
 }
+
+.my-protyle-attr--av--list .db-display__field-name {
+    flex: 0 0 var(--db-attr-field-name-width, auto);
+    width: var(--db-attr-field-name-width, auto);
+    box-sizing: border-box;
+}
+
+/* 普通字段原本没有组容器的 gap，补齐后与关联/资源字段的值列一致。 */
+.my-protyle-attr--av--list .db-display__chip {
+    gap: 2px;
+}
+
+/* 列表模式允许字段值随列宽换行，字段名仍保持单行。 */
+.my-protyle-attr--av--list .db-display__chip,
+.my-protyle-attr--av--list .db-display__relation-group,
+.my-protyle-attr--av--list .db-display__asset-group {
+    font-size: inherit;
+    line-height: 1.35;
+}
+
+.my-protyle-attr--av--list .db-display__chip,
+.my-protyle-attr--av--list .db-display__relation-group,
+.my-protyle-attr--av--list .db-display__asset-group {
+    white-space: normal;
+    overflow: visible;
+    align-items: flex-start;
+}
+
+.my-protyle-attr--av--list .db-display__value {
+    min-width: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.35;
+}
+
+.my-protyle-attr--av--list .db-display__option-chip {
+    font-size: inherit;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+
+/* 关联/资源分组使用“字段名列 + 值列表列”，避免多个值把字段名和长文本挤到同一行。 */
+/* 列表文字与正文左边缘对齐；列表模式不沿用普通 chip 的水平内边距。 */
+.my-protyle-attr--av--list > .db-display__chip {
+    padding-inline: 0;
+}
+
+.my-protyle-attr--av--list > .db-display__relation-group,
+.my-protyle-attr--av--list > .db-display__asset-group {
+    display: grid;
+    grid-template-columns: var(--db-attr-field-name-width, auto) minmax(0, 1fr);
+    column-gap: 2px;
+    padding-inline: 0;
+    box-sizing: border-box;
+}
+
+.my-protyle-attr--av--list > .db-display__relation-group:has(> .db-display__field-name) > .db-display__group-values,
+.my-protyle-attr--av--list > .db-display__asset-group:has(> .db-display__field-name) > .db-display__group-values {
+    grid-column: 2;
+}
+
+.my-protyle-attr--av--list > .db-display__relation-group:not(:has(> .db-display__field-name)) > .db-display__group-values,
+.my-protyle-attr--av--list > .db-display__asset-group:not(:has(> .db-display__field-name)) > .db-display__group-values {
+    grid-column: 1 / -1;
+}
+
+.my-protyle-attr--av--list .db-display__group-values {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    min-width: 0;
+    width: 100%;
+    gap: 2px;
+}
+
+.my-protyle-attr--av--list .db-display__group-values > .db-display__chip {
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow: visible;
+}
+
+/* 列表模式保持简洁的纯文字样式，不显示字段、字段名或多选项的背景色。 */
+.my-protyle-attr--av--list .db-display__chip,
+.my-protyle-attr--av--list .db-display__field-name-label {
+    background-image: none !important;
+}
+
+
 
 .db-display__chip {
     display: inline-flex;
@@ -105,7 +219,12 @@
 }
 
 .db-display__field-name {
+    display: inline-flex;
     flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.db-display__field-name-label {
     opacity: 0.7;
     white-space: nowrap;
     /* 与 chip 一致的字段背景渐变：保证字段名（含 relation/asset 组内的）也有背景色块 */

@@ -62,9 +62,17 @@ export class AttributeRenderer {
         const listPositionClass = context.config.layout === "above"
             ? "my-protyle-attr--av--list-above"
             : "my-protyle-attr--av--list-below";
+        const listColumnsClass = context.config.listMultiColumn
+            ? "my-protyle-attr--av--list-multi"
+            : "my-protyle-attr--av--list-single";
         container.className = useList
-            ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass}`
+            ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass} ${listColumnsClass}`
             : "my-protyle-attr--av";
+        if (useList) {
+            container.style.setProperty("--db-attr-list-font-size", `${context.config.listFontSize}px`);
+        } else {
+            container.style.removeProperty("--db-attr-list-font-size");
+        }
         // 容器随旧块被思源替换/重建时，据此定位所属块以支持一帧内快速恢复
         container.dataset.blockId = context.blockId;
         container.replaceChildren(...this.createItems(items, context));
@@ -103,7 +111,20 @@ export class AttributeRenderer {
             return;
         }
         this.listSpaceObserver.observe(container);
+        this.syncListFieldNameWidth(container);
         this.applyListSpace(container, container.offsetHeight);
+    }
+
+    /** 将同一列表中的字段名统一为最长标签宽度，使所有字段值从同一列开始显示。 */
+    private syncListFieldNameWidth(container: HTMLElement): void {
+        const widths = [...container.querySelectorAll<HTMLElement>(".db-display__field-name-label")]
+            .map(name => Math.max(name.offsetWidth, name.scrollWidth));
+        const width = Math.max(0, ...widths);
+        if (width > 0) {
+            container.style.setProperty("--db-attr-field-name-width", `${Math.ceil(width)}px`);
+        } else {
+            container.style.removeProperty("--db-attr-field-name-width");
+        }
     }
 
     private applyListSpace(container: HTMLElement, height: number): void {
@@ -168,7 +189,10 @@ export class AttributeRenderer {
         const group = document.createElement("span");
         group.className = "db-display__asset-group";
         if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName, items[0], context.config));
-        items.forEach(item => group.appendChild(this.createAssetItem(item, context, false)));
+        const values = document.createElement("span");
+        values.className = "db-display__group-values";
+        items.forEach(item => values.appendChild(this.createAssetItem(item, context, false)));
+        group.appendChild(values);
         return group;
     }
 
@@ -176,7 +200,9 @@ export class AttributeRenderer {
         const group = document.createElement("span");
         group.className = "db-display__relation-group";
         if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName, items[0], context.config));
-        items.forEach(item => group.appendChild(this.createRelationChip(item, context)));
+        const values = document.createElement("span");
+        values.className = "db-display__group-values";
+        items.forEach(item => values.appendChild(this.createRelationChip(item, context)));
 
         if (context.canInlineEdit && isInlineEditableField("relation")) {
             const edit = createIconButton("iconEdit", t("common.edit"), "db-display__relation-edit");
@@ -184,8 +210,9 @@ export class AttributeRenderer {
                 event.stopPropagation();
                 context.onEdit(items[0], edit);
             });
-            group.appendChild(edit);
+            values.appendChild(edit);
         }
+        group.appendChild(values);
         return group;
     }
 
@@ -343,7 +370,7 @@ export class AttributeRenderer {
             element.classList.add("db-display__chip--readonly");
             return element;
         }
-        element.addEventListener("click", event => {
+        element.addEventListener(context.config.editTrigger, event => {
             event.stopPropagation();
             context.onEdit(item, element);
         });
@@ -444,13 +471,15 @@ export class AttributeRenderer {
     }
 
     private createFieldName(keyName: string, item: DisplayItem, config: DisplayConfig): HTMLSpanElement {
-        const name = document.createElement("span");
-        name.className = "db-display__field-name";
-        name.textContent = `${keyName}: `;
-        // 字段名统一应用字段背景色与字段色，与所在 chip 保持一致
-        // （relation/asset 组的字段名挂在组容器上，若不单独设置则没有背景）
-        this.applyFieldNameColors(name, item, config);
-        return name;
+        const cell = document.createElement("span");
+        cell.className = "db-display__field-name";
+        const label = document.createElement("span");
+        label.className = "db-display__field-name-label";
+        label.textContent = `${keyName}: `;
+        // 背景色应用在文字内层：列表模式将外层扩展为统一列宽时，空白填充区不显示背景。
+        this.applyFieldNameColors(label, item, config);
+        cell.appendChild(label);
+        return cell;
     }
 
     /**
@@ -523,6 +552,9 @@ export class AttributeRenderer {
         return {
             max: config.maxDisplayLength,
             showFieldNames: config.showFieldNames,
+            listFontSize: config.listFontSize,
+            listMultiColumn: config.listMultiColumn,
+            editTrigger: config.editTrigger,
             layout: config.layout,
             colors: config.fieldColors,
             backgrounds: config.fieldBackgrounds,
