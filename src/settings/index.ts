@@ -55,7 +55,7 @@ export function addSettings(
     };
     addDisplayFieldsPanel(addPanel, i18n.settings.panel, shouldShowProBadge, isFeatureEnabled);
     addFieldRulesPanel(addPanel, i18n.settings.panel);
-    addDisplayFormatPanel(addPanel, i18n.settings.panel, i18n);
+    addDisplayFormatPanel(addPanel, i18n.settings.panel, i18n, shouldShowProBadge, isFeatureEnabled);
     addAppearancePanel(addPanel, i18n.settings.panel, shouldShowProBadge);
     addRefreshPanel(addPanel, i18n.settings.panel);
     addLicensePanel(addPanel, i18n.settings.panel, license, trial, onChanged, shouldShowProBadge, saveShowProBadge);

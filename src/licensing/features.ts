@@ -17,6 +17,7 @@ function defineProFeatures<T extends Record<string, ProFeatureDefinition>>(featu
 
 export const PRO_FEATURES = defineProFeatures({
     "inline-edit": {},
+    "list-layout": {},
     relation: { fieldTypes: ["relation"] },
     template: { fieldTypes: ["template"] }
 } as const);

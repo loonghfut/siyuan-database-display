@@ -205,6 +205,11 @@ export class DisplayController {
         try {
             config = this.options.getConfig();
             enabledFeatures = new Set(PRO_FEATURE_KEYS.filter(feature => this.options.isFeatureEnabled(feature)));
+            // List layouts are a Pro feature. Keep stored settings intact, but
+            // render them as inline for users without the feature.
+            if (!enabledFeatures.has("list-layout") && config.layout !== "inline") {
+                config = { ...config, layout: "inline" };
+            }
         } catch (error) {
             console.warn("[DatabaseDisplay] Failed to read display configuration", error);
             return;
