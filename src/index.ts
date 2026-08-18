@@ -33,6 +33,7 @@ export default class DatabaseDisplay extends Plugin {
         const savedSettings = await this.settings.load();
         if (migrateLegacySettings(this.settings, savedSettings)) await this.settings.save();
         await this.license.refresh(this.settings.get("pro-license"));
+        void this.trial.reportLoad();
         this.controller = new DisplayController({
             getConfig: () => readDisplayConfig(key => this.settings.get(key)),
             getAutoRefreshInterval: () => readRefreshOptions(key => this.settings.get(key)).interval,
