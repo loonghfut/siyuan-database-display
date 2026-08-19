@@ -1,115 +1,42 @@
-/**
- * 直接编辑模式 - 在字段周围弹出小窗口编辑（伪直接编辑）
- */
+// 各字段类型的直接编辑处理器：按字段类型弹出对应的编辑界面并写回内核。
 
 import { fetchSyncPost, IWebSocketData, showMessage } from "siyuan";
-import { attributeViewRepository } from "./data/attribute-view-repository";
-import { AssetReference, AttributeViewRelation, AttributeViewWriteValue } from "./core/types";
-import { t } from "./i18n";
-import { toErrorMessage } from "./libs/error-utils";
-import { openRelationEditor, RelationEditorHandle } from "./ui/relation-editor";
-import { assetLabel } from "./ui/asset-utils";
-import { createIconButton, iconElement, positionPanelNear } from "./libs/dom";
-
-export interface InlineEditOptions {
-    element: HTMLElement;
-    avID: string;
-    blockID: string;
-    itemID: string;
-    keyID: string;
-    keyName: string;
-    keyType: string;
-    currentValue: any;
-    template?: string;
-    selectOptions?: any[];  // 添加选择选项（用于 select 和 mSelect）
-    relation?: AttributeViewRelation;
-    onSave?: (newValue: any) => void;
-    onCancel?: () => void;
-}
-
-// 存储当前打开的弹窗引用
-let currentPopup: HTMLElement | null = null;
-let currentPopupCleanup: (() => void) | null = null;
-
-// 当前打开的选项调色板浮层
-let currentPalette: HTMLElement | null = null;
-let currentPaletteCleanup: (() => void) | null = null;
-
-const ICONS = {
-    cancel: 'iconClose',
-    check: 'iconCheck',
-    clear: 'iconTrashcan',
-    edit: 'iconEdit',
-    selected: 'iconSelect',
-    add: 'iconAdd',
-    file: 'iconFile',
-    image: 'iconImage'
-} as const;
-
-/**
- * 启用直接编辑模式 - 根据字段类型使用不同的编辑方式
- */
-export function enableInlineEdit(options: InlineEditOptions) {
-    // 如果已有弹窗打开，先关闭
-    if (currentPopup) {
-        currentPopupCleanup?.();
-        currentPopup.remove();
-        currentPopup = null;
-        currentPopupCleanup = null;
-    }
-    closeOptionColorPalette();
-    
-    // 根据字段类型选择编辑方式
-    switch (options.keyType) {
-        case 'checkbox':
-            // 复选框：直接切换状态
-            handleCheckboxEdit(options);
-            break;
-        case 'select':
-            // 单选：显示下拉菜单
-            handleSelectEdit(options);
-            break;
-        case 'mSelect':
-            // 多选：显示多选下拉菜单
-            handleMultiSelectEdit(options);
-            break;
-        case 'relation':
-            // 关联：使用思源原生关联候选接口
-            handleRelationEdit(options);
-            break;
-        case 'mAsset':
-            // 资源：列表增删 + 上传
-            handleAssetEdit(options);
-            break;
-        case 'date':
-            // 日期：显示开始/结束时间选择器
-            handleDateEdit(options);
-            break;
-        case 'template':
-            // 模板字段编辑的是整列模板表达式，不是当前行的计算结果
-            handleTemplateEdit(options);
-            break;
-        default:
-            // 其他类型：显示弹窗编辑
-            handlePopupEdit(options);
-            break;
-    }
-}
-
-/**
- * 关闭当前打开的编辑弹窗，并清理残留的关闭动画节点。
- * 供插件卸载（onunload）时调用，避免弹窗泄漏。
- */
-export function closeInlineEdit(): void {
-    currentPopupCleanup?.();
-    currentPopupCleanup = null;
-    if (currentPopup) {
-        currentPopup.remove();
-        currentPopup = null;
-    }
-    closeOptionColorPalette();
-    document.querySelectorAll('.inline-edit-panel--closing').forEach(element => element.remove());
-}
+import { attributeViewRepository } from "../data/attribute-view-repository";
+import { AssetReference, AttributeViewWriteValue } from "../core/types";
+import { t } from "../i18n";
+import { toErrorMessage } from "../libs/error-utils";
+import { openRelationEditor, RelationEditorHandle } from "../ui/relation-editor";
+import { assetLabel } from "../ui/asset-utils";
+import { createIconButton, iconElement } from "../libs/dom";
+import {
+    ICONS,
+    prepareEditorPanel,
+    createPanelHeader,
+    appendHeaderAction,
+    createDropdownOption,
+    createMultiSelectOption,
+    openOptionColorPalette,
+    positionPopup,
+    positionDropdown,
+    closeDropdown,
+    closeEditorPanel,
+    bindOutsideDismiss,
+    setOpenPanel,
+    setOpenPanelCleanup,
+    isWithinPalette
+} from "./popup";
+import {
+    createTextInput,
+    createTextArea,
+    createNumberInput,
+    styleInputElement,
+    sizeInputToContent,
+    sizeTextAreaToContent,
+    getInputValue,
+    convertToAVValue,
+    timestampToDateInput
+} from "./input-fields";
+import type { InlineEditOptions } from "./index";
 
 function handleTemplateEdit(options: InlineEditOptions): void {
     handlePopupEdit({ ...options, currentValue: options.template ?? '' });
@@ -120,16 +47,16 @@ function handleTemplateEdit(options: InlineEditOptions): void {
  */
 async function handleCheckboxEdit(options: InlineEditOptions) {
     const { avID, itemID, currentValue, onSave } = options;
-    
+
     // 直接切换状态
     const newValue = !Boolean(currentValue);
-    
+
     try {
         const value = convertToAVValue('checkbox', newValue);
         await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
-        
+
         showMessage(t('common.saveSuccess'), 2000, 'info');
-        
+
         if (onSave) {
             onSave(newValue);
         }
@@ -151,7 +78,7 @@ function handleSelectEdit(options: InlineEditOptions) {
     const dropdown = document.createElement('div');
     dropdown.className = 'inline-edit-dropdown';
     prepareEditorPanel(dropdown, options.keyName);
-    currentPopup = dropdown;
+    setOpenPanel(dropdown);
 
     // 创建选项列表
     const optionsList = document.createElement('div');
@@ -245,14 +172,14 @@ function handleSelectEdit(options: InlineEditOptions) {
     // 点击外部关闭
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        if (currentPalette?.contains(target)) return;
+        if (isWithinPalette(target)) return;
         if (!dropdown.contains(target) && !element.contains(target)) {
             closeDropdown(dropdown);
             if (onCancel) onCancel();
         }
     };
 
-    currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
+    setOpenPanelCleanup(bindOutsideDismiss(handleClickOutside));
 }
 
 /**
@@ -265,7 +192,7 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
     const dropdown = document.createElement('div');
     dropdown.className = 'inline-edit-dropdown inline-edit-dropdown--multi';
     prepareEditorPanel(dropdown, options.keyName);
-    currentPopup = dropdown;
+    setOpenPanel(dropdown);
 
     // 当前选中的值
     const selectedValues = new Set(Array.isArray(currentValue) ? currentValue : (currentValue ? [currentValue] : []));
@@ -376,14 +303,14 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
     // 点击外部关闭
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        if (currentPalette?.contains(target)) return;
+        if (isWithinPalette(target)) return;
         if (!dropdown.contains(target) && !element.contains(target)) {
             closeDropdown(dropdown);
             if (onCancel) onCancel();
         }
     };
 
-    currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
+    setOpenPanelCleanup(bindOutsideDismiss(handleClickOutside));
 }
 
 function handleRelationEdit(options: InlineEditOptions): void {
@@ -403,8 +330,8 @@ function handleRelationEdit(options: InlineEditOptions): void {
         }
     });
     if (!editor) return;
-    currentPopup = editor.panel;
-    currentPopupCleanup = editor.cleanup;
+    setOpenPanel(editor.panel);
+    setOpenPanelCleanup(editor.cleanup);
 }
 
 /**
@@ -419,7 +346,7 @@ function handleAssetEdit(options: InlineEditOptions): void {
     const popup = document.createElement('div');
     popup.className = 'inline-edit-popup inline-edit-asset';
     prepareEditorPanel(popup, keyName);
-    currentPopup = popup;
+    setOpenPanel(popup);
 
     const header = createPanelHeader(keyName, () => {
         closePopup();
@@ -521,7 +448,7 @@ function handleAssetEdit(options: InlineEditOptions): void {
         const target = event.target as Node;
         if (!popup.contains(target) && !element.contains(target)) cancel();
     };
-    currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
+    setOpenPanelCleanup(bindOutsideDismiss(handleClickOutside));
 }
 
 async function uploadAsset(file: File): Promise<AssetReference> {
@@ -554,7 +481,7 @@ function handleDateEdit(options: InlineEditOptions) {
     const datePicker = document.createElement('div');
     datePicker.className = 'inline-edit-datepicker';
     prepareEditorPanel(datePicker, options.keyName);
-    currentPopup = datePicker;
+    setOpenPanel(datePicker);
 
     const header = createPanelHeader(options.keyName, () => {
         closeDropdown(datePicker);
@@ -675,7 +602,7 @@ function handleDateEdit(options: InlineEditOptions) {
         }
     };
 
-    currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
+    setOpenPanelCleanup(bindOutsideDismiss(handleClickOutside));
 }
 
 /**
@@ -683,31 +610,31 @@ function handleDateEdit(options: InlineEditOptions) {
  */
 function handlePopupEdit(options: InlineEditOptions) {
     const { element, avID, itemID, keyName, keyType, currentValue, onSave, onCancel } = options;
-    
+
     // 创建弹窗容器
     const popup = document.createElement('div');
     popup.className = 'inline-edit-popup';
     prepareEditorPanel(popup, keyName);
-    currentPopup = popup;
-    
+    setOpenPanel(popup);
+
     // 创建弹窗内容
     const popupContent = document.createElement('div');
     popupContent.className = 'inline-edit-popup-content';
-    
+
     // 添加标题
     const header = createPanelHeader(keyName, () => {
         closePopup();
         onCancel?.();
     });
     popupContent.appendChild(header);
-    
+
     // 创建输入区域
     const inputContainer = document.createElement('div');
     inputContainer.className = 'inline-edit-popup-input';
-    
+
     // 根据字段类型创建输入元素
     let inputElement: HTMLInputElement | HTMLTextAreaElement;
-    
+
     switch (keyType) {
         case 'number':
             inputElement = createNumberInput(currentValue);
@@ -726,7 +653,7 @@ function handlePopupEdit(options: InlineEditOptions) {
             inputElement = createTextInput(currentValue, keyType);
             break;
     }
-    
+
     styleInputElement(inputElement, keyType);
     if (inputElement instanceof HTMLTextAreaElement) {
         inputElement.addEventListener("input", () => sizeTextAreaToContent(inputElement));
@@ -736,16 +663,16 @@ function handlePopupEdit(options: InlineEditOptions) {
     }
     inputContainer.appendChild(inputElement);
     popupContent.appendChild(inputContainer);
-    
+
     const saveButton = createIconButton(ICONS.check, t('common.save'), 'inline-edit-action inline-edit-action--primary');
     appendHeaderAction(header, saveButton);
-    
+
     popup.appendChild(popupContent);
     document.body.appendChild(popup);
-    
+
     // 定位弹窗
     positionPopup(popup, element);
-    
+
     // 聚焦输入框
     setTimeout(() => {
         inputElement.focus();
@@ -755,10 +682,10 @@ function handlePopupEdit(options: InlineEditOptions) {
             inputElement.select();
         }
     }, 10);
-    
+
     // 标记正在编辑
     let isSaving = false;
-    
+
     // 保存函数
     const save = async () => {
         if (isSaving) return;
@@ -796,7 +723,7 @@ function handlePopupEdit(options: InlineEditOptions) {
             isSaving = false;
         }
     };
-    
+
     // 取消函数
     const cancel = () => {
         closePopup();
@@ -804,18 +731,18 @@ function handlePopupEdit(options: InlineEditOptions) {
             onCancel();
         }
     };
-    
+
     // 关闭弹窗函数
     const closePopup = () => {
         closeEditorPanel(popup);
     };
-    
+
     // 事件监听
     saveButton.addEventListener('click', (e) => {
         e.stopPropagation();
         save();
     });
-    
+
     inputElement.addEventListener('keydown', (e: KeyboardEvent) => {
         const isTextArea = inputElement instanceof HTMLTextAreaElement;
         if (e.key === 'Enter' && (isTextArea ? (e.ctrlKey || e.metaKey) : !e.shiftKey)) {
@@ -828,7 +755,7 @@ function handlePopupEdit(options: InlineEditOptions) {
             cancel();
         }
     });
-    
+
     // 点击弹窗外部关闭
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
@@ -836,390 +763,18 @@ function handlePopupEdit(options: InlineEditOptions) {
             cancel();
         }
     };
-    
+
     // 延迟添加点击外部监听器
-    currentPopupCleanup = bindOutsideDismiss(handleClickOutside);
+    setOpenPanelCleanup(bindOutsideDismiss(handleClickOutside));
 }
 
-/**
- * 定位弹窗到元素附近
- */
-function positionPopup(popup: HTMLElement, target: HTMLElement) {
-    positionPanelNear(popup, target, 5);
-}
-
-/**
- * 定位下拉菜单
- */
-function positionDropdown(dropdown: HTMLElement, target: HTMLElement) {
-    positionPanelNear(dropdown, target, 2);
-}
-
-/**
- * 关闭下拉菜单
- */
-function closeDropdown(dropdown: HTMLElement) {
-    closeEditorPanel(dropdown);
-}
-
-function closeEditorPanel(panel: HTMLElement) {
-    if (!panel.parentNode) return;
-    if (currentPopup === panel) {
-        currentPopupCleanup?.();
-        currentPopupCleanup = null;
-        currentPopup = null;
-    }
-    closeOptionColorPalette();
-    panel.classList.add('inline-edit-panel--closing');
-    window.setTimeout(() => panel.remove(), 120);
-}
-
-/**
- * 关闭当前打开的选项调色板浮层
- */
-function closeOptionColorPalette(): void {
-    currentPaletteCleanup?.();
-    currentPaletteCleanup = null;
-    currentPalette?.remove();
-    currentPalette = null;
-}
-
-/**
- * 打开选项调色板（思源 14 色调色板，与原生 color__square 一致），
- * 选择后回调应用新颜色并关闭。
- */
-function openOptionColorPalette(options: {
-    swatch: HTMLElement;
-    avID: string;
-    keyID: string;
-    optionName: string;
-    color: string;
-    onApplied: (newColor: string) => void;
-}): void {
-    closeOptionColorPalette();
-    const palette = document.createElement('div');
-    palette.className = 'inline-edit-palette';
-    palette.setAttribute('role', 'dialog');
-    palette.setAttribute('aria-label', t('inlineEdit.optionColor'));
-    for (let index = 1; index <= 14; index++) {
-        const square = document.createElement('button');
-        square.type = 'button';
-        square.className = 'inline-edit-palette__swatch' + (String(index) === options.color ? ' inline-edit-palette__swatch--current' : '');
-        square.dataset.color = String(index);
-        square.style.color = `var(--b3-font-color${index})`;
-        square.style.backgroundColor = `var(--b3-font-background${index})`;
-        square.textContent = 'A';
-        square.setAttribute('aria-label', t('inlineEdit.optionColor') + ` ${index}`);
-        square.addEventListener('click', event => {
-            event.stopPropagation();
-            const newColor = square.dataset.color || '';
-            if (newColor !== options.color) {
-                options.onApplied(newColor);
-            }
-            closeOptionColorPalette();
-        });
-        palette.appendChild(square);
-    }
-    document.body.appendChild(palette);
-    positionPanelNear(palette, options.swatch, 4);
-    currentPalette = palette;
-    currentPaletteCleanup = bindOutsideDismiss((event: MouseEvent) => {
-        const target = event.target as Node;
-        if (!palette.contains(target) && !options.swatch.contains(target)) {
-            closeOptionColorPalette();
-        }
-    });
-}
-
-function bindOutsideDismiss(handler: (event: MouseEvent) => void): () => void {
-    const timer = window.setTimeout(() => document.addEventListener('mousedown', handler), 100);
-    return () => {
-        window.clearTimeout(timer);
-        document.removeEventListener('mousedown', handler);
-    };
-}
-
-function prepareEditorPanel(panel: HTMLElement, label: string): void {
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', label);
-}
-
-function createPanelHeader(titleText: string, onClose: () => void): HTMLElement {
-    const header = document.createElement('header');
-    header.className = 'inline-edit-panel__header';
-
-    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    icon.classList.add('inline-edit-panel__field-icon');
-    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    use.setAttribute('href', `#${ICONS.edit}`);
-    use.setAttribute('xlink:href', `#${ICONS.edit}`);
-    icon.appendChild(use);
-
-    const title = document.createElement('strong');
-    title.textContent = titleText;
-    const actions = document.createElement('span');
-    actions.className = 'inline-edit-panel__actions';
-    const close = createIconButton(ICONS.cancel, t('common.cancel'), 'inline-edit-panel__close');
-    close.addEventListener('click', event => {
-        event.stopPropagation();
-        onClose();
-    });
-    actions.appendChild(close);
-    header.append(icon, title, actions);
-    return header;
-}
-
-function appendHeaderAction(header: HTMLElement, action: HTMLButtonElement): void {
-    header.querySelector<HTMLElement>('.inline-edit-panel__actions')?.appendChild(action);
-}
-
-/**
- * 创建选项色块：显示选项颜色（思源调色板索引），点击时回调打开调色板编辑。
- */
-function createOptionColorSwatch(color: string | undefined, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
-    const swatch = document.createElement('span');
-    swatch.className = 'inline-edit-option-color';
-    if (/^[1-9]$|^1[0-4]$/.test(color || '')) {
-        swatch.style.backgroundColor = `var(--b3-font-color${color})`;
-    } else {
-        swatch.classList.add('inline-edit-option-color--none');
-    }
-    swatch.title = t('inlineEdit.optionColor');
-    swatch.setAttribute('aria-label', t('inlineEdit.optionColor'));
-    if (onColorEdit) {
-        swatch.addEventListener('click', event => {
-            event.preventDefault();
-            event.stopPropagation();
-            onColorEdit(swatch);
-        });
-    }
-    return swatch;
-}
-
-/**
- * 创建下拉选项元素
- */
-function createDropdownOption(value: string, text: string, isSelected: boolean, color?: string, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
-    const option = document.createElement('button');
-    option.type = 'button';
-    option.className = 'inline-edit-dropdown-option' + (isSelected ? ' inline-edit-dropdown-option--selected' : '');
-    option.dataset.value = value;
-    if (onColorEdit) option.appendChild(createOptionColorSwatch(color, onColorEdit));
-    const label = document.createElement('span');
-    label.className = 'inline-edit-dropdown-option__label';
-    label.textContent = text;
-    const iconName = value ? (isSelected ? ICONS.selected : ICONS.check) : ICONS.clear;
-    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    use.setAttribute('href', `#${iconName}`);
-    use.setAttribute('xlink:href', `#${iconName}`);
-    icon.appendChild(use);
-    option.append(label, icon);
-    return option;
-}
-
-/**
- * 创建多选下拉选项元素
- */
-function createMultiSelectOption(value: string, text: string, isSelected: boolean, color?: string, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
-    const option = document.createElement('label');
-    option.className = 'inline-edit-dropdown-option inline-edit-dropdown-option--multi' + (isSelected ? ' inline-edit-dropdown-option--selected' : '');
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = isSelected;
-    checkbox.dataset.value = value;
-
-    if (onColorEdit) option.appendChild(createOptionColorSwatch(color, onColorEdit));
-
-    const label = document.createElement('span');
-    label.className = 'inline-edit-dropdown-option__label';
-    label.textContent = text;
-
-    const mark = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    use.setAttribute('href', `#${ICONS.selected}`);
-    use.setAttribute('xlink:href', `#${ICONS.selected}`);
-    mark.appendChild(use);
-
-    option.appendChild(checkbox);
-    option.append(label, mark);
-
-    return option;
-}
-
-/**
- * 创建文本输入框
- */
-function createTextInput(value: any, type: string): HTMLInputElement {
-    const input = document.createElement('input');
-    input.type = getInputType(type);
-    input.value = String(value || '');
-    input.className = 'inline-edit-input';
-    return input;
-}
-
-function createTextArea(value: unknown): HTMLTextAreaElement {
-    const textarea = document.createElement('textarea');
-    textarea.value = String(value ?? '');
-    textarea.rows = 1;
-    textarea.className = 'inline-edit-input inline-edit-textarea';
-    return textarea;
-}
-
-/**
- * 创建数字输入框
- */
-function createNumberInput(value: any): HTMLInputElement {
-    const input = document.createElement('input');
-    input.type = 'number';
-    // 支持传入原始数字或对象 { content, isNotEmpty }
-    if (value && typeof value === 'object' && 'content' in value) {
-        input.value = String(value.content ?? '');
-    } else if (value !== null && value !== undefined) {
-        input.value = String(value);
-    } else {
-        input.value = '';
-    }
-    input.className = 'inline-edit-input';
-    return input;
-}
-
-/**
- * 设置输入元素样式
- */
-function styleInputElement(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, keyType?: string) {
-    // 复选框特殊处理
-    if (keyType === 'checkbox') {
-        element.style.width = 'auto';
-        element.style.minWidth = 'auto';
-        element.style.padding = '0';
-    }
-}
-
-function sizeInputToContent(input: HTMLInputElement): void {
-    if (input.type === "datetime-local") return;
-    input.size = Math.min(32, Math.max(8, input.value.length + 1));
-}
-
-function sizeTextAreaToContent(textarea: HTMLTextAreaElement): void {
-    textarea.style.height = 'auto';
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
-    textarea.style.overflowY = textarea.scrollHeight > 144 ? 'auto' : 'hidden';
-}
-
-/**
- * 获取输入框的值
- */
-function getInputValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, keyType: string): any {
-    if (element instanceof HTMLSelectElement) {
-        if (keyType === 'mSelect') {
-            // 多选：返回所有选中的值数组
-            const selected = Array.from(element.selectedOptions).map(opt => opt.value);
-            return selected;
-        } else {
-            // 单选：返回选中的值
-            return element.value;
-        }
-    }
-    
-    if (element instanceof HTMLInputElement) {
-        switch (keyType) {
-            case 'checkbox':
-                return element.checked;
-            case 'number':
-                return parseFloat(element.value) || 0;
-            case 'date':
-                return element.value ? new Date(element.value).getTime() : null;
-            default:
-                return element.value;
-        }
-    }
-
-    if (element instanceof HTMLTextAreaElement) {
-        return element.value;
-    }
-    
-    return '';
-}
-
-/**
- * 转换为数据库格式
- */
-function convertToAVValue(keyType: string, value: any): AttributeViewWriteValue {
-    switch (keyType) {
-        case 'text':
-            return { text: { content: String(value || '') } };
-        case 'number':
-            // 支持传入对象 { content, isNotEmpty } 或原始值
-            if (value && typeof value === 'object') {
-                const content = Number(value.content ?? 0);
-                const isNotEmpty = Boolean(value.isNotEmpty);
-                return { number: { content: content || 0, isNotEmpty } } as any;
-            }
-            const content = Number(value) || 0;
-            const isNotEmpty = (value !== '' && value !== null && value !== undefined);
-            return { number: { content, isNotEmpty } } as any;
-        case 'date': {
-            // 兼容数值与对象两种输入
-            if (value && typeof value === 'object') {
-                const content = Number(value.content ?? 0);
-                const hasEndDate = Boolean(value.hasEndDate);
-                const content2 = hasEndDate ? Number(value.content2 ?? 0) : undefined;
-                return { date: { content, isNotTime: Boolean(value.isNotTime) || false, hasEndDate, content2 } } as any;
-            }
-            return { date: { content: Number(value ?? 0), isNotTime: false } };
-        }
-        case 'url':
-            return { url: { content: String(value || '') } };
-        case 'email':
-            return { email: { content: String(value || '') } };
-        case 'phone':
-            return { phone: { content: String(value || '') } };
-        case 'checkbox':
-            return { checkbox: { checked: Boolean(value) } };
-        case 'select':
-            // 单选也使用 mSelect 格式（单个元素的数组）
-            return { mSelect: value ? [{ content: String(value), color: '' }] : [] };
-        case 'mSelect':
-            // 多选返回数组
-            const values = Array.isArray(value) ? value : [value];
-            return { mSelect: values.filter(v => v).map(v => ({ content: String(v), color: '' })) };
-        default:
-            return { text: { content: String(value || '') } };
-    }
-}
-
-/**
- * 获取 input type
- */
-function getInputType(keyType: string): string {
-    switch (keyType) {
-        case 'url':
-            return 'url';
-        case 'email':
-            return 'email';
-        case 'phone':
-            return 'tel';
-        default:
-            return 'text';
-    }
-}
-
-/**
- * 时间戳转换为 datetime-local 格式
- */
-function timestampToDateInput(timestamp: number): string {
-    if (!timestamp) return '';
-    
-    const ts = timestamp > 10000000000 ? timestamp : timestamp * 1000;
-    const date = new Date(ts);
-    
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
+export {
+    handleTemplateEdit,
+    handleCheckboxEdit,
+    handleSelectEdit,
+    handleMultiSelectEdit,
+    handleRelationEdit,
+    handleAssetEdit,
+    handleDateEdit,
+    handlePopupEdit
+};
