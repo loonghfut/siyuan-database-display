@@ -45,9 +45,9 @@ export class AttributeRenderer {
         // 清理旧版本留下的宿主状态；之后仅操作 .protyle-attr 内的展示节点。
         parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below");
         attributeContainer.classList.remove("db-display--has-list");
-        // 思源的列表、列表项、超级块、引述和提示块属于容器。下方绝对定位
-        // 会与其子块编辑区域重叠，因此这些容器统一回退为右上角行内展示。
-        const effectiveLayout = context.config.layout === "below" && this.isContainerBlock(parent)
+        // 思源的列表、列表项、超级块、引述和提示块属于容器。列表模式（上方/下方
+        // 绝对定位）会与其子块编辑区域重叠，因此这些容器统一回退为右上角行内展示。
+        const effectiveLayout = this.isContainerBlock(parent)
             ? "inline"
             : context.config.layout;
         const useList = effectiveLayout !== "inline"
