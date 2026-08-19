@@ -775,10 +775,22 @@ button.db-display__popover-source:hover {
 
 .db-settings__theme-tabs {
     display: inline-flex;
-    justify-self: start;
     overflow: hidden;
     border: 1px solid var(--b3-border-color);
     border-radius: 4px;
+}
+
+.db-settings__appearance-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.db-settings__restore-defaults {
+    min-height: 30px;
+    white-space: nowrap;
 }
 
 .db-settings__theme-tab {
@@ -989,6 +1001,36 @@ button.db-display__popover-source:hover {
     color: var(--b3-theme-on-surface-light);
     font-size: 12px;
     text-align: right;
+}
+
+.db-color-picker__native-palette {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(7, 26px);
+    gap: 4px;
+    padding-top: 2px;
+    border-top: 1px solid var(--b3-border-color);
+}
+
+.db-color-picker__native-swatch {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--b3-border-radius);
+    box-shadow: 0 0 0 1px var(--b3-list-hover) inset;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.db-color-picker__native-swatch:hover,
+.db-color-picker__native-swatch:focus-visible {
+    box-shadow: 0 0 0 2px var(--b3-theme-primary) inset;
+}
+
+.db-color-picker__native-swatch--current {
+    box-shadow: 0 0 0 2px var(--b3-theme-primary) inset, 0 0 0 3px var(--b3-list-hover);
 }
 
 .db-settings__value-rules {

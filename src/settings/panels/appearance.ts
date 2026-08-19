@@ -46,18 +46,20 @@ function normalizeAppearance(value: unknown): AppearanceState {
     };
 }
 
-function activeTheme(): ThemeName {
+function activeTheme(): "light" | "dark" {
     return document.documentElement.dataset.themeMode === "dark" ? "dark" : "light";
 }
 
 export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText, shouldShowProBadge: () => boolean): void {
     addPanel("display-appearance", JSON.stringify(defaultAppearance()), text.appearance.title, text.appearance.description, (value, commit) => {
-        const state = normalizeAppearance(parseObject<object>(value, {}));
+        let state = normalizeAppearance(parseObject<object>(value, {}));
         const panel = createPanel("db-settings--appearance");
+        const controls = document.createElement("div");
+        controls.className = "db-settings__appearance-controls";
         const tabs = document.createElement("div");
         tabs.className = "db-settings__theme-tabs";
         const editor = document.createElement("div");
-        let theme = activeTheme();
+        let theme: ThemeName = activeTheme();
 
         const save = () => {
             const types: Record<string, { color: string; bg: string }> = {};
@@ -98,7 +100,8 @@ export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText, 
                         current.types[type]?.[kind],
                         kind === "color" ? defaults.colors[type] : defaults.backgrounds[type],
                         kind === "color" ? text.appearance.textColor : text.appearance.backgroundColor,
-                        text.appearance.opacity
+                        text.appearance.opacity,
+                        kind
                     );
                     control.trigger.dataset.type = type;
                     control.trigger.dataset.kind = kind;
@@ -141,12 +144,12 @@ export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText, 
                     row.className = "db-settings__value-rule";
                     const name = createTextInput(rule.name, text.appearance.valueName);
                     name.dataset.ruleName = "true";
-                    const color = createColorControl(rule.color, "#000000", text.appearance.textColor, text.appearance.opacity);
+                    const color = createColorControl(rule.color, "#000000", text.appearance.textColor, text.appearance.opacity, "color");
                     color.trigger.dataset.ruleColor = "true";
                     const backgroundEnabled = createCheckbox(Boolean(rule.background));
                     backgroundEnabled.title = text.appearance.enableBackground;
                     backgroundEnabled.dataset.ruleBackgroundEnabled = "true";
-                    const background = createColorControl(rule.background, "#ffffff", text.appearance.backgroundColor, text.appearance.opacity);
+                    const background = createColorControl(rule.background, "#ffffff", text.appearance.backgroundColor, text.appearance.opacity, "background");
                     background.element.classList.toggle("fn__none", !rule.background);
                     background.trigger.dataset.ruleBackground = "true";
                     const remove = document.createElement("button");
@@ -176,6 +179,18 @@ export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText, 
             tabs.querySelectorAll<HTMLButtonElement>("button").forEach(button => button.classList.toggle("db-settings__theme-tab--active", button.dataset.theme === theme));
         };
 
+        const restoreDefaults = document.createElement("button");
+        restoreDefaults.type = "button";
+        restoreDefaults.className = "b3-button b3-button--outline db-settings__restore-defaults";
+        restoreDefaults.textContent = text.appearance.useDefaultColors;
+        restoreDefaults.addEventListener("click", () => {
+            state = defaultAppearance();
+            const nextValue = JSON.stringify(state);
+            panel.dataset.value = nextValue;
+            commit(nextValue);
+            renderEditor();
+        });
+
         (["light", "dark"] as const).forEach(name => {
             const tab = document.createElement("button");
             tab.type = "button";
@@ -190,9 +205,10 @@ export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText, 
             });
             tabs.append(tab);
         });
+        controls.append(tabs, restoreDefaults);
         editor.addEventListener("change", save);
         renderEditor();
-        panel.append(tabs, editor);
+        panel.append(controls, editor);
         return panel;
     });
 }

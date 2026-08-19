@@ -34,6 +34,10 @@ function colorValue(color: string, opacity: number): string {
     return `rgba(${red}, ${green}, ${blue}, ${Math.max(0, opacity) / 100})`;
 }
 
+function isThemeColor(value: string): boolean {
+    return /^var\(--[\w-]+\)$/.test(value.trim());
+}
+
 function hexToRgb(hex: string): [number, number, number] {
     return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 }
@@ -65,7 +69,7 @@ function hsvToHex(hue: number, saturation: number, brightness: number): string {
 
 let closeColorPicker: (() => void) | undefined;
 
-function openColorPicker(trigger: HTMLButtonElement, initialValue: string, colorTitle: string, opacityTitle: string, onChange: (value: string, commit: boolean) => void): void {
+function openColorPicker(trigger: HTMLButtonElement, initialValue: string, colorTitle: string, opacityTitle: string, nativeKind: "color" | "background" | undefined, onChange: (value: string, commit: boolean) => void): void {
     closeColorPicker?.();
     const initial = parseColor(initialValue, "#000000");
     let [hue, saturation, brightness] = rgbToHsv(...hexToRgb(initial.hex));
@@ -99,7 +103,7 @@ function openColorPicker(trigger: HTMLButtonElement, initialValue: string, color
     const hexInput = document.createElement("input");
     hexInput.className = "b3-text-field db-color-picker__hex";
     const alphaLabel = document.createElement("output");
-    const update = (commit = false) => {
+    const update = (commit = false, emit = true) => {
         const hex = hsvToHex(hue, saturation, brightness);
         field.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
         cursor.style.left = `${saturation}%`;
@@ -107,7 +111,7 @@ function openColorPicker(trigger: HTMLButtonElement, initialValue: string, color
         alphaInput.style.background = `linear-gradient(to right, transparent, ${hex})`;
         hexInput.value = hex.toUpperCase();
         alphaLabel.textContent = `${opacity}%`;
-        onChange(colorValue(hex, opacity), commit);
+        if (emit) onChange(colorValue(hex, opacity), commit);
     };
     const setFieldPosition = (event: PointerEvent) => {
         const rect = field.getBoundingClientRect();
@@ -141,11 +145,31 @@ function openColorPicker(trigger: HTMLButtonElement, initialValue: string, color
         alphaInput.value = String(opacity);
         update(true);
     });
-    picker.append(close, field, hueInput, alphaInput, alphaLabel, hexInput);
+    const nativePalette = document.createElement("div");
+    nativePalette.className = "db-color-picker__native-palette";
+    if (nativeKind) {
+        for (let index = 1; index <= 14; index++) {
+            const swatch = document.createElement("button");
+            swatch.type = "button";
+            const nativeValue = `var(--b3-font-${nativeKind}${index})`;
+            swatch.className = `db-color-picker__native-swatch${initialValue.trim() === nativeValue ? " db-color-picker__native-swatch--current" : ""}`;
+            swatch.style.color = `var(--b3-font-color${index})`;
+            swatch.style.backgroundColor = `var(--b3-font-background${index})`;
+            swatch.textContent = "A";
+            swatch.title = `${colorTitle} ${index}`;
+            swatch.setAttribute("aria-label", `${colorTitle} ${index}`);
+            swatch.addEventListener("click", () => {
+                onChange(nativeValue, true);
+                cleanup();
+            });
+            nativePalette.append(swatch);
+        }
+    }
+    picker.append(close, field, hueInput, alphaInput, alphaLabel, hexInput, nativePalette);
     document.body.append(picker);
     const rect = trigger.getBoundingClientRect();
     picker.style.left = `${Math.min(window.innerWidth - 270, Math.max(12, rect.left))}px`;
-    picker.style.top = `${Math.min(window.innerHeight - 300, rect.bottom + 8)}px`;
+    picker.style.top = `${Math.min(window.innerHeight - 360, rect.bottom + 8)}px`;
     const dismiss = (event: MouseEvent | KeyboardEvent) => {
         if (event instanceof KeyboardEvent && event.key !== "Escape") return;
         if (event instanceof MouseEvent && (picker.contains(event.target as Node) || trigger.contains(event.target as Node))) return;
@@ -161,10 +185,10 @@ function openColorPicker(trigger: HTMLButtonElement, initialValue: string, color
     setTimeout(() => document.addEventListener("mousedown", dismiss), 0);
     document.addEventListener("keydown", dismiss);
     closeColorPicker = cleanup;
-    update();
+    update(false, false);
 }
 
-export function createColorControl(value: string | undefined, fallback: string, colorTitle: string, opacityTitle: string): ColorControl {
+export function createColorControl(value: string | undefined, fallback: string, colorTitle: string, opacityTitle: string, nativeKind?: "color" | "background"): ColorControl {
     const state = parseColor(value, fallback);
     const element = document.createElement("div");
     element.className = "db-color-control";
@@ -175,15 +199,16 @@ export function createColorControl(value: string | undefined, fallback: string, 
     const valueLabel = document.createElement("output");
     const setValue = (next: string, emitChange = false) => {
         const parsed = parseColor(next, fallback);
+        const themeColor = isThemeColor(next);
         trigger.dataset.colorValue = next;
-        trigger.style.setProperty("--db-color", parsed.hex);
-        trigger.style.setProperty("--db-opacity", String(parsed.opacity / 100));
-        valueLabel.textContent = parsed.opacity < 100 ? `${parsed.opacity}%` : "";
+        trigger.style.setProperty("--db-color", themeColor ? next : parsed.hex);
+        trigger.style.setProperty("--db-opacity", themeColor ? "1" : String(parsed.opacity / 100));
+        valueLabel.textContent = !themeColor && parsed.opacity < 100 ? `${parsed.opacity}%` : "";
         if (emitChange) trigger.dispatchEvent(new Event("change", { bubbles: true }));
     };
-    trigger.addEventListener("click", () => openColorPicker(trigger, trigger.dataset.colorValue || colorValue(state.hex, state.opacity), colorTitle, opacityTitle, setValue));
+    trigger.addEventListener("click", () => openColorPicker(trigger, trigger.dataset.colorValue || colorValue(state.hex, state.opacity), colorTitle, opacityTitle, nativeKind, setValue));
     element.append(trigger, valueLabel);
-    setValue(colorValue(state.hex, state.opacity));
+    setValue(value?.trim() || colorValue(state.hex, state.opacity));
     return { element, trigger };
 }
 
