@@ -2,7 +2,7 @@
   "name": "siyuan-database-display",
   "author": "steve",
   "url": "https://github.com/loonghfut/siyuan-database-display",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "minAppVersion": "3.8.0",
   "disabledInPublish": true,
   "backends": [
