@@ -37,6 +37,27 @@ export class AttributeRenderer {
             this.applyListSpace(list, entry.contentRect.height, metrics?.contentHeight);
         }
     });
+    // 思源会在容器块中直接插入、移除或重排子块。列表本身的高度不变时，
+    // 仅观察属性列表无法获知其定位基线已经变化，因此同时观察宿主块。
+    private readonly listBlockObserver = new ResizeObserver(entries => {
+        for (const entry of entries) {
+            const block = entry.target as HTMLElement;
+            if (!block.isConnected) {
+                this.listBlockObserver.unobserve(block);
+                continue;
+            }
+            const list = block.querySelector<HTMLElement>(":scope > .protyle-attr > .my-protyle-attr--av--list-below");
+            if (!list) {
+                this.listBlockObserver.unobserve(block);
+                continue;
+            }
+            const metrics = this.listMetrics.get(list);
+            if (!metrics) continue;
+            const contentHeight = this.measureListBlockContentHeight(list);
+            metrics.contentHeight = contentHeight;
+            this.applyListSpace(list, metrics.height, contentHeight);
+        }
+    });
 
     render(parent: HTMLElement, items: DisplayItem[], context: RenderContext): void {
         // 容器挂在 .protyle-attr 内（思源识别的属性容器，编辑/合并/序列化时被安全忽略）
@@ -45,11 +66,8 @@ export class AttributeRenderer {
         // 清理旧版本留下的宿主状态；之后仅操作 .protyle-attr 内的展示节点。
         parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below");
         attributeContainer.classList.remove("db-display--has-list");
-        // 思源的列表、列表项、超级块、引述和提示块属于容器。列表模式（上方/下方
-        // 绝对定位）会与其子块编辑区域重叠，因此这些容器统一回退为右上角行内展示。
-        const effectiveLayout = this.isContainerBlock(parent)
-            ? "inline"
-            : context.config.layout;
+        // 容器块同样遵循用户选择的上方/下方布局；列表项的点号由位置类单独避让。
+        const effectiveLayout = context.config.layout;
         const useList = effectiveLayout !== "inline"
             && items.length > 0
             && !parent.classList.contains("protyle-title");
@@ -90,8 +108,9 @@ export class AttributeRenderer {
         const listColumnsClass = context.config.listMultiColumn
             ? "my-protyle-attr--av--list-multi"
             : "my-protyle-attr--av--list-single";
+        const containerClass = this.getContainerClass(parent);
         container.className = useList
-            ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass} ${listColumnsClass}`
+            ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass} ${listColumnsClass}${containerClass}`
             : "my-protyle-attr--av";
         if (useList) {
             container.style.setProperty("--db-attr-list-font-size", `${context.config.listFontSize}px`);
@@ -112,6 +131,8 @@ export class AttributeRenderer {
         const container = parent.querySelector<HTMLElement>(":scope > .protyle-attr > .my-protyle-attr--av");
         if (container) {
             this.listSpaceObserver.unobserve(container);
+            const block = container.closest<HTMLElement>("[data-node-id]");
+            if (block) this.listBlockObserver.unobserve(block);
             this.signatures.delete(container);
             container.remove();
         }
@@ -123,6 +144,7 @@ export class AttributeRenderer {
 
     dispose(): void {
         this.listSpaceObserver.disconnect();
+        this.listBlockObserver.disconnect();
     }
 
     /**
@@ -133,11 +155,17 @@ export class AttributeRenderer {
         const block = container.closest<HTMLElement>("[data-node-id]");
         if (!container.classList.contains("my-protyle-attr--av--list")) {
             this.listSpaceObserver.unobserve(container);
+            if (block) this.listBlockObserver.unobserve(block);
             block?.style.removeProperty("--db-attr-list-space");
             block?.style.removeProperty("--db-attr-block-height");
             return;
         }
         this.listSpaceObserver.observe(container);
+        if (container.classList.contains("my-protyle-attr--av--list-below") && block) {
+            this.listBlockObserver.observe(block);
+        } else if (block) {
+            this.listBlockObserver.unobserve(block);
+        }
         const metrics = this.listMetrics.get(container);
         if (measure || !metrics) {
             const fieldNameWidth = this.syncListFieldNameWidth(container);
@@ -191,6 +219,14 @@ export class AttributeRenderer {
         return element.classList.contains("list") || element.classList.contains("li") ||
             element.classList.contains("sb") || element.classList.contains("bq") ||
             element.classList.contains("callout");
+    }
+
+    private getContainerClass(element: HTMLElement): string {
+        if (element.classList.contains("li") || element.classList.contains("list")) {
+            return " my-protyle-attr--container-list";
+        }
+        if (this.isContainerBlock(element)) return " my-protyle-attr--container";
+        return "";
     }
 
     /** 将同一列表中的字段名统一为最长标签宽度，使所有字段值从同一列开始显示。 */

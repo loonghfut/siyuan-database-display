@@ -63,8 +63,8 @@
 
 }
 
-/* 下方列表模式：宿主容器的顶边通常位于块顶上方约 12px，因此用块自身高度计算
-   列表在块底部之后的偏移；列表仍是 .protyle-attr 的子节点，没有移动 DOM。 */
+/* 下方列表模式：属性容器的顶边通常位于块顶上方约 12px，因此以渲染器同步的
+   块内容高度计算列表位置；宿主尺寸观察器会在容器子块重排时更新该基线。 */
 .my-protyle-attr--av--list {
     position: absolute;
     left: 0;
@@ -96,6 +96,13 @@
 /* 上方列表模式直接定位到块顶部预留区。 */
 .my-protyle-attr--av--list-above {
     top: 16px;
+}
+
+/* 列表项的原生点号/序号占据左侧 34px；上方属性仍保持用户选择的布局，
+   但从正文起始线开始，避免与 .protyle-action 重叠。 */
+.my-protyle-attr--av--container-list.my-protyle-attr--av--list-above {
+    left: 34px;
+    width: calc(100% - 34px);
 }
 
 /* 列表模式：行内元素改为左对齐（chip/组原为 align-self:center，列布局下会居中错位）。
