@@ -1,0 +1,40 @@
+/* 数据库属性宿主块：复用思源已有的 custom-avs 标记，不修改宿主块 DOM。 */
+[data-node-id][custom-avs]:not(.protyle-title) {
+    border: 1px solid var(--b3-border-color);
+    border-radius: var(--b3-border-radius-b, 8px);
+    background-color: var(--b3-theme-surface);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
+    box-sizing: border-box;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+/* 段落和标题增加卡片呼吸空间；表格、代码、图片等块保持思源的原生尺寸。 */
+[data-node-id][custom-avs]:not(.protyle-title):is(.p, .h1, .h2, .h3, .h4, .h5, .h6) {
+    padding: 7px 10px;
+}
+
+/* 选中/悬停时沿用思源主题色，只增强边缘，不改变正文排版。 */
+[data-node-id][custom-avs]:not(.protyle-title):hover {
+    border-color: var(--b3-theme-primary-lighter, var(--b3-border-color));
+    box-shadow: 0 3px 10px rgba(0, 0, 0, .1);
+}
+
+[data-node-id][custom-avs]:not(.protyle-title).protyle-wysiwyg--select,
+[data-node-id][custom-avs]:not(.protyle-title).protyle-wysiwyg--hl {
+    border-color: var(--b3-theme-primary);
+}
+
+/* 暗色主题下减轻阴影，避免卡片边缘过重。 */
+:root[data-theme-mode="dark"] [data-node-id][custom-avs]:not(.protyle-title) {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .24);
+}
+
+:root[data-theme-mode="dark"] [data-node-id][custom-avs]:not(.protyle-title):hover {
+    box-shadow: 0 3px 10px rgba(0, 0, 0, .34);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-node-id][custom-avs]:not(.protyle-title) {
+        transition: none;
+    }
+}
