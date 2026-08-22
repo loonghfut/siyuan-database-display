@@ -38,7 +38,7 @@ export class AttributeRenderer {
         }
     });
     // 思源会在容器块中直接插入、移除或重排子块。列表本身的高度不变时，
-    // 仅观察属性列表无法获知其定位基线已经变化，因此同时观察宿主块。
+    // 仅观察属性列表无法获知其定位基线已经变化，因此只为容器块观察宿主尺寸。
     private readonly listBlockObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
             const block = entry.target as HTMLElement;
@@ -161,7 +161,7 @@ export class AttributeRenderer {
             return;
         }
         this.listSpaceObserver.observe(container);
-        if (container.classList.contains("my-protyle-attr--av--list-below") && block) {
+        if (container.classList.contains("my-protyle-attr--av--list-below") && block && this.isContainerBlock(block)) {
             this.listBlockObserver.observe(block);
         } else if (block) {
             this.listBlockObserver.unobserve(block);
