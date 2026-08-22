@@ -10,8 +10,8 @@ export function addDisplayFormatPanel(
     shouldShowProBadge: () => boolean,
     isFeatureEnabled: (feature: ProFeature) => boolean
 ): void {
-    addPanel("display-format", JSON.stringify({ dateFormat: "YYYY-MM-DD", includeTime: false, checkboxStyle: "emoji", maxDisplayLength: 30, showFieldNames: false, listFontSize: 12, listMultiColumn: true, listLayoutStyle: "grid", editTrigger: "click", layout: "below" }), text.format.title, text.format.description, (value, commit) => {
-        const state = parseObject<{ dateFormat?: string; includeTime?: boolean; checkboxStyle?: string; maxDisplayLength?: number; showFieldNames?: boolean; listFontSize?: number; listMultiColumn?: boolean; listLayoutStyle?: string; editTrigger?: string; layout?: string }>(value, {});
+    addPanel("display-format", JSON.stringify({ dateFormat: "YYYY-MM-DD", includeTime: false, checkboxStyle: "emoji", maxDisplayLength: 30, showFieldNames: false, listFontSize: 12, listMultiColumn: true, listLayoutStyle: "grid", cardEnabled: true, editTrigger: "click", layout: "below" }), text.format.title, text.format.description, (value, commit) => {
+        const state = parseObject<{ dateFormat?: string; includeTime?: boolean; checkboxStyle?: string; maxDisplayLength?: number; showFieldNames?: boolean; listFontSize?: number; listMultiColumn?: boolean; listLayoutStyle?: string; cardEnabled?: boolean; editTrigger?: string; layout?: string }>(value, {});
         const panel = createPanel("db-settings--format");
         const layout = createSelect(text.format.layoutOptions, state.layout === "above" ? "above" : state.layout === "inline" ? "inline" : "below");
         const listLayoutStyle = createSelect(text.format.listLayoutStyleOptions, state.listLayoutStyle === "waterfall" ? "waterfall" : "grid");
@@ -29,6 +29,7 @@ export function addDisplayFormatPanel(
         const checkbox = createSelect(i18n.settings.checkboxStyle.options, state.checkboxStyle || "emoji");
         const includeTime = createCheckbox(Boolean(state.includeTime));
         const showFieldNames = createCheckbox(state.showFieldNames === true);
+        const cardEnabled = createCheckbox(state.cardEnabled !== false);
         const multiColumn = createCheckbox(state.listMultiColumn !== false);
         const listLayoutStyleRow = createLabel(text.format.listLayoutStyle, listLayoutStyle);
         const multiColumnRow = createLabel(text.format.multiColumn, multiColumn);
@@ -83,9 +84,9 @@ export function addDisplayFormatPanel(
             proBadge.title = text.format.inlineEditProTooltip;
             editTriggerTitle.append(proBadge);
         }
-        panel.append(layoutRow, listSettings, editTriggerRow, createLabel(text.format.date, date), createLabel(text.format.checkbox, checkbox), createLabel(text.format.time, includeTime), createLabel(text.format.fieldNames, showFieldNames), createLabel(text.format.maxLength, length));
+        panel.append(layoutRow, listSettings, editTriggerRow, createLabel(text.format.date, date), createLabel(text.format.checkbox, checkbox), createLabel(text.format.time, includeTime), createLabel(text.format.fieldNames, showFieldNames), createLabel(text.format.card, cardEnabled), createLabel(text.format.maxLength, length));
         bindCommit(panel, () => {
-            const nextValue = JSON.stringify({ dateFormat: date.value, checkboxStyle: checkbox.value, includeTime: includeTime.checked, maxDisplayLength: Math.min(200, Math.max(10, Number(length.value) || 30)), showFieldNames: showFieldNames.checked, listFontSize: Math.min(24, Math.max(10, Number(fontSize.value) || 12)), listMultiColumn: multiColumn.checked, listLayoutStyle: listLayoutStyle.value === "waterfall" ? "waterfall" : "grid", editTrigger: editTrigger.value === "dblclick" ? "dblclick" : "click", layout: layout.value === "above" ? "above" : layout.value === "inline" ? "inline" : "below" });
+            const nextValue = JSON.stringify({ dateFormat: date.value, checkboxStyle: checkbox.value, includeTime: includeTime.checked, maxDisplayLength: Math.min(200, Math.max(10, Number(length.value) || 30)), showFieldNames: showFieldNames.checked, listFontSize: Math.min(24, Math.max(10, Number(fontSize.value) || 12)), listMultiColumn: multiColumn.checked, listLayoutStyle: listLayoutStyle.value === "waterfall" ? "waterfall" : "grid", cardEnabled: cardEnabled.checked, editTrigger: editTrigger.value === "dblclick" ? "dblclick" : "click", layout: layout.value === "above" ? "above" : layout.value === "inline" ? "inline" : "below" });
             panel.dataset.value = nextValue;
             commit(nextValue);
         });

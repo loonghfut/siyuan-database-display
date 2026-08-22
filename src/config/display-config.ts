@@ -28,6 +28,7 @@ export interface DisplayConfig {
     listFontSize: number;
     listMultiColumn: boolean;
     listLayoutStyle: ListLayoutStyle;
+    cardEnabled: boolean;
     editTrigger: EditTrigger;
     layout: DisplayLayout;
     fieldColors: Record<string, string>;
@@ -117,7 +118,7 @@ function sanitizeValueColors(value: unknown): Record<string, string | ColorRule>
 export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig {
     const fieldSettings = parseJsonObject<{ document?: string; block?: string }>(get("display-fields"), {});
     const fieldRules = parseJsonObject<{ hidden?: string; force?: string }>(get("field-rules"), {});
-    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; editTrigger: EditTrigger; layout: DisplayLayout }>>(get("display-format"), {});
+    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; cardEnabled: boolean; editTrigger: EditTrigger; layout: DisplayLayout }>>(get("display-format"), {});
     const appearance = parseJsonObject<AppearanceTheme & { light?: AppearanceTheme; dark?: AppearanceTheme }>(get("display-appearance"), {});
     const themeMode = typeof document !== "undefined" && document.documentElement.dataset.themeMode === "dark" ? "dark" : "light";
     const themeAppearance = appearance[themeMode] || appearance;
@@ -143,6 +144,7 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
             : 12,
         listMultiColumn: formatSettings.listMultiColumn !== false,
         listLayoutStyle: formatSettings.listLayoutStyle === "waterfall" ? "waterfall" : "grid",
+        cardEnabled: formatSettings.cardEnabled !== false,
         editTrigger: formatSettings.editTrigger === "dblclick" ? "dblclick" : "click",
         layout: formatSettings.layout === "inline"
                     ? "inline"

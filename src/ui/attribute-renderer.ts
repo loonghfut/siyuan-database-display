@@ -63,6 +63,7 @@ export class AttributeRenderer {
         // 容器挂在 .protyle-attr 内（思源识别的属性容器，编辑/合并/序列化时被安全忽略）
         const attributeContainer = [...parent.children].find(child => child.classList.contains("protyle-attr")) as HTMLElement | undefined;
         if (!attributeContainer) return;
+        parent.classList.toggle("db-display--card", context.config.cardEnabled);
         // 清理旧版本留下的宿主状态；之后仅操作 .protyle-attr 内的展示节点。
         parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below");
         attributeContainer.classList.remove("db-display--has-list");
@@ -142,7 +143,7 @@ export class AttributeRenderer {
         parent.style.removeProperty("--db-attr-list-space");
         parent.style.removeProperty("--db-attr-block-height");
         // 清理旧版本曾写入宿主块的状态 class，插件不再修改思源块节点。
-        parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below");
+        parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below", "db-display--card");
     }
 
     dispose(): void {
@@ -702,6 +703,7 @@ export class AttributeRenderer {
             listFontSize: config.listFontSize,
             listMultiColumn: config.listMultiColumn,
             listLayoutStyle: config.listLayoutStyle,
+            cardEnabled: config.cardEnabled,
             editTrigger: config.editTrigger,
             layout: config.layout,
             colors: config.fieldColors,
