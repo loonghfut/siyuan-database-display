@@ -1,3 +1,5 @@
+@use "./styles/layouts/compact-waterfall";
+
 /* 行内模式（默认）：随思源原生 .protyle-attr 显示在块右上角，横排换行 */
 .my-protyle-attr--av {
     /* 展示节点不属于块正文，不能成为浏览器的复制/编辑选区。 */

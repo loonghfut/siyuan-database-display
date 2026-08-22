@@ -1,0 +1,50 @@
+/* 横向瀑布流：字段按内容宽度紧凑排列，空间不足时从左到右换行。 */
+.my-protyle-attr--av--list.my-protyle-attr--av--waterfall {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: baseline;
+    align-content: flex-start;
+    gap: 2px 10px;
+}
+
+/* 覆盖网格列表为每项设置的整行宽度，让字段恢复内容宽度。 */
+.my-protyle-attr--av--list.my-protyle-attr--av--waterfall > .db-display__chip,
+.my-protyle-attr--av--list.my-protyle-attr--av--waterfall > .db-display__relation-group,
+.my-protyle-attr--av--list.my-protyle-attr--av--waterfall > .db-display__asset-group {
+    display: inline-flex !important;
+    flex: 0 1 auto;
+    width: auto;
+    max-width: 100%;
+}
+
+/* 瀑布流中的关联/资源组不再使用网格的“字段名列 + 值列”结构。 */
+.my-protyle-attr--av--list.my-protyle-attr--av--waterfall > .db-display__relation-group,
+.my-protyle-attr--av--list.my-protyle-attr--av--waterfall > .db-display__asset-group {
+    grid-template-columns: none;
+    column-gap: 2px;
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--waterfall .db-display__group-values {
+    display: inline-flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    width: auto;
+    max-width: 100%;
+    gap: 2px;
+}
+
+/* 正常值允许在紧凑单元内换行；过长值只由渲染器按 maxDisplayLength 截断。 */
+.my-protyle-attr--av--list.my-protyle-attr--av--waterfall .db-display__value {
+    width: fit-content;
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--waterfall .db-display__field-name {
+    width: auto;
+    flex: 0 0 auto;
+}

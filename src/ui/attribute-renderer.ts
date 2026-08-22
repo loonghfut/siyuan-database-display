@@ -108,9 +108,12 @@ export class AttributeRenderer {
         const listColumnsClass = context.config.listMultiColumn
             ? "my-protyle-attr--av--list-multi"
             : "my-protyle-attr--av--list-single";
+        const listStyleClass = context.config.listLayoutStyle === "waterfall"
+            ? " my-protyle-attr--av--waterfall"
+            : "";
         const containerClass = this.getContainerClass(parent);
         container.className = useList
-            ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass} ${listColumnsClass}${containerClass}`
+            ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass} ${listColumnsClass}${listStyleClass}${containerClass}`
             : "my-protyle-attr--av";
         if (useList) {
             container.style.setProperty("--db-attr-list-font-size", `${context.config.listFontSize}px`);
@@ -698,6 +701,7 @@ export class AttributeRenderer {
             showFieldNames: config.showFieldNames,
             listFontSize: config.listFontSize,
             listMultiColumn: config.listMultiColumn,
+            listLayoutStyle: config.listLayoutStyle,
             editTrigger: config.editTrigger,
             layout: config.layout,
             colors: config.fieldColors,
