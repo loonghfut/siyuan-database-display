@@ -226,10 +226,22 @@
     max-width: 100%;
 }
 
+/* 多选值区改为 flex 换行布局：选项间距（含换行后的行间距）由 gap 提供，
+   不再依赖行内模式的外边距；首行盒高保持 1.35em，与字段名顶部对齐即居中。 */
+.my-protyle-attr--av--list .db-display__chip[data-field-type="mSelect"] .db-display__value {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
 .my-protyle-attr--av--list .db-display__option-chip {
     font-size: inherit;
     line-height: 1.35;
     white-space: nowrap;
+    /* 行内模式选项 chip 自带 1px 上下外边距，会把值区行盒撑高 2px；列表模式 chip
+       顶部对齐（align-items: flex-start）下字段名因此整体偏高 1px。清零外边距，
+       间距改由上方值区的 flex gap 提供（同块图标的等盒高原则）。 */
+    margin: 0;
 }
 
 /* 关联/资源分组使用“字段名列 + 值列表列”，避免多个值把字段名和长文本挤到同一行。 */
