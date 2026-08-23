@@ -3,6 +3,9 @@
    不新增 border，块的尺寸与正文排版和未开启时完全一致。 */
 [data-node-id][custom-avs].db-display--card:not(.protyle-title) {
     --db-card-gap: 8px;
+    /* 列表属性与卡片上下边缘之间的内边距，与水平间隙一致；
+       由 index.scss 的列表锚定与预留规则消费，非卡片模式回落为 0。 */
+    --db-attr-list-inset: var(--db-card-gap);
     border-radius: var(--b3-border-radius-b, 8px);
     box-shadow: 0 0 0 1px var(--b3-border-color);
     transition: box-shadow 120ms ease;

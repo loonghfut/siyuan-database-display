@@ -29,13 +29,16 @@
 }
 
 /* 列表模式：属性 DOM 仍保留在 .protyle-attr 内，不移动节点。
-   根据位置为块预留对应方向的空间；折叠块的属性被思源隐藏，不预留。 */
-[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-below) {
-    padding-bottom: calc(var(--db-attr-list-space, 18px) + 10px);
+   根据位置为块预留对应方向的空间；折叠块的属性被思源隐藏，不预留。
+   7px 为正文与列表的间隙（卡片模式下间隔的是装饰横条）；--db-attr-list-inset
+   由卡片模式提供，在列表与卡片边缘之间留出内边距（默认 0，非卡片模式贴边）。
+   列表为空（字段全部隐藏）时不预留，避免残留空白。 */
+[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-below:not(:empty)) {
+    padding-bottom: calc(var(--db-attr-list-space, 18px) + 7px + var(--db-attr-list-inset, 0px));
 }
 
-[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-above) {
-    padding-top: calc(var(--db-attr-list-space, 18px) + 10px);
+[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-above:not(:empty)) {
+    padding-top: calc(var(--db-attr-list-space, 18px) + 7px + var(--db-attr-list-inset, 0px));
 }
 
 /* 折叠的容器块不预留空间（属性随折叠被思源隐藏或空间无法保证），列表一并隐藏，
@@ -70,7 +73,7 @@
 
 }
 
-/* 下方列表模式：贴块底锚定（bottom:0 = 块 padding-box 底缘），恒落在预留的
+/* 下方列表模式：贴块底锚定（bottom = 块 padding-box 底缘 + 内边距），恒落在预留的
    padding 区内；内容重排、换行数变化、容器块子块增删时块底自行移动，
    列表位置随之更新，无须 JS 测量块高度。
    覆盖思源 .protyle-wysiwyg--attr .protyle-attr>div 的 display:-webkit-box（单行截断）。
@@ -78,7 +81,7 @@
 .my-protyle-attr--av--list {
     position: absolute;
     left: 0;
-    bottom: 0;
+    bottom: var(--db-attr-list-inset, 0px);
     display: grid !important;
     width: 100%;
     max-width: 100% !important;
@@ -102,10 +105,10 @@
 }
 
 /* 上方列表模式：锚带顶在块顶上方 12px（思源原生 top:-12px），top:12px 即
-   块 padding-box 顶缘，同为常量锚定；与下方模式对称——列表贴块外缘，
-   10px 间隙朝向正文。 */
+   块 padding-box 顶缘，同为常量锚定；与下方模式对称——列表贴块外缘
+   （卡片模式再加内边距），7px 间隙朝向正文。 */
 .my-protyle-attr--av--list-above {
-    top: 12px;
+    top: calc(12px + var(--db-attr-list-inset, 0px));
     bottom: auto;
 }
 
@@ -114,6 +117,33 @@
 .my-protyle-attr--av--container-list.my-protyle-attr--av--list-above {
     left: 34px;
     width: calc(100% - 34px);
+}
+
+/* 装饰横条：仅卡片模式渲染——半透明细线填充正文与属性列表之间的空隙，
+   下方模式为列表首行、上方模式为列表末行（紧邻正文一侧）。伪元素参与列表布局，
+   高度自动计入 --db-attr-list-space 测量，预留空间随之同步，无须 JS 配合；
+   瀑布流（flex）模式下 width:100% 独占一行，grid-column 被忽略。 */
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list-below::before,
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list-above::after {
+    content: "";
+    grid-column: 1 / -1;
+    width: 100%;
+    height: 1px;
+    background: color-mix(in srgb, var(--b3-theme-on-surface) 14%, transparent);
+}
+
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list-below::before {
+    margin-bottom: 3px;
+}
+
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list-above::after {
+    margin-top: 3px;
+}
+
+/* 无字段的空列表不渲染横条，避免孤线残留。 */
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list:empty::before,
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list:empty::after {
+    content: none;
 }
 
 /* 列表模式：行内元素改为左对齐（chip/组原为 align-self:center，列布局下会居中错位）。
