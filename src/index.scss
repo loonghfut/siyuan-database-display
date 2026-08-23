@@ -46,11 +46,15 @@
 
 /* 列表显示在块内容上方或下方，不改变列表项圆点/序号/勾选框的原生位置。 */
 
-/* 列表模式：宿主容器拉满块宽，作为列表左对齐的定位基准；
-   原生徽标仍靠右，视觉位置不变 */
+/* 列表模式：宿主容器拉成纵贯全块的锚带——保留原生 top:-12px，bottom:0 落到
+   块 padding-box 底缘，宽度拉满块宽。列表贴锚带边缘定位（见下方规则），
+   不依赖 JS 测量块高度；原生徽标仍在锚带顶部随流排列（flex-start 抵消
+   拉伸后的垂直居中），视觉位置不变 */
 .protyle-attr:has(> .my-protyle-attr--av--list) {
     left: 0;
     right: 0;
+    bottom: 0;
+    align-items: flex-start;
     justify-content: flex-end;
     /* 拉宽后的透明条不应拦截块首行的点击，徽标与属性列表保持可交互 */
     pointer-events: none;
@@ -66,14 +70,15 @@
 
 }
 
-/* 下方列表模式：属性容器的顶边通常位于块顶上方约 12px，因此以渲染器同步的
-   块内容高度计算列表位置；宿主尺寸观察器会在容器子块重排时更新该基线。 */
+/* 下方列表模式：贴块底锚定（bottom:0 = 块 padding-box 底缘），恒落在预留的
+   padding 区内；内容重排、换行数变化、容器块子块增删时块底自行移动，
+   列表位置随之更新，无须 JS 测量块高度。
+   覆盖思源 .protyle-wysiwyg--attr .protyle-attr>div 的 display:-webkit-box（单行截断）。
+   宽度足够时自动排成多列；单列不足 280px 时回落为单列，窄块不产生横向溢出。 */
 .my-protyle-attr--av--list {
     position: absolute;
     left: 0;
-    top: calc(var(--db-attr-block-height, 0px) + 16px);
-    /* 覆盖思源 .protyle-wysiwyg--attr .protyle-attr>div 的 display:-webkit-box（单行截断）。
-       宽度足够时自动排成多列；单列不足 280px 时回落为单列，窄块不产生横向溢出。 */
+    bottom: 0;
     display: grid !important;
     width: 100%;
     max-width: 100% !important;
@@ -96,9 +101,12 @@
     max-width: 100%;
 }
 
-/* 上方列表模式直接定位到块顶部预留区。 */
+/* 上方列表模式：锚带顶在块顶上方 12px（思源原生 top:-12px），top:12px 即
+   块 padding-box 顶缘，同为常量锚定；与下方模式对称——列表贴块外缘，
+   10px 间隙朝向正文。 */
 .my-protyle-attr--av--list-above {
-    top: 16px;
+    top: 12px;
+    bottom: auto;
 }
 
 /* 列表项的原生点号/序号占据左侧 34px；上方属性仍保持用户选择的布局，

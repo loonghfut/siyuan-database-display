@@ -21,8 +21,9 @@ export class AttributeRenderer {
     private readonly protectedContainers = new WeakSet<HTMLElement>();
     private readonly itemSignatures = new WeakMap<DisplayItem[], string>();
     private readonly configSignatures = new WeakMap<DisplayConfig, string>();
-    private readonly listMetrics = new WeakMap<HTMLElement, { height: number; fieldNameWidth: number; contentHeight?: number }>();
-    // 列表模式：列表高度决定块底部预留空间，尺寸变化（图片懒加载、字段增删、重排）需同步
+    private readonly listMetrics = new WeakMap<HTMLElement, { height: number; fieldNameWidth: number }>();
+    // 列表模式：列表高度决定块边缘预留空间，尺寸变化（字段增删、换行重排）需同步。
+    // 列表位置由 CSS 锚定在块边缘，不依赖块高度，无须观察宿主块。
     private readonly listSpaceObserver = new ResizeObserver(entries => {
         for (const entry of entries) {
             const list = entry.target as HTMLElement;
@@ -34,28 +35,7 @@ export class AttributeRenderer {
             if (!list.classList.contains("my-protyle-attr--av--list")) continue;
             const metrics = this.listMetrics.get(list);
             if (metrics) metrics.height = entry.contentRect.height;
-            this.applyListSpace(list, entry.contentRect.height, metrics?.contentHeight);
-        }
-    });
-    // 思源会在容器块中直接插入、移除或重排子块。列表本身的高度不变时，
-    // 仅观察属性列表无法获知其定位基线已经变化，因此只为容器块观察宿主尺寸。
-    private readonly listBlockObserver = new ResizeObserver(entries => {
-        for (const entry of entries) {
-            const block = entry.target as HTMLElement;
-            if (!block.isConnected) {
-                this.listBlockObserver.unobserve(block);
-                continue;
-            }
-            const list = block.querySelector<HTMLElement>(":scope > .protyle-attr > .my-protyle-attr--av--list-below");
-            if (!list) {
-                this.listBlockObserver.unobserve(block);
-                continue;
-            }
-            const metrics = this.listMetrics.get(list);
-            if (!metrics) continue;
-            const contentHeight = this.measureListBlockContentHeight(list);
-            metrics.contentHeight = contentHeight;
-            this.applyListSpace(list, metrics.height, contentHeight);
+            this.applyListSpace(list, entry.contentRect.height);
         }
     });
 
@@ -135,57 +115,47 @@ export class AttributeRenderer {
         const container = parent.querySelector<HTMLElement>(":scope > .protyle-attr > .my-protyle-attr--av");
         if (container) {
             this.listSpaceObserver.unobserve(container);
-            const block = container.closest<HTMLElement>("[data-node-id]");
-            if (block) this.listBlockObserver.unobserve(block);
             this.signatures.delete(container);
             container.remove();
         }
         parent.style.removeProperty("--db-attr-list-space");
+        // 旧版本曾写入块高度变量与状态 class，一并清理
         parent.style.removeProperty("--db-attr-block-height");
-        // 清理旧版本曾写入宿主块的状态 class，插件不再修改思源块节点。
         parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below", "db-display--card");
     }
 
     dispose(): void {
         this.listSpaceObserver.disconnect();
-        this.listBlockObserver.disconnect();
     }
 
     /**
-     * 列表模式：把列表当前高度写入所在块的 --db-attr-list-space，供 CSS 预留底部空间，
-     * 并记录未包含列表预留区的块高度，供列表定位到块底部。行内模式需要解除旧观察和变量。
+     * 列表模式：把列表当前高度写入所在块的 --db-attr-list-space，供 CSS 预留
+     * 顶部/底部空间。列表定位由 CSS 锚定在块边缘，与块内容高度无关；
+     * 行内模式需要解除观察并清除变量。
      */
     private syncListSpace(container: HTMLElement, measure = true): void {
         const block = container.closest<HTMLElement>("[data-node-id]");
         if (!container.classList.contains("my-protyle-attr--av--list")) {
             this.listSpaceObserver.unobserve(container);
-            if (block) this.listBlockObserver.unobserve(block);
             block?.style.removeProperty("--db-attr-list-space");
+            // 旧版本曾写入块高度变量，顺手清理
             block?.style.removeProperty("--db-attr-block-height");
             return;
         }
         this.listSpaceObserver.observe(container);
-        if (container.classList.contains("my-protyle-attr--av--list-below") && block && this.isContainerBlock(block)) {
-            this.listBlockObserver.observe(block);
-        } else if (block) {
-            this.listBlockObserver.unobserve(block);
-        }
         const metrics = this.listMetrics.get(container);
         if (measure || !metrics) {
             const fieldNameWidth = this.syncListFieldNameWidth(container);
             const height = container.offsetHeight;
-            const contentHeight = container.classList.contains("my-protyle-attr--av--list-below")
-                ? this.measureListBlockContentHeight(container)
-                : undefined;
-            this.listMetrics.set(container, { height, fieldNameWidth, contentHeight });
-            this.applyListSpace(container, height, contentHeight);
+            this.listMetrics.set(container, { height, fieldNameWidth });
+            this.applyListSpace(container, height);
         } else {
             if (metrics.fieldNameWidth > 0) {
                 container.style.setProperty("--db-attr-field-name-width", `${Math.ceil(metrics.fieldNameWidth)}px`);
             } else {
                 container.style.removeProperty("--db-attr-field-name-width");
             }
-            this.applyListSpace(container, metrics.height, metrics.contentHeight);
+            this.applyListSpace(container, metrics.height);
         }
     }
 
@@ -246,31 +216,9 @@ export class AttributeRenderer {
         return width;
     }
 
-    private measureListBlockContentHeight(container: HTMLElement): number | undefined {
-        const block = container.closest<HTMLElement>("[data-node-id]");
-        if (!block) return undefined;
-        // 下方模式的 offsetHeight 包含上一次列表预留的高度；扣除它后得到块原本的高度。
-        // 首次应用时 CSS 使用默认 18px，因此同时扣除默认间距 10px。
-        const previousHeight = Number.parseFloat(block.style.getPropertyValue("--db-attr-list-space"));
-        const previousReserved = Number.isFinite(previousHeight) ? previousHeight + 10 : 28;
-        return Math.max(0, block.offsetHeight - previousReserved);
-    }
-
-    private applyListSpace(container: HTMLElement, height: number, contentHeight?: number): void {
-        const value = `${Math.ceil(height)}px`;
-        const block = container.closest<HTMLElement>("[data-node-id]");
-        if (block) {
-            if (container.classList.contains("my-protyle-attr--av--list-above")) {
-                block.style.setProperty("--db-attr-list-space", value);
-                block.style.removeProperty("--db-attr-block-height");
-            } else {
-                if (contentHeight !== undefined) {
-                    block.style.setProperty("--db-attr-block-height", `${Math.ceil(contentHeight)}px`);
-                }
-                block.style.setProperty("--db-attr-list-space", value);
-            }
-        }
-
+    private applyListSpace(container: HTMLElement, height: number): void {
+        container.closest<HTMLElement>("[data-node-id]")
+            ?.style.setProperty("--db-attr-list-space", `${Math.ceil(height)}px`);
     }
 
     private createItems(items: DisplayItem[], context: RenderContext): HTMLElement[] {
