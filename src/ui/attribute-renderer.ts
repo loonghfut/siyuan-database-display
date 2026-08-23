@@ -360,10 +360,9 @@ export class AttributeRenderer {
         element.type = "button";
         element.className = "db-display__chip db-display__chip--navigation";
         const plainText = this.populateChip(element, item, context, includeFieldName);
-        // relation/block 字段显示目标块图标
-        if (item.icon) {
-            element.querySelector<HTMLElement>(".db-display__value")?.insertAdjacentElement("beforebegin", this.createBlockIcon(item.icon));
-        }
+        // relation/block 字段显示目标块图标；未设置时回退为默认文档图标，保证各行起始一致
+        const icon = item.icon ? this.createBlockIcon(item.icon) : this.createDefaultBlockIcon();
+        element.querySelector<HTMLElement>(".db-display__value")?.insertAdjacentElement("beforebegin", icon);
         const target = item.navigation!;
         const label = target.kind === "block" ? t("common.openBlock") : t("common.openFile");
         element.title = label;
@@ -603,6 +602,14 @@ export class AttributeRenderer {
         const span = document.createElement("span");
         span.className = "db-display__block-icon db-display__block-icon--emoji";
         span.textContent = emojiFromUnicode(icon);
+        return span;
+    }
+
+    /** 默认文档图标：目标块未设置图标时的占位，与思源搜索/文件树的 #iconFile 一致。 */
+    private createDefaultBlockIcon(): HTMLElement {
+        const span = document.createElement("span");
+        span.className = "db-display__block-icon db-display__block-icon--default";
+        span.appendChild(iconElement("iconFile"));
         return span;
     }
 

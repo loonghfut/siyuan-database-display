@@ -127,6 +127,35 @@
     gap: 2px;
 }
 
+/* 列表模式：图标与编辑按钮的盒高改为与首行行高（1.35em）一致的相对单位。
+   列表内的行内项目为支持多行值换行而使用 align-items: flex-start，
+   固定像素高度的图标顶部对齐后中心会高于文字中心；盒高等于行高后，
+   顶部对齐即等于与首行文字居中，且随列表字号缩放。 */
+.my-protyle-attr--av--list .db-display__block-icon {
+    width: 1.2em;
+    height: 1.35em;
+}
+
+.my-protyle-attr--av--list .db-display__block-icon--emoji {
+    font-size: 1em;
+    line-height: 1.35em;
+}
+
+.my-protyle-attr--av--list .db-display__block-icon--default svg {
+    width: 1em;
+    height: 1em;
+}
+
+.my-protyle-attr--av--list .db-display__relation-edit {
+    width: 1.35em;
+    height: 1.35em;
+}
+
+.my-protyle-attr--av--list .db-display__relation-edit svg {
+    width: 1em;
+    height: 1em;
+}
+
 /* 列表模式允许字段值随列宽换行，字段名仍保持单行。 */
 .my-protyle-attr--av--list .db-display__chip,
 .my-protyle-attr--av--list .db-display__relation-group,
@@ -292,6 +321,20 @@
     line-height: 14px;
     font-size: 12px;
     text-align: center;
+}
+
+/* 默认文档图标：目标块未设置图标时的占位，与自定义图标同盒尺寸 */
+.db-display__block-icon--default {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--b3-theme-on-surface-light);
+    opacity: .78;
+}
+
+.db-display__block-icon--default svg {
+    width: 13px;
+    height: 13px;
 }
 
 .db-display__chip[data-field-type="template"] .db-display__value {
