@@ -13,6 +13,8 @@ export interface AppearanceTheme {
 /** 属性布局：above/below = 纵向列表；inline = 思源原生右上角横排 */
 export type DisplayLayout = "inline" | "above" | "below";
 export type ListLayoutStyle = "grid" | "waterfall";
+/** 列表项样式：plain = 纯文字；capsule = 胶囊徽章；accent = 彩色强调条 */
+export type ListItemStyle = "plain" | "capsule" | "accent";
 export type EditTrigger = "click" | "dblclick";
 
 export interface DisplayConfig {
@@ -28,6 +30,7 @@ export interface DisplayConfig {
     listFontSize: number;
     listMultiColumn: boolean;
     listLayoutStyle: ListLayoutStyle;
+    listItemStyle: ListItemStyle;
     cardEnabled: boolean;
     editTrigger: EditTrigger;
     layout: DisplayLayout;
@@ -118,10 +121,12 @@ function sanitizeValueColors(value: unknown): Record<string, string | ColorRule>
 export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig {
     const fieldSettings = parseJsonObject<{ document?: string; block?: string }>(get("display-fields"), {});
     const fieldRules = parseJsonObject<{ hidden?: string; force?: string }>(get("field-rules"), {});
-    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; cardEnabled: boolean; editTrigger: EditTrigger; layout: DisplayLayout }>>(get("display-format"), {});
+    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; listItemStyle: ListItemStyle; cardEnabled: boolean; editTrigger: EditTrigger; layout: DisplayLayout }>>(get("display-format"), {});
     const appearance = parseJsonObject<AppearanceTheme & { light?: AppearanceTheme; dark?: AppearanceTheme }>(get("display-appearance"), {});
     const themeMode = typeof document !== "undefined" && document.documentElement.dataset.themeMode === "dark" ? "dark" : "light";
     const themeAppearance = appearance[themeMode] || appearance;
+    const defaultColors = themeMode === "dark" ? DEFAULT_DARK_FIELD_COLORS : DEFAULT_FIELD_COLORS;
+    const defaultBackgrounds = themeMode === "dark" ? DEFAULT_DARK_FIELD_BACKGROUNDS : DEFAULT_FIELD_BACKGROUNDS;
     const max = Number(get("max-display-length"));
     const configuredMax = Number(formatSettings.maxDisplayLength ?? max);
     const dateFormat = formatSettings.dateFormat ?? get("date-format");
@@ -145,6 +150,7 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
             : 12,
         listMultiColumn: formatSettings.listMultiColumn !== false,
         listLayoutStyle: formatSettings.listLayoutStyle === "waterfall" ? "waterfall" : "grid",
+        listItemStyle: formatSettings.listItemStyle === "capsule" ? "capsule" : formatSettings.listItemStyle === "accent" ? "accent" : "plain",
         cardEnabled: formatSettings.cardEnabled !== false,
         editTrigger: formatSettings.editTrigger === "dblclick" ? "dblclick" : "click",
         layout: formatSettings.layout === "inline"
@@ -152,8 +158,10 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
                     : formatSettings.layout === "above"
                         ? "above"
                         : "below",
-        fieldColors: Object.keys(colors).length ? colors : sanitizeColorMap(get("field-color-map"), themeMode === "dark" ? DEFAULT_DARK_FIELD_COLORS : DEFAULT_FIELD_COLORS),
-        fieldBackgrounds: Object.keys(backgrounds).length ? backgrounds : sanitizeColorMap(get("field-bg-color-map"), themeMode === "dark" ? DEFAULT_DARK_FIELD_BACKGROUNDS : DEFAULT_FIELD_BACKGROUNDS),
+        // 用户配色叠加在默认配色之上：只配置了部分类型（或旧版只迁移了部分类型）时，
+        // 其余类型回落默认值，避免胶囊底色/字段文字色在未配置的字段上整组丢失
+        fieldColors: { ...sanitizeColorMap(get("field-color-map"), defaultColors), ...colors },
+        fieldBackgrounds: { ...sanitizeColorMap(get("field-bg-color-map"), defaultBackgrounds), ...backgrounds },
         valueColors: Object.keys(themeAppearance.values || {}).length ? sanitizeValueColors(JSON.stringify(themeAppearance.values)) : sanitizeValueColors(get("field-value-color-map"))
     };
 }

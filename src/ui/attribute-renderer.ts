@@ -92,9 +92,15 @@ export class AttributeRenderer {
         const listStyleClass = context.config.listLayoutStyle === "waterfall"
             ? " my-protyle-attr--av--waterfall"
             : "";
+        // 列表项样式：capsule/accent 追加变体类，plain 不加类保持默认纯文字
+        const itemStyleClass = context.config.listItemStyle === "capsule"
+            ? " my-protyle-attr--av--capsule"
+            : context.config.listItemStyle === "accent"
+                ? " my-protyle-attr--av--accent"
+                : "";
         const containerClass = this.getContainerClass(parent);
         container.className = useList
-            ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass} ${listColumnsClass}${listStyleClass}${containerClass}`
+            ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass} ${listColumnsClass}${listStyleClass}${itemStyleClass}${containerClass}`
             : "my-protyle-attr--av";
         if (useList) {
             container.style.setProperty("--db-attr-list-font-size", `${context.config.listFontSize}px`);
@@ -262,6 +268,8 @@ export class AttributeRenderer {
     private createAssetGroup(items: DisplayItem[], context: RenderContext): HTMLElement {
         const group = document.createElement("span");
         group.className = `db-display__asset-group${context.config.showFieldNames ? " db-display__asset-group--has-field-name" : ""}`;
+        // 仅强调条样式需要分组自带字段色（currentColor 绘制条形）；其他模式不动分组样式
+        if (context.config.listItemStyle === "accent") this.applyColors(group, items[0], context.config);
         if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName, items[0], context.config));
         const values = document.createElement("span");
         values.className = "db-display__group-values";
@@ -273,6 +281,8 @@ export class AttributeRenderer {
     private createRelationGroup(items: DisplayItem[], context: RenderContext): HTMLElement {
         const group = document.createElement("span");
         group.className = `db-display__relation-group${context.config.showFieldNames ? " db-display__relation-group--has-field-name" : ""}`;
+        // 仅强调条样式需要分组自带字段色（currentColor 绘制条形）；其他模式不动分组样式
+        if (context.config.listItemStyle === "accent") this.applyColors(group, items[0], context.config);
         if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName, items[0], context.config));
         const values = document.createElement("span");
         values.className = "db-display__group-values";
@@ -673,6 +683,7 @@ export class AttributeRenderer {
             listFontSize: config.listFontSize,
             listMultiColumn: config.listMultiColumn,
             listLayoutStyle: config.listLayoutStyle,
+            listItemStyle: config.listItemStyle,
             cardEnabled: config.cardEnabled,
             editTrigger: config.editTrigger,
             layout: config.layout,

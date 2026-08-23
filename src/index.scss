@@ -281,7 +281,71 @@
     background-image: none !important;
 }
 
+/* ===== 列表项样式变体（由渲染器按 listItemStyle 追加变体类，行内模式不参与） ===== */
 
+/* 胶囊徽章样式：每个字段一枚圆角胶囊，随列表字号缩放（em 内边距）。
+   底色取「标签样式」面板配置的字段背景色/按值覆盖背景——芯片与字段名标签
+   上已有行内 --db-chip-background（未配置时不设置，回退中性半透明）；
+   分组字段的字段名与各值胶囊同样取该字段底色；hover 用亮度反馈，
+   不替换掉配置色。多选项色块保持思源自带选项色。 */
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule {
+    gap: 4px 8px;
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__chip {
+    width: fit-content;
+    padding: 0.12em 0.6em;
+    /* 可换行元素不用 999px：多行时半圆端点会让首末行文字落到圆弧外的未绘制区
+       （表现为角落缺底色）。0.8em 在单行时恰为行盒+内边距总高的一半，仍是
+       完整胶囊端点；多行退化为圆角矩形 */
+    border-radius: 0.8em;
+    /* 基础 chip 规则为行内模式的渐变底写了 transparent !important，胶囊需同级反压 */
+    background-color: var(--db-chip-background, color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent)) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
+    transition: color 0.15s ease, text-decoration-color 0.15s ease, filter 0.15s ease;
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__chip:hover {
+    filter: brightness(0.95);
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__field-name {
+    flex-basis: auto;
+    width: auto;
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__relation-group > .db-display__field-name .db-display__field-name-label,
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__asset-group > .db-display__field-name .db-display__field-name-label {
+    padding: 0.12em 0.6em;
+    border-radius: 999px;
+    background-color: var(--db-chip-background, color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__group-values > .db-display__chip {
+    padding: 0.12em 0.6em;
+    /* 值可能换行，同上用 0.8em 半径 */
+    border-radius: 0.8em;
+    /* 同上：反压基础 chip 的 transparent !important */
+    background-color: var(--db-chip-background, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__option-chip {
+    border-radius: 999px;
+}
+
+/* 彩色强调条样式：每个字段行左侧一枚 3px 圆角竖条，颜色取该字段的行内配色
+   （currentColor，即“标签样式”面板配置的字段色/值色），hover 随文字变色；
+   字段名列宽对齐保留，各行值仍从同一列起始。 */
+.my-protyle-attr--av--list.my-protyle-attr--av--accent > .db-display__chip,
+.my-protyle-attr--av--list.my-protyle-attr--av--accent > .db-display__relation-group,
+.my-protyle-attr--av--list.my-protyle-attr--av--accent > .db-display__asset-group {
+    border-left: 3px solid currentColor;
+    border-top-left-radius: 3px;
+    border-bottom-left-radius: 3px;
+    padding-left: 8px;
+}
 
 .db-display__chip {
     display: inline-flex;
