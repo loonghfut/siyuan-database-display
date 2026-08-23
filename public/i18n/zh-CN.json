@@ -59,6 +59,7 @@
         "confirmTemplateContent": "模板表达式会应用到该列的每一行，确定继续吗？"
     },
     "settings": {
+        "navigation": "设置分类",
         "panel": {
             "displayFields": { "title": "显示字段", "description": "分别选择文档块和普通块需要显示的字段", "document": "文档块", "block": "普通块" },
             "fieldRules": { "title": "字段例外", "description": "隐藏字段不会显示；强制显示字段在没有值时保留字段名", "hidden": "隐藏字段", "force": "强制显示", "hiddenPlaceholder": "例如：密码", "forcePlaceholder": "例如：状态", "addHidden": "添加隐藏字段", "addForce": "添加强制显示", "removeRule": "删除" },

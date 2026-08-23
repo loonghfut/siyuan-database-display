@@ -1,4 +1,5 @@
 import { SettingUtils } from "@/libs/setting-utils";
+import { t } from "@/i18n";
 
 export interface SettingsCategory {
     key: string;
@@ -30,7 +31,7 @@ function mountNavigation(dialogElement: HTMLElement, categories: SettingsCategor
 
     const navigation = document.createElement("nav");
     navigation.className = "db-settings-nav";
-    navigation.setAttribute("aria-label", "Settings categories");
+    navigation.setAttribute("aria-label", t("settings.navigation"));
     header.append(navigation);
     header.classList.add("db-settings-header--has-nav");
 

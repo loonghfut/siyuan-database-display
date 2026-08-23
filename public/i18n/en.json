@@ -59,6 +59,7 @@
         "confirmTemplateContent": "The template expression applies to every row of this column. Continue?"
     },
     "settings": {
+        "navigation": "Settings categories",
         "panel": {
             "displayFields": { "title": "Fields to display", "description": "Choose the fields shown on document blocks and regular blocks", "document": "Document blocks", "block": "Regular blocks" },
             "fieldRules": { "title": "Field exceptions", "description": "Hidden fields are omitted. Forced fields retain their name when empty", "hidden": "Hide fields", "force": "Always show", "hiddenPlaceholder": "For example: Password", "forcePlaceholder": "For example: Status", "addHidden": "Add hidden field", "addForce": "Add always show", "removeRule": "Remove" },

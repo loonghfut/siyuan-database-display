@@ -16,7 +16,7 @@ export interface RelationEditorOptions {
     keyName: string;
     relation?: AttributeViewRelation;
     currentValue: unknown;
-    onSave?: () => void;
+    onSave?: (newValue: RelationValue) => void;
     onCancel?: () => void;
     onClose: () => void;
 }
@@ -265,7 +265,7 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
         try {
             await repository.setValue(options.avID, options.keyID, options.itemID, value);
             showMessage(t("common.saveSuccess"), 2000, "info");
-            options.onSave?.();
+            options.onSave?.(value.relation);
             options.onClose();
         } catch (error) {
             const message = toErrorMessage(error);
@@ -277,6 +277,12 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
     const dismiss = (): void => {
         options.onClose();
         options.onCancel?.();
+    };
+    const onEscape = (event: KeyboardEvent): void => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        event.stopPropagation();
+        dismiss();
     };
     const onOutsideClick = (event: MouseEvent): void => {
         const target = event.target as Node;
@@ -303,6 +309,7 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
     searchInput.addEventListener("input", onSearch);
     list.addEventListener("scroll", onScroll);
     window.addEventListener("resize", onResize);
+    document.addEventListener("keydown", onEscape, true);
     outsideTimer = window.setTimeout(() => document.addEventListener("mousedown", onOutsideClick), 100);
 
     const cleanup = (): void => {
@@ -312,6 +319,7 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
         if (searchTimer) window.clearTimeout(searchTimer);
         if (outsideTimer) window.clearTimeout(outsideTimer);
         document.removeEventListener("mousedown", onOutsideClick);
+        document.removeEventListener("keydown", onEscape, true);
         window.removeEventListener("resize", onResize);
     };
 

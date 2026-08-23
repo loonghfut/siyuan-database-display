@@ -119,7 +119,10 @@ export function convertToAVValue(keyType: string, value: any): AttributeViewWrit
             if (value && typeof value === 'object') {
                 const content = Number(value.content ?? 0);
                 const hasEndDate = Boolean(value.hasEndDate);
-                const content2 = hasEndDate ? Number(value.content2 ?? 0) : undefined;
+                // 结束时间为空/无效时不写 content2，避免把 null 归一成 0（1970 年）
+                const content2 = hasEndDate && value.content2 !== null && value.content2 !== undefined
+                    ? Number(value.content2)
+                    : undefined;
                 return { date: { content, isNotTime: Boolean(value.isNotTime) || false, hasEndDate, content2 } } as any;
             }
             return { date: { content: Number(value ?? 0), isNotTime: false } };

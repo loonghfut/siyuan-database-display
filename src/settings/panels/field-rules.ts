@@ -16,7 +16,7 @@ interface RuleSection {
     placeholder: string;
 }
 
-function renderRuleRow(section: RuleSection, index: number, onRemove: () => void): void {
+function renderRuleRow(section: RuleSection, index: number, removeLabel: string, onRemove: () => void): void {
     const row = document.createElement("div");
     row.className = "db-settings__value-rule db-settings__field-rule";
     const name = createTextInput(section.rules[index], section.placeholder);
@@ -24,7 +24,7 @@ function renderRuleRow(section: RuleSection, index: number, onRemove: () => void
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "db-settings__remove-rule";
-    remove.setAttribute("aria-label", "remove");
+    remove.setAttribute("aria-label", removeLabel);
     remove.addEventListener("click", () => {
         section.rules.splice(index, 1);
         onRemove();
@@ -36,10 +36,10 @@ function renderRuleRow(section: RuleSection, index: number, onRemove: () => void
     section.list.append(row);
 }
 
-function renderSection(section: RuleSection, onChanged: () => void): void {
+function renderSection(section: RuleSection, removeLabel: string, onChanged: () => void): void {
     section.list.replaceChildren();
-    section.rules.forEach((_, index) => renderRuleRow(section, index, () => {
-        renderSection(section, onChanged);
+    section.rules.forEach((_, index) => renderRuleRow(section, index, removeLabel, () => {
+        renderSection(section, removeLabel, onChanged);
         onChanged();
     }));
 }
@@ -71,12 +71,12 @@ export function addFieldRulesPanel(addPanel: AddPanel, text: SettingsPanelText):
         const hiddenSectionData: RuleSection = { rules: hiddenRules, list: hiddenList, placeholder: text.fieldRules.hiddenPlaceholder };
         addHidden.addEventListener("click", () => {
             hiddenRules.push("");
-            renderSection(hiddenSectionData, save);
+            renderSection(hiddenSectionData, text.fieldRules.removeRule, save);
             save();
             const inputs = hiddenList.querySelectorAll<HTMLInputElement>(".b3-text-field");
             inputs[inputs.length - 1]?.focus();
         });
-        renderSection(hiddenSectionData, save);
+        renderSection(hiddenSectionData, text.fieldRules.removeRule, save);
         hiddenSection.append(hiddenTitle, hiddenList, addHidden);
 
         const forceSection = document.createElement("section");
@@ -92,12 +92,12 @@ export function addFieldRulesPanel(addPanel: AddPanel, text: SettingsPanelText):
         const forceSectionData: RuleSection = { rules: forceRules, list: forceList, placeholder: text.fieldRules.forcePlaceholder };
         addForce.addEventListener("click", () => {
             forceRules.push("");
-            renderSection(forceSectionData, save);
+            renderSection(forceSectionData, text.fieldRules.removeRule, save);
             save();
             const inputs = forceList.querySelectorAll<HTMLInputElement>(".b3-text-field");
             inputs[inputs.length - 1]?.focus();
         });
-        renderSection(forceSectionData, save);
+        renderSection(forceSectionData, text.fieldRules.removeRule, save);
         forceSection.append(forceTitle, forceList, addForce);
 
         panel.addEventListener("change", save);

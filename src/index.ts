@@ -75,10 +75,19 @@ export default class DatabaseDisplay extends Plugin {
     private handleWebsocketMessage(event: MessageEvent): void {
         try {
             const message = JSON.parse(event.data);
+            // /api/av/* 直写端点（含本插件写入的 setValue）通过 refreshAttributeView 广播变更
+            if (message.cmd === "refreshAttributeView") {
+                const avID = message.data?.id;
+                if (typeof avID === "string" && avID) this.controller.handleAttributeViewUpdate([avID]);
+                return;
+            }
             if (message.cmd !== "transactions") return;
             const operations = message.data?.flatMap((item: { doOperations?: Array<Record<string, unknown>> }) => item.doOperations || []) || [];
+            // 与内核 shouldBroadcastAttrViewTransactions 的判定对齐：action 含 "attrview"
+            // 的事务（updateAttrViewCell、insertAttrViewBlock、setAttrView* 等）会广播给
+            // 包括发起方在内的所有客户端，据此定向刷新受影响的属性视图。
             const relevant = operations.filter(operation =>
-                typeof operation.action === "string" && operation.action.startsWith("updateAttrView")
+                typeof operation.action === "string" && operation.action.toLowerCase().includes("attrview")
             );
             if (relevant.length === 0) return;
             // 只关心与当前可见内容相关的属性视图，减少无关刷新

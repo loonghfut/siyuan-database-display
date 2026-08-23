@@ -4,6 +4,17 @@ import { t } from "@/i18n";
 import { assetLabel, assetThumbnailUrl } from "@/ui/asset-utils";
 import { createIconButton, iconElement } from "@/libs/dom";
 
+// URL 字段值来自数据库内容（用户可控），仅允许已知协议，防止 javascript: 等注入
+const NAVIGATION_URL_PROTOCOLS = new Set(["http:", "https:", "siyuan:", "mailto:"]);
+
+function isSafeNavigationUrl(value: string): boolean {
+    try {
+        return NAVIGATION_URL_PROTOCOLS.has(new URL(value).protocol);
+    } catch {
+        return false;
+    }
+}
+
 export interface RenderContext {
     blockId: string;
     config: DisplayConfig;
@@ -421,11 +432,13 @@ export class AttributeRenderer {
         return wrapper;
     }
 
-    private createUrlChip(item: DisplayItem, context: RenderContext): HTMLAnchorElement {
+    private createUrlChip(item: DisplayItem, context: RenderContext): HTMLElement {
+        const href = String(item.rawValue || "");
+        if (!isSafeNavigationUrl(href)) return this.createEditableOrReadonlyChip(item, context);
         const element = document.createElement("a");
         element.className = "db-display__chip";
         const plainText = this.populateChip(element, item, context, true);
-        element.href = String(item.rawValue || "");
+        element.href = href;
         element.target = "_blank";
         element.rel = "noopener noreferrer";
         element.setAttribute("aria-label", this.chipLabel(item, plainText, true));

@@ -96,7 +96,7 @@ export class NetworkClient {
 
         if (!proxyApiResponse.ok) {
             const errorText = await proxyApiResponse.text();
-            throw new Error(`代理请求失败: ${proxyApiResponse.status} ${proxyApiResponse.statusText} - ${errorText}`);
+            throw new Error(`Proxy request failed: ${proxyApiResponse.status} ${proxyApiResponse.statusText} - ${errorText}`);
         }
 
         const proxyResult = await proxyApiResponse.json() as ProxyResponse;
@@ -120,7 +120,7 @@ export class NetworkClient {
             });
         }
 
-        throw new Error(`未预期的代理响应结构。代理返回: ${JSON.stringify(proxyResult)}`);
+        throw new Error(`Unexpected proxy response structure. Proxy returned: ${JSON.stringify(proxyResult).slice(0, 200)}`);
     }
 
     private async fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeout: number): Promise<Response> {

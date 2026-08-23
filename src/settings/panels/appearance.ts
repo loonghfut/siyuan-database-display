@@ -95,13 +95,14 @@ export function addAppearancePanel(addPanel: AddPanel, text: SettingsPanelText, 
                 const row = document.createElement("label");
                 row.className = "db-settings__palette-row";
                 row.append(createFieldTypeLabel(type, text, shouldShowProBadge()));
+                // 存储键为 color/bg；createColorControl 的原生色板参数为 color/background
                 (["color", "bg"] as const).forEach(kind => {
                     const control = createColorControl(
                         current.types[type]?.[kind],
                         kind === "color" ? defaults.colors[type] : defaults.backgrounds[type],
                         kind === "color" ? text.appearance.textColor : text.appearance.backgroundColor,
                         text.appearance.opacity,
-                        kind
+                        kind === "color" ? "color" : "background"
                     );
                     control.trigger.dataset.type = type;
                     control.trigger.dataset.kind = kind;

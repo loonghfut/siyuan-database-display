@@ -21,6 +21,8 @@ import {
     closeDropdown,
     closeEditorPanel,
     bindOutsideDismiss,
+    bindEscapeDismiss,
+    combineCleanup,
     setOpenPanel,
     setOpenPanelCleanup,
     isWithinPalette
@@ -42,11 +44,18 @@ function handleTemplateEdit(options: InlineEditOptions): void {
     handlePopupEdit({ ...options, currentValue: options.template ?? '' });
 }
 
+// 复选框写请求在途集合：快速连点同一复选框时基于同一旧值并发翻转会造成竞态回弹；
+// 按条目粒度记录，不影响其他字段的并发切换
+const checkboxWritesInFlight = new Set<string>();
+
 /**
  * 处理复选框直接切换
  */
 async function handleCheckboxEdit(options: InlineEditOptions) {
     const { avID, itemID, currentValue, onSave } = options;
+    const writeKey = `${avID}:${options.keyID}:${itemID}`;
+    if (checkboxWritesInFlight.has(writeKey)) return;
+    checkboxWritesInFlight.add(writeKey);
 
     // 直接切换状态
     const newValue = !Boolean(currentValue);
@@ -64,6 +73,8 @@ async function handleCheckboxEdit(options: InlineEditOptions) {
         const message = toErrorMessage(error);
         console.error(t('common.saveFailed', { message }), error);
         showMessage(t('common.saveFailed', { message }), 5000, 'error');
+    } finally {
+        checkboxWritesInFlight.delete(writeKey);
     }
 }
 
@@ -141,7 +152,10 @@ function handleSelectEdit(options: InlineEditOptions) {
     positionDropdown(dropdown, element);
 
     // 保存函数
+    let isSaving = false;
     const save = async (selectedValue: string) => {
+        if (isSaving) return;
+        isSaving = true;
         try {
             const value = convertToAVValue('select', selectedValue);
             await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
@@ -156,6 +170,7 @@ function handleSelectEdit(options: InlineEditOptions) {
             const message = toErrorMessage(error);
             console.error(t('common.saveFailed', { message }), error);
             showMessage(t('common.saveFailed', { message }), 5000, 'error');
+            isSaving = false;
         }
     };
 
@@ -169,17 +184,24 @@ function handleSelectEdit(options: InlineEditOptions) {
         }
     });
 
-    // 点击外部关闭
+    const close = () => {
+        closeDropdown(dropdown);
+        if (onCancel) onCancel();
+    };
+
+    // 点击外部关闭 + Esc 关闭
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         if (isWithinPalette(target)) return;
         if (!dropdown.contains(target) && !element.contains(target)) {
-            closeDropdown(dropdown);
-            if (onCancel) onCancel();
+            close();
         }
     };
 
-    setOpenPanelCleanup(bindOutsideDismiss(handleClickOutside));
+    setOpenPanelCleanup(combineCleanup(
+        bindOutsideDismiss(handleClickOutside),
+        bindEscapeDismiss(close)
+    ));
 }
 
 /**
@@ -275,7 +297,10 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
     positionDropdown(dropdown, element);
 
     // 保存函数
+    let isSaving = false;
     const save = async () => {
+        if (isSaving) return;
+        isSaving = true;
         try {
             const values = Array.from(selectedValues);
             const value = convertToAVValue('mSelect', values);
@@ -291,6 +316,7 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
             const message = toErrorMessage(error);
             console.error(t('common.saveFailed', { message }), error);
             showMessage(t('common.saveFailed', { message }), 5000, 'error');
+            isSaving = false;
         }
     };
 
@@ -300,17 +326,24 @@ function handleMultiSelectEdit(options: InlineEditOptions) {
         save();
     });
 
-    // 点击外部关闭
+    const close = () => {
+        closeDropdown(dropdown);
+        if (onCancel) onCancel();
+    };
+
+    // 点击外部关闭 + Esc 关闭
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         if (isWithinPalette(target)) return;
         if (!dropdown.contains(target) && !element.contains(target)) {
-            closeDropdown(dropdown);
-            if (onCancel) onCancel();
+            close();
         }
     };
 
-    setOpenPanelCleanup(bindOutsideDismiss(handleClickOutside));
+    setOpenPanelCleanup(combineCleanup(
+        bindOutsideDismiss(handleClickOutside),
+        bindEscapeDismiss(close)
+    ));
 }
 
 function handleRelationEdit(options: InlineEditOptions): void {
@@ -323,7 +356,7 @@ function handleRelationEdit(options: InlineEditOptions): void {
         keyName: options.keyName,
         relation: options.relation,
         currentValue: options.currentValue,
-        onSave: () => options.onSave?.(options.currentValue),
+        onSave: newValue => options.onSave?.(newValue),
         onCancel: () => options.onCancel?.(),
         onClose: () => {
             if (editor) closeEditorPanel(editor.panel);
@@ -448,7 +481,10 @@ function handleAssetEdit(options: InlineEditOptions): void {
         const target = event.target as Node;
         if (!popup.contains(target) && !element.contains(target)) cancel();
     };
-    setOpenPanelCleanup(bindOutsideDismiss(handleClickOutside));
+    setOpenPanelCleanup(combineCleanup(
+        bindOutsideDismiss(handleClickOutside),
+        bindEscapeDismiss(cancel)
+    ));
 }
 
 async function uploadAsset(file: File): Promise<AssetReference> {
@@ -554,8 +590,9 @@ function handleDateEdit(options: InlineEditOptions) {
     const save = async () => {
         try {
             const startTs = startInput.value ? new Date(startInput.value).getTime() : null;
-            const hasEnd = rangeCheckbox.checked;
-            const endTs = hasEnd && endInput.value ? new Date(endInput.value).getTime() : null;
+            // 勾选了结束时间但留空时视为未启用，避免把结束时间写成 0（1970 年）
+            const hasEnd = rangeCheckbox.checked && Boolean(endInput.value);
+            const endTs = hasEnd ? new Date(endInput.value).getTime() : null;
 
             const value = convertToAVValue('date', { content: startTs, hasEndDate: hasEnd, content2: endTs, isNotTime: false });
             await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
@@ -593,16 +630,22 @@ function handleDateEdit(options: InlineEditOptions) {
         });
     });
 
-    // 点击外部关闭
+    // 点击外部关闭 + Esc 关闭（输入框内已有 Esc 处理，此处覆盖焦点在按钮上的场景）
+    const close = () => {
+        closeDropdown(datePicker);
+        if (onCancel) onCancel();
+    };
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         if (!datePicker.contains(target) && !element.contains(target)) {
-            closeDropdown(datePicker);
-            if (onCancel) onCancel();
+            close();
         }
     };
 
-    setOpenPanelCleanup(bindOutsideDismiss(handleClickOutside));
+    setOpenPanelCleanup(combineCleanup(
+        bindOutsideDismiss(handleClickOutside),
+        bindEscapeDismiss(close)
+    ));
 }
 
 /**
@@ -756,7 +799,7 @@ function handlePopupEdit(options: InlineEditOptions) {
         }
     });
 
-    // 点击弹窗外部关闭
+    // 点击弹窗外部关闭 + Esc 关闭（输入框内已有 Esc 处理，此处覆盖焦点在按钮上的场景）
     const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         if (!popup.contains(target) && !element.contains(target)) {
@@ -765,7 +808,10 @@ function handlePopupEdit(options: InlineEditOptions) {
     };
 
     // 延迟添加点击外部监听器
-    setOpenPanelCleanup(bindOutsideDismiss(handleClickOutside));
+    setOpenPanelCleanup(combineCleanup(
+        bindOutsideDismiss(handleClickOutside),
+        bindEscapeDismiss(cancel)
+    ));
 }
 
 export {

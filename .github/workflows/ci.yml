@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.6.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # siyuan npm 包内含 .ts 源文件，会因 noUnusedLocals 产生与本项目无关的报错，
+      # 因此只统计 src 下的类型错误
+      - name: Typecheck
+        run: |
+          npx tsc --noEmit > tsc.log 2>&1 || true
+          errors=$(grep 'error TS' tsc.log | grep -v '^node_modules' || true)
+          if [ -n "$errors" ]; then
+            echo "$errors"
+            exit 1
+          fi

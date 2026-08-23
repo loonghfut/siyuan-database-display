@@ -19,8 +19,13 @@ export function getVisibleAttributeBlockIds(): string[] {
     return [...getVisibleAttributeBlockParents().keys()];
 }
 
+// 块 ID 白名单：思源默认 ID 为时间戳-字母数字，用户也可自定义含 CJK 的 ID，
+// 因此允许任意文字/数字；排除引号等字符后再拼接 SQL（与转义互为兜底）
+const SAFE_BLOCK_ID = /^[\p{L}\p{N}_-]+$/u;
+
 export async function resolveDocumentId(blockId: string): Promise<string> {
     if (!blockId) return "";
+    if (!SAFE_BLOCK_ID.test(blockId)) return blockId;
     const escapedId = blockId.replace(/'/g, "''");
     const response = await fetchSyncPost("/api/query/sql", { stmt: `SELECT root_id FROM blocks WHERE id = '${escapedId}'` }) as IWebSocketData;
     if (response.code !== 0 || !Array.isArray(response.data)) return blockId;

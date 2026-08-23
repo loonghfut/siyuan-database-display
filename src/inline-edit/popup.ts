@@ -75,13 +75,15 @@ export function closeDropdown(dropdown: HTMLElement) {
 }
 
 export function closeEditorPanel(panel: HTMLElement) {
-    if (!panel.parentNode) return;
+    // 面板可能已被思源移出 DOM：此时仍需复位单例状态并清理外部监听，
+    // 否则 bindOutsideDismiss 注册的 document 监听会残留。
     if (openPanel === panel) {
         openPanelCleanup?.();
         openPanelCleanup = null;
         openPanel = null;
     }
     closeOptionColorPalette();
+    if (!panel.parentNode) return;
     panel.classList.add('inline-edit-panel--closing');
     window.setTimeout(() => panel.remove(), 120);
 }
@@ -135,12 +137,15 @@ export function openOptionColorPalette(options: {
     document.body.appendChild(paletteElement);
     positionPanelNear(paletteElement, options.swatch, 4);
     palette = paletteElement;
-    paletteCleanup = bindOutsideDismiss((event: MouseEvent) => {
-        const target = event.target as Node;
-        if (!paletteElement.contains(target) && !options.swatch.contains(target)) {
-            closeOptionColorPalette();
-        }
-    });
+    paletteCleanup = combineCleanup(
+        bindOutsideDismiss((event: MouseEvent) => {
+            const target = event.target as Node;
+            if (!paletteElement.contains(target) && !options.swatch.contains(target)) {
+                closeOptionColorPalette();
+            }
+        }),
+        bindEscapeDismiss(() => closeOptionColorPalette())
+    );
 }
 
 export function bindOutsideDismiss(handler: (event: MouseEvent) => void): () => void {
@@ -149,6 +154,23 @@ export function bindOutsideDismiss(handler: (event: MouseEvent) => void): () => 
         window.clearTimeout(timer);
         document.removeEventListener('mousedown', handler);
     };
+}
+
+/** 注册 Esc 关闭（捕获阶段，面板内无输入框时也能响应），返回清理函数。 */
+export function bindEscapeDismiss(handler: () => void): () => void {
+    const listener = (event: KeyboardEvent) => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        handler();
+    };
+    document.addEventListener('keydown', listener, true);
+    return () => document.removeEventListener('keydown', listener, true);
+}
+
+/** 合并多个清理函数为一个，便于存入单例 cleanup 槽位。 */
+export function combineCleanup(...cleanups: Array<() => void>): () => void {
+    return () => cleanups.forEach(cleanup => cleanup());
 }
 
 export function prepareEditorPanel(panel: HTMLElement, label: string): void {

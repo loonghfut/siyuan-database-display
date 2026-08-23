@@ -1,6 +1,6 @@
 {
   "name": "siyuan-database-display",
-  "version": "3.2.0",
+  "version": "4.2.0",
   "type": "module",
   "packageManager": "pnpm@9.6.0",
   "description": "Display database attribute values of blocks inline in SiYuan (思源笔记数据库数据展示插件)",
@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development VITE_SOURCEMAP=inline vite build --watch",
     "build": "cross-env NODE_ENV=production vite build",
+    "typecheck": "tsc --noEmit",
     "make-link": "node --no-warnings ./scripts/make_dev_link.js",
     "make-link-win": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/elevate.ps1 -scriptPath ./scripts/make_dev_link.js",
     "update-version": "node --no-warnings ./scripts/update_version.js",

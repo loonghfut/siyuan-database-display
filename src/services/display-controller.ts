@@ -37,6 +37,8 @@ export class DisplayController {
     private readonly scheduler: RefreshScheduler;
     private readonly editorObserver: EditorObserver;
     private documentId = "";
+    // 文档切换序号：快速连续切换时丢弃慢响应的旧结果，避免覆盖新文档 ID
+    private switchVersion = 0;
     private autoTimer: ReturnType<typeof setInterval> | undefined;
     private visibleAttributeViewIds = new Set<string>();
     private readonly visibleBlockIdsByAttributeViewId = new Map<string, Set<string>>();
@@ -64,7 +66,17 @@ export class DisplayController {
     async switchDocument(detail: unknown): Promise<void> {
         const blockId = getCurrentDocumentId(detail);
         if (!blockId) return;
-        this.documentId = await resolveDocumentId(blockId);
+        const version = ++this.switchVersion;
+        let documentId: string;
+        try {
+            documentId = await resolveDocumentId(blockId);
+        } catch (error) {
+            // fetchSyncPost 在内核不可达时会 reject；保留旧文档 ID，避免未处理 rejection
+            console.warn("[DatabaseDisplay] Failed to resolve document id", error);
+            return;
+        }
+        if (this.disposed || version !== this.switchVersion) return;
+        this.documentId = documentId;
         this.scheduleRefresh(true);
     }
 
@@ -293,6 +305,10 @@ export class DisplayController {
 
     private async openEditor(blockId: string, item: DisplayItem, element: HTMLElement, allowReadOnlyField = false): Promise<void> {
         if (!this.canEditItem(item, allowReadOnlyField)) return;
+        // 保存后仅定向强制刷新被编辑的块；同列其他块的更新由 websocket 广播
+        // （transactions / refreshAttributeView）触发，避免每次编辑保存都使
+        // 全部可见块的缓存失效（N+1 请求放大）。
+        const onEdited = () => this.scheduleRefresh(true, new Set([blockId]));
         try {
             if (item.type === "template") {
                 enableInlineEdit({
@@ -307,7 +323,7 @@ export class DisplayController {
                     template: item.template,
                     selectOptions: item.selectOptions,
                     relation: item.relation,
-                    onSave: () => this.scheduleRefresh(true)
+                    onSave: onEdited
                 });
                 return;
             }
@@ -328,7 +344,7 @@ export class DisplayController {
                 currentValue: item.rawValue,
                 selectOptions: item.selectOptions,
                 relation: item.relation,
-                onSave: () => this.scheduleRefresh(true)
+                onSave: onEdited
             });
         } catch (error) {
             const message = toErrorMessage(error);
