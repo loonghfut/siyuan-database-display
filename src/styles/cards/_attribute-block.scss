@@ -49,6 +49,13 @@
     left: var(--db-card-gap);
 }
 
+/* 列表项的原生竖线（.li::before，原生 left:17px 即点号区 34px 的中线）锚定
+   同一 padding box，随负 margin 左移了一个间隙；与点号同样等量补回，卡片内
+   包含子列表时竖线相对正文与点号的位置与未开启时一致。 */
+[data-node-id][custom-avs].db-display--card.li:not(.protyle-title)::before {
+    left: calc(17px + var(--db-card-gap));
+}
+
 /* 负 margin 让 .protyle-attr 的定位基准（宿主 padding box）左移了间隙宽度，
    属性列表的 left:0 会落在卡片边框上；用同一变量补回后，列表回到块的
    原左缘（即未开卡片时 left:0 的屏幕位置），普通块与容器块同样处理。
@@ -58,9 +65,12 @@
     width: calc(100% - var(--db-card-gap, 0px) * 2);
 }
 
-/* 列表宿主的上方列表避让点号/序号（34px），在间隙补偿之上仍从正文内容盒
-   起始线开始，覆盖 index.scss 中 container-list 上方布局的 left:34px 基线。 */
-[data-node-id][custom-avs].db-display--card:not(.protyle-title):is(.li, .list) .my-protyle-attr--av--list-above {
+/* 列表项宿主（NodeListItem）上/下方列表避让点号/序号（34px）；列表块宿主
+   （NodeList）的子项随预留 padding 整体让位、无重合，上/下方均回落到基础
+   贴边规则（left: var(--db-card-gap)）。在间隙补偿之上叠加 34px，覆盖
+   display/_container.scss 的宿主 left:34px 基线。 */
+[data-node-id][custom-avs].db-display--card.li:not(.protyle-title) > .protyle-attr > .my-protyle-attr--av--list-above,
+[data-node-id][custom-avs].db-display--card.li:not(.protyle-title) > .protyle-attr > .my-protyle-attr--av--list-below {
     left: calc(34px + var(--db-card-gap));
     width: calc(100% - 34px - var(--db-card-gap, 0px) * 2);
 }

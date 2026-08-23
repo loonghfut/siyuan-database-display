@@ -110,9 +110,13 @@
     bottom: auto;
 }
 
-/* 列表项的原生点号/序号占据左侧 34px；上方属性仍保持用户选择的布局，
-   但从正文起始线开始，避免与 .protyle-action 重叠。 */
-.my-protyle-attr--av--container-list.my-protyle-attr--av--list-above {
+/* 列表项（NodeListItem，.li）的原生点号/序号占据左侧 34px，且点号绝对定位于
+   块顶、子列表竖线贯穿到块底，都会落进上/下方预留区——属性从正文起始线
+   （34px）开始避开两者。列表块（NodeList，.list）宿主的子项随预留 padding
+   整体让位、无重合，保留贴边定位，不在此避让。用直接子链按宿主块类型限定，
+   只命中宿主自身的属性列表；卡片模式的对应覆盖在 cards/_attribute-block.scss。 */
+[data-node-id].li > .protyle-attr > .my-protyle-attr--av--list-above,
+[data-node-id].li > .protyle-attr > .my-protyle-attr--av--list-below {
     left: 34px;
     width: calc(100% - 34px);
 }
