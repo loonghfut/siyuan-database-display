@@ -1,0 +1,415 @@
+// 直接编辑各字段编辑器：资源列表、关联搜索行、下拉选项与选项调色板、日期行
+.inline-edit-asset {
+    min-width: 240px;
+    max-width: min(320px, calc(100vw - 24px));
+}
+
+.inline-edit-asset__list {
+    display: grid;
+    gap: 2px;
+    max-height: 220px;
+    padding: 8px 10px;
+    overflow: auto;
+    background: var(--b3-menu-background, var(--b3-theme-surface));
+}
+
+.inline-edit-asset__row {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 6px;
+    padding: 3px 4px;
+    border-radius: var(--b3-border-radius, 4px);
+}
+
+.inline-edit-asset__row:hover {
+    background: var(--b3-list-hover);
+}
+
+.inline-edit-asset__icon {
+    flex: 0 0 auto;
+    width: 13px;
+    height: 13px;
+    color: var(--b3-theme-on-surface-light);
+}
+
+.inline-edit-asset__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.inline-edit-asset__remove {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    cursor: pointer;
+}
+
+.inline-edit-asset__remove:hover {
+    background: var(--b3-list-hover);
+    color: var(--b3-card-error-color, var(--b3-theme-on-surface));
+}
+
+.inline-edit-asset__empty {
+    padding: 4px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.inline-edit-asset__add-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--b3-border-color);
+    background: var(--b3-menu-background, var(--b3-theme-surface));
+}
+
+.inline-edit-asset__file {
+    display: none;
+}
+
+.inline-edit-action--primary {
+    background: var(--b3-theme-primary);
+    color: var(--b3-theme-on-primary);
+}
+
+.inline-edit-action--primary:hover {
+    background: var(--b3-theme-primary-light);
+    color: var(--b3-theme-on-primary);
+}
+
+.inline-edit-dropdown-list {
+    max-height: min(260px, calc(100vh - 100px));
+    padding: 6px 8px 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.inline-edit-dropdown-list::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+.inline-edit-dropdown-list::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: var(--b3-border-radius, 4px);
+    background-clip: padding-box;
+    box-shadow: inset 0 0 2.5px 2.5px var(--b3-scroll-color, rgba(0, 0, 0, 0.24));
+}
+
+.inline-edit-relation__search {
+    padding: 8px;
+    border-bottom: 1px solid var(--b3-theme-surface-lighter, var(--b3-border-color));
+}
+
+.inline-edit-relation__input {
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+.inline-edit-relation__list {
+    max-height: min(360px, calc(100vh - 150px));
+}
+
+.inline-edit-relation__row {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 30px;
+    margin: 1px 0;
+    padding: 0 8px;
+    border: 0;
+    border-radius: var(--b3-border-radius, 4px);
+    background: transparent;
+    color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 13px;
+    line-height: 30px;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 110ms ease, color 110ms ease, transform 100ms ease;
+}
+
+.inline-edit-relation__row:hover {
+    background: var(--b3-list-hover);
+}
+
+.inline-edit-relation__row:active {
+    transform: scale(0.985);
+}
+
+.inline-edit-relation__row:focus-visible,
+.inline-edit-relation__load-more:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: -2px;
+}
+
+.inline-edit-relation__row > svg {
+    width: 14px;
+    height: 14px;
+    padding: 4px;
+    color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+    box-sizing: content-box;
+    pointer-events: none;
+}
+
+.inline-edit-relation__row > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.inline-edit-relation__row--selected {
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+    font-weight: 500;
+}
+
+.inline-edit-relation__row--selected:hover {
+    background: var(--b3-list-hover);
+}
+
+.inline-edit-relation__row--selected > svg {
+    color: var(--b3-theme-primary);
+}
+
+.inline-edit-relation__separator {
+    height: 1px;
+    margin: 6px 0;
+    background: var(--b3-theme-surface-lighter, var(--b3-border-color));
+}
+
+.inline-edit-relation__message {
+    padding: 16px 8px;
+    color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+    font-size: 12px;
+    text-align: center;
+}
+
+.inline-edit-relation__load-more {
+    display: block;
+    width: 100%;
+    min-height: 28px;
+    margin-top: 4px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: var(--b3-border-radius, 4px);
+    background: transparent;
+    color: var(--b3-theme-primary);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.inline-edit-relation__load-more:hover {
+    background: var(--b3-list-hover);
+}
+
+.inline-edit-dropdown-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-height: 28px;
+    margin: 1px 0;
+    padding: 0 8px;
+    border: 0;
+    border-radius: var(--b3-border-radius, 4px);
+    background: transparent;
+    color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 14px;
+    line-height: 28px;
+    letter-spacing: 0;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 110ms ease, color 110ms ease, transform 100ms ease;
+}
+
+.inline-edit-dropdown-option > .inline-edit-dropdown-option__label {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+.inline-edit-dropdown-option > svg {
+    flex: 0 0 auto;
+}
+
+/* 选项色块：显示选项颜色，点击打开调色板编辑 */
+.inline-edit-dropdown-option > .inline-edit-option-color {
+    flex: 0 0 auto;
+}
+
+.inline-edit-option-color {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--b3-theme-on-surface-light, var(--b3-theme-border));
+    border-radius: 3px;
+    box-sizing: border-box;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.inline-edit-option-color--none {
+    background-color: transparent;
+    border-style: dashed;
+    opacity: 0.7;
+}
+
+/* 选项调色板：思源 14 色调色板 */
+.inline-edit-palette {
+    position: fixed;
+    z-index: 10001;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid var(--b3-theme-border);
+    border-radius: 4px;
+    background-color: var(--b3-menu-background);
+    box-shadow: var(--b3-dialog-shadow);
+}
+
+.inline-edit-palette__swatch {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 24px;
+    text-align: center;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.inline-edit-palette__swatch--current {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 1px;
+}
+
+.inline-edit-dropdown-option:hover {
+    background: var(--b3-list-hover);
+}
+
+.inline-edit-dropdown-option:active {
+    transform: scale(0.985);
+}
+
+.inline-edit-dropdown-option > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.inline-edit-dropdown-option > svg {
+    justify-self: end;
+    padding: 4px;
+    color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+    box-sizing: content-box;
+    opacity: 0;
+    transform: scale(0.7);
+    transition: opacity 100ms ease, transform 120ms ease;
+}
+
+.inline-edit-dropdown-option:is(button):first-child > svg,
+.inline-edit-dropdown-option--selected > svg {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.inline-edit-dropdown-option:is(button):first-child > svg {
+    color: var(--b3-theme-error);
+}
+
+.inline-edit-dropdown-option--selected {
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+    font-weight: 500;
+}
+
+.inline-edit-dropdown-option--selected:hover {
+    background: var(--b3-list-hover);
+}
+
+.inline-edit-dropdown-option--multi {
+    padding: 0 8px;
+}
+
+.inline-edit-dropdown-option--multi input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.inline-edit-datepicker {
+    padding: 0;
+}
+
+.inline-edit-datepicker-row {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 6px 10px;
+}
+
+.inline-edit-datepicker-row:first-of-type {
+    padding-top: 10px;
+}
+
+.inline-edit-datepicker-row:last-of-type {
+    padding-bottom: 10px;
+}
+
+.inline-edit-datepicker-label {
+    color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+    font-size: 12px;
+    letter-spacing: 0;
+}
+
+.inline-edit-datepicker-row--single {
+    grid-template-columns: 1fr;
+}
+
+.inline-edit-datepicker-label--checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--b3-theme-on-background, var(--b3-theme-on-surface));
+    cursor: pointer;
+}
+
+.inline-edit-datepicker-row input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    accent-color: var(--b3-theme-primary);
+}

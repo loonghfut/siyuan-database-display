@@ -1,0 +1,346 @@
+// 展示容器：行内模式基础样式 + 列表模式（above/below）锚定布局与胶囊/强调条变体
+/* 行内模式（默认）：随思源原生 .protyle-attr 显示在块右上角，横排换行 */
+.my-protyle-attr--av {
+    /* 展示节点不属于块正文，不能成为浏览器的复制/编辑选区。 */
+    user-select: none;
+    -webkit-user-select: none;
+    /* .protyle-attr 的空白区域允许点击穿透，但展示字段自身必须接收事件。 */
+    pointer-events: auto;
+    flex: 0 1 auto;
+    width: fit-content;
+    min-width: 0;
+    max-width: min(100%, 80vw) !important;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    align-items: center;
+    align-content: center;
+    padding: 0;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+/* 列表模式字体大小由设置写入变量；行内模式继续使用默认字体。 */
+.my-protyle-attr--av--list {
+    font-size: var(--db-attr-list-font-size, 12px);
+    line-height: 1.35;
+}
+
+/* 列表模式：属性 DOM 仍保留在 .protyle-attr 内，不移动节点。
+   根据位置为块预留对应方向的空间；折叠块的属性被思源隐藏，不预留。
+   7px 为正文与列表的间隙（卡片模式下间隔的是装饰横条）；--db-attr-list-inset
+   由卡片模式提供，在列表与卡片边缘之间留出内边距（默认 0，非卡片模式贴边）。
+   列表为空（字段全部隐藏）时不预留，避免残留空白。 */
+[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-below:not(:empty)) {
+    padding-bottom: calc(var(--db-attr-list-space, 18px) + 7px + var(--db-attr-list-inset, 0px));
+}
+
+[data-node-id]:not([fold="1"]):has(> .protyle-attr > .my-protyle-attr--av--list-above:not(:empty)) {
+    padding-top: calc(var(--db-attr-list-space, 18px) + 7px + var(--db-attr-list-inset, 0px));
+}
+
+/* 折叠的容器块不预留空间（属性随折叠被思源隐藏或空间无法保证），列表一并隐藏，
+   避免悬浮列表压在折叠内容上；需 !important 压过下方列表规则的 display:flex !important */
+[data-node-id][fold="1"] > .protyle-attr > .my-protyle-attr--av--list {
+    display: none !important;
+}
+
+/* 列表显示在块内容上方或下方，不改变列表项圆点/序号/勾选框的原生位置。 */
+
+/* 列表模式：宿主容器拉成纵贯全块的锚带——保留原生 top:-12px，bottom:0 落到
+   块 padding-box 底缘，宽度拉满块宽。列表贴锚带边缘定位（见下方规则），
+   不依赖 JS 测量块高度；原生徽标仍在锚带顶部随流排列（flex-start 抵消
+   拉伸后的垂直居中），视觉位置不变 */
+.protyle-attr:has(> .my-protyle-attr--av--list) {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    align-items: flex-start;
+    justify-content: flex-end;
+    /* 拉宽后的透明条不应拦截块首行的点击，徽标与属性列表保持可交互 */
+    pointer-events: none;
+
+    > * {
+        pointer-events: auto;
+    }
+
+    /* 书签徽标原生 flex:1 会撑满拉宽后的整行，收回为内容宽 */
+    > .protyle-attr--bookmark {
+        flex: 0 1 auto;
+    }
+
+}
+
+/* 下方列表模式：贴块底锚定（bottom = 块 padding-box 底缘 + 内边距），恒落在预留的
+   padding 区内；内容重排、换行数变化、容器块子块增删时块底自行移动，
+   列表位置随之更新，无须 JS 测量块高度。
+   覆盖思源 .protyle-wysiwyg--attr .protyle-attr>div 的 display:-webkit-box（单行截断）。
+   宽度足够时自动排成多列；单列不足 280px 时回落为单列，窄块不产生横向溢出。 */
+.my-protyle-attr--av--list {
+    position: absolute;
+    left: 0;
+    bottom: var(--db-attr-list-inset, 0px);
+    display: grid !important;
+    width: 100%;
+    max-width: 100% !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px 12px;
+    align-items: start;
+}
+
+/* 开启后根据可用宽度自动排成多列；关闭时固定为单列。 */
+.my-protyle-attr--av--list-multi {
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+}
+
+/* 每个字段或字段分组占一个自适应网格单元。 */
+.my-protyle-attr--av--list > .db-display__chip,
+.my-protyle-attr--av--list > .db-display__relation-group,
+.my-protyle-attr--av--list > .db-display__asset-group {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* 上方列表模式：锚带顶在块顶上方 12px（思源原生 top:-12px），top:12px 即
+   块 padding-box 顶缘，同为常量锚定；与下方模式对称——列表贴块外缘
+   （卡片模式再加内边距），7px 间隙朝向正文。 */
+.my-protyle-attr--av--list-above {
+    top: calc(12px + var(--db-attr-list-inset, 0px));
+    bottom: auto;
+}
+
+/* 列表项的原生点号/序号占据左侧 34px；上方属性仍保持用户选择的布局，
+   但从正文起始线开始，避免与 .protyle-action 重叠。 */
+.my-protyle-attr--av--container-list.my-protyle-attr--av--list-above {
+    left: 34px;
+    width: calc(100% - 34px);
+}
+
+/* 装饰横条：仅卡片模式渲染——半透明细线填充正文与属性列表之间的空隙，
+   下方模式为列表首行、上方模式为列表末行（紧邻正文一侧）。伪元素参与列表布局，
+   高度自动计入 --db-attr-list-space 测量，预留空间随之同步，无须 JS 配合；
+   瀑布流（flex）模式下 width:100% 独占一行，grid-column 被忽略。 */
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list-below::before,
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list-above::after {
+    content: "";
+    grid-column: 1 / -1;
+    width: 100%;
+    height: 1px;
+    background: color-mix(in srgb, var(--b3-theme-on-surface) 14%, transparent);
+}
+
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list-below::before {
+    margin-bottom: 3px;
+}
+
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list-above::after {
+    margin-top: 3px;
+}
+
+/* 无字段的空列表不渲染横条，避免孤线残留。 */
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list:empty::before,
+[data-node-id].db-display--card > .protyle-attr > .my-protyle-attr--av--list:empty::after {
+    content: none;
+}
+
+/* 列表模式：行内元素改为左对齐（chip/组原为 align-self:center，列布局下会居中错位）。
+   渲染器将最长字段名的宽度写入变量，使不同字段的值保持同一列起点。 */
+.my-protyle-attr--av--list .db-display__chip,
+.my-protyle-attr--av--list .db-display__relation-group,
+.my-protyle-attr--av--list .db-display__asset-group {
+    align-self: flex-start;
+}
+
+.my-protyle-attr--av--list .db-display__field-name {
+    flex: 0 0 var(--db-attr-field-name-width, auto);
+    width: var(--db-attr-field-name-width, auto);
+    box-sizing: border-box;
+}
+
+/* 普通字段原本没有组容器的 gap，补齐后与关联/资源字段的值列一致。 */
+.my-protyle-attr--av--list .db-display__chip {
+    gap: 2px;
+}
+
+/* 列表模式：图标与编辑按钮的盒高改为与首行行高（1.35em）一致的相对单位。
+   列表内的行内项目为支持多行值换行而使用 align-items: flex-start，
+   固定像素高度的图标顶部对齐后中心会高于文字中心；盒高等于行高后，
+   顶部对齐即等于与首行文字居中，且随列表字号缩放。 */
+.my-protyle-attr--av--list .db-display__block-icon {
+    width: 1.2em;
+    height: 1.35em;
+}
+
+.my-protyle-attr--av--list .db-display__block-icon--emoji {
+    font-size: 1em;
+    line-height: 1.35em;
+}
+
+.my-protyle-attr--av--list .db-display__block-icon--default svg {
+    width: 1em;
+    height: 1em;
+}
+
+.my-protyle-attr--av--list .db-display__relation-edit {
+    width: 1.35em;
+    height: 1.35em;
+}
+
+.my-protyle-attr--av--list .db-display__relation-edit svg {
+    width: 1em;
+    height: 1em;
+}
+
+/* 列表模式允许字段值随列宽换行，字段名仍保持单行。 */
+.my-protyle-attr--av--list .db-display__chip,
+.my-protyle-attr--av--list .db-display__relation-group,
+.my-protyle-attr--av--list .db-display__asset-group {
+    font-size: inherit;
+    line-height: 1.35;
+}
+
+.my-protyle-attr--av--list .db-display__chip,
+.my-protyle-attr--av--list .db-display__relation-group,
+.my-protyle-attr--av--list .db-display__asset-group {
+    white-space: normal;
+    overflow: visible;
+    align-items: flex-start;
+}
+
+.my-protyle-attr--av--list .db-display__value {
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.35;
+}
+
+/* 列表模式使用网格剩余空间；覆盖行内模式为短 chip 设置的 220px 上限，
+   避免描述等长文本在右侧仍有大量空白时提前换行。 */
+.my-protyle-attr--av--list .db-display__chip[data-field-type="text"] .db-display__value {
+    max-width: 100%;
+}
+
+.my-protyle-attr--av--list .db-display__option-chip {
+    font-size: inherit;
+    line-height: 1.35;
+    white-space: nowrap;
+}
+
+/* 关联/资源分组使用“字段名列 + 值列表列”，避免多个值把字段名和长文本挤到同一行。 */
+/* 列表文字与正文左边缘对齐；列表模式不沿用普通 chip 的水平内边距。 */
+.my-protyle-attr--av--list > .db-display__chip {
+    padding-inline: 0;
+}
+
+.my-protyle-attr--av--list > .db-display__relation-group,
+.my-protyle-attr--av--list > .db-display__asset-group {
+    display: grid;
+    grid-template-columns: var(--db-attr-field-name-width, auto) minmax(0, 1fr);
+    column-gap: 2px;
+    padding-inline: 0;
+    box-sizing: border-box;
+}
+
+.my-protyle-attr--av--list > .db-display__relation-group--has-field-name > .db-display__group-values,
+.my-protyle-attr--av--list > .db-display__asset-group--has-field-name > .db-display__group-values {
+    grid-column: 2;
+}
+
+.my-protyle-attr--av--list > .db-display__relation-group:not(.db-display__relation-group--has-field-name) > .db-display__group-values,
+.my-protyle-attr--av--list > .db-display__asset-group:not(.db-display__asset-group--has-field-name) > .db-display__group-values {
+    grid-column: 1 / -1;
+}
+
+.my-protyle-attr--av--list .db-display__group-values {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    min-width: 0;
+    width: 100%;
+    gap: 2px;
+}
+
+.my-protyle-attr--av--list .db-display__group-values > .db-display__chip {
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow: visible;
+}
+
+/* 列表模式保持简洁的纯文字样式，不显示字段、字段名或多选项的背景色。 */
+.my-protyle-attr--av--list .db-display__chip,
+.my-protyle-attr--av--list .db-display__field-name-label {
+    background-image: none !important;
+}
+
+/* ===== 列表项样式变体（由渲染器按 listItemStyle 追加变体类，行内模式不参与） ===== */
+
+/* 胶囊徽章样式：每个字段一枚圆角胶囊，随列表字号缩放（em 内边距）。
+   底色取「标签样式」面板配置的字段背景色/按值覆盖背景——芯片与字段名标签
+   上已有行内 --db-chip-background（未配置时不设置，回退中性半透明）；
+   分组字段的字段名与各值胶囊同样取该字段底色；hover 用亮度反馈，
+   不替换掉配置色。多选项色块保持思源自带选项色。 */
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule {
+    gap: 4px 8px;
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__chip {
+    width: fit-content;
+    padding: 0.12em 0.6em;
+    /* 可换行元素不用 999px：多行时半圆端点会让首末行文字落到圆弧外的未绘制区
+       （表现为角落缺底色）。0.8em 在单行时恰为行盒+内边距总高的一半，仍是
+       完整胶囊端点；多行退化为圆角矩形 */
+    border-radius: 0.8em;
+    /* 基础 chip 规则为行内模式的渐变底写了 transparent !important，胶囊需同级反压 */
+    background-color: var(--db-chip-background, color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent)) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
+    transition: color 0.15s ease, text-decoration-color 0.15s ease, filter 0.15s ease;
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__chip:hover {
+    filter: brightness(0.95);
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__field-name {
+    flex-basis: auto;
+    width: auto;
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__relation-group > .db-display__field-name .db-display__field-name-label,
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__asset-group > .db-display__field-name .db-display__field-name-label {
+    padding: 0.12em 0.6em;
+    border-radius: 999px;
+    background-color: var(--db-chip-background, color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__group-values > .db-display__chip {
+    padding: 0.12em 0.6em;
+    /* 值可能换行，同上用 0.8em 半径 */
+    border-radius: 0.8em;
+    /* 同上：反压基础 chip 的 transparent !important */
+    background-color: var(--db-chip-background, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__option-chip {
+    border-radius: 999px;
+}
+
+/* 彩色强调条样式：每个字段行左侧一枚 3px 圆角竖条，颜色取该字段的行内配色
+   （currentColor，即“标签样式”面板配置的字段色/值色），hover 随文字变色；
+   字段名列宽对齐保留，各行值仍从同一列起始。 */
+.my-protyle-attr--av--list.my-protyle-attr--av--accent > .db-display__chip,
+.my-protyle-attr--av--list.my-protyle-attr--av--accent > .db-display__relation-group,
+.my-protyle-attr--av--list.my-protyle-attr--av--accent > .db-display__asset-group {
+    border-left: 3px solid currentColor;
+    border-top-left-radius: 3px;
+    border-bottom-left-radius: 3px;
+    padding-left: 8px;
+}

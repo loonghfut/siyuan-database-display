@@ -1,0 +1,249 @@
+// 字段 chip：基础样式、字段名/值、块图标、复选框、关联分组与操作按钮
+.db-display__chip {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    max-width: min(100%, 280px);
+    min-height: 16px;
+    padding: 0 3px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent !important;
+    background-image: linear-gradient(to bottom, transparent 20%, var(--db-chip-background, transparent) 20% 88%, transparent 88%);
+    box-sizing: border-box;
+    font: inherit;
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0;
+    text-align: left;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.db-display__field-name {
+    display: inline-flex;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.db-display__field-name-label {
+    opacity: 0.7;
+    white-space: nowrap;
+    /* 与 chip 一致的字段背景渐变：保证字段名（含 relation/asset 组内的）也有背景色块 */
+    background-image: linear-gradient(to bottom, transparent 20%, var(--db-chip-background, transparent) 20% 88%, transparent 88%);
+}
+
+.db-display__value {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 多选选项色块：背景/文字色来自思源调色板 var(--b3-font-background{1..14})，
+   与数据库单元格内的原生选项样式一致；无颜色时跟随思源默认 chip 背景 */
+.db-display__option-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 4px;
+    margin: 1px 2px 1px 0;
+    border-radius: var(--b3-border-radius);
+    background-color: var(--b3-list-hover);
+    line-height: 16px;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+/* 关联/块字段的目标块图标 */
+.db-display__block-icon {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-right: 3px;
+    flex: 0 0 auto;
+    vertical-align: middle;
+    object-fit: contain;
+}
+
+.db-display__block-icon--emoji {
+    line-height: 14px;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* 默认文档图标：目标块未设置图标时的占位，与自定义图标同盒尺寸 */
+.db-display__block-icon--default {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--b3-theme-on-surface-light);
+    opacity: .78;
+}
+
+.db-display__block-icon--default svg {
+    width: 13px;
+    height: 13px;
+}
+
+/* 复选框字段·图标样式：勾选=主题色填充块+白色对勾，未勾选=半透明方框，一眼可辨 */
+.db-display__checkbox-icon {
+    flex: 0 0 auto;
+    width: 13px;
+    height: 13px;
+    padding: 2px;
+    border-radius: 3px;
+    box-sizing: content-box;
+}
+
+.db-display__checkbox-icon--checked {
+    color: var(--b3-theme-on-primary);
+    background-color: var(--b3-theme-primary);
+}
+
+.db-display__checkbox-icon--unchecked {
+    color: var(--b3-theme-on-surface);
+    opacity: .45;
+}
+
+.db-display__chip[data-field-type="checkbox"] .db-display__value {
+    display: inline-flex;
+    align-items: center;
+}
+
+.my-protyle-attr--av--list .db-display__checkbox-icon {
+    width: 0.9em;
+    height: 0.9em;
+    padding: 0.16em;
+}
+
+/* 列表模式下图标盒占满首行行高，flex-start 顶部对齐即等于与文字行居中 */
+.my-protyle-attr--av--list .db-display__chip[data-field-type="checkbox"] .db-display__value {
+    min-height: 1.35em;
+}
+
+/* 复选框字段·文字样式：彩色徽章区分勾选状态 */
+.db-display__chip--checkbox-text .db-display__value {
+    padding: 0 5px;
+    border-radius: var(--b3-border-radius);
+}
+
+.db-display__chip--checkbox-text[data-checked="1"] .db-display__value {
+    background-color: color-mix(in srgb, var(--b3-theme-primary) 14%, transparent);
+    color: var(--b3-theme-primary);
+}
+
+.db-display__chip--checkbox-text[data-checked="0"] .db-display__value {
+    background-color: var(--b3-list-hover);
+    color: var(--b3-theme-on-surface-light);
+}
+
+.db-display__chip[data-field-type="template"] .db-display__value {
+    display: inline-flex;
+    align-items: center;
+}
+
+.db-display__chip[data-field-type="template"] .db-display__value > * {
+    margin-block: 0;
+}
+
+.db-display__chip[data-field-type="text"] .db-display__value {
+    max-width: min(220px, 60vw);
+}
+
+.db-display__chip:hover {
+    color: var(--b3-protyle-inline-blockref-color) !important;
+    text-decoration: none;
+}
+
+.db-display__chip:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 2px;
+}
+
+.db-display__chip--readonly {
+    cursor: default;
+    opacity: 0.82;
+}
+
+.db-display__chip--readonly:hover {
+    color: inherit !important;
+    text-decoration: none;
+}
+
+.db-display__relation-group {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    vertical-align: middle;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+    gap: 2px;
+}
+
+.db-display__asset-group {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    vertical-align: middle;
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+    gap: 2px;
+}
+
+.db-display__relation-group .db-display__chip,
+.db-display__asset-group .db-display__chip {
+    max-width: min(220px, 54vw);
+}
+
+.db-display__relation-edit,
+.db-display__popover-action {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    cursor: pointer;
+}
+
+.db-display__relation-edit {
+    width: 16px;
+    height: 16px;
+}
+
+.db-display__popover-action {
+    width: 20px;
+    height: 20px;
+}
+
+.db-display__relation-edit svg,
+.db-display__popover-action svg,
+.db-display__asset-icon {
+    width: 13px;
+    height: 13px;
+}
+
+.db-display__relation-edit:hover,
+.db-display__popover-action:hover {
+    background: var(--b3-list-hover);
+    color: var(--b3-theme-on-surface);
+}
+
+.db-display__relation-edit:focus-visible,
+.db-display__popover-action:focus-visible,
+.db-display__asset-thumbnail:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 1px;
+}

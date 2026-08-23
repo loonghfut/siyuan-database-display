@@ -1,0 +1,113 @@
+// 弹出层：汇总值来源列表与图片预览（ContentPopover）
+.db-display__popover {
+    position: fixed;
+    z-index: 1001;
+    width: min(320px, calc(100vw - 16px));
+    max-height: min(380px, calc(100vh - 16px));
+    overflow: auto;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 6px;
+    background: var(--b3-theme-surface);
+    color: var(--b3-theme-on-surface);
+    box-shadow: var(--b3-dialog-shadow, 0 8px 24px rgba(0, 0, 0, 0.18));
+    box-sizing: border-box;
+}
+
+.db-display__popover-content {
+    display: grid;
+    gap: 7px;
+    padding: 8px;
+}
+
+.db-display__popover-header {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 6px;
+}
+
+.db-display__popover-header strong {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.db-display__popover-actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 1px;
+}
+
+.db-display__popover-list {
+    display: grid;
+    max-height: 280px;
+    overflow: auto;
+    gap: 2px;
+}
+
+.db-display__popover-source {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 4px 5px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 12px;
+    line-height: 18px;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+button.db-display__popover-source {
+    cursor: pointer;
+}
+
+button.db-display__popover-source:hover {
+    background: var(--b3-list-hover);
+    color: var(--b3-protyle-inline-blockref-color);
+}
+
+.db-display__popover-source:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: -1px;
+}
+
+.db-display__popover-empty {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.db-display__popover[data-kind="asset"] {
+    width: auto;
+    max-width: calc(100vw - 16px);
+    max-height: none;
+    overflow: hidden;
+}
+
+.db-display__popover-content--asset {
+    width: fit-content;
+    max-width: calc(100vw - 16px);
+}
+
+.db-display__popover[data-kind="asset"] .db-display__popover-header strong {
+    max-width: min(420px, calc(100vw - 90px));
+}
+
+.db-display__popover-image {
+    display: block;
+    width: auto;
+    max-width: min(480px, calc(100vw - 40px));
+    max-height: min(360px, calc(100vh - 100px));
+    margin: 0 auto;
+    object-fit: contain;
+}

@@ -1,0 +1,111 @@
+// 授权设置面板：状态徽章、许可输入与展开分组
+.db-settings--license {
+    display: grid;
+    gap: 12px;
+    max-width: 560px;
+}
+
+.config-item--has-license .config-name {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+.db-license__apply {
+    flex: 0 0 auto;
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 12px;
+}
+
+.db-license__status {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    box-sizing: border-box;
+}
+
+.db-license__status--active {
+    border-color: var(--b3-theme-success, #2e7d32);
+    background: color-mix(in srgb, var(--b3-theme-success, #2e7d32) 12%, transparent);
+    color: var(--b3-theme-success, #2e7d32);
+}
+
+.db-license__status--inactive {
+    background: var(--b3-theme-surface, transparent);
+    color: var(--b3-theme-on-surface-light);
+}
+
+.db-license__status-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.db-settings--license .fn__flex {
+    align-items: center;
+    gap: 8px;
+}
+
+.db-settings--license .fn__flex .b3-text-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.db-license__license-group {
+    display: grid;
+    gap: 6px;
+}
+
+.db-license__license-group > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.db-license__license-group > summary::-webkit-details-marker {
+    display: none;
+}
+
+.db-license__license-group > summary::before {
+    width: 0;
+    height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 5px solid currentColor;
+    content: "";
+    transition: transform 120ms ease;
+}
+
+.db-license__license-group[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.db-license__license-content {
+    display: grid;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.db-license__license-content .b3-text-field {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.db-license__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}

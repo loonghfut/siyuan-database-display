@@ -1,0 +1,214 @@
+// 设置取色器：HSV 取色面板 + 思源原生调色板（settings/components/color-picker）
+.db-color-control {
+    display: inline-grid;
+    grid-template-columns: 26px auto;
+    align-items: center;
+    gap: 5px;
+}
+
+.db-color-control__trigger {
+    position: relative;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 50%;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.db-color-control__trigger::after {
+    position: absolute;
+    inset: 3px;
+    border-radius: inherit;
+    background: var(--db-color);
+    content: "";
+    opacity: var(--db-opacity);
+}
+
+.db-color-control__trigger:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: 2px;
+}
+
+.db-color-control output {
+    color: var(--b3-theme-on-surface);
+    min-width: 24px;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.db-color-control output:empty {
+    display: none;
+}
+
+.db-color-picker {
+    position: fixed;
+    z-index: 10002;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    width: 250px;
+    padding: 12px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 6px;
+    background: var(--b3-theme-background);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+    box-sizing: border-box;
+}
+
+.db-color-picker__close {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 0;
+    cursor: pointer;
+}
+
+.db-color-picker__close::before,
+.db-color-picker__close::after,
+.db-settings__remove-rule::before,
+.db-settings__remove-rule::after {
+    position: absolute;
+    width: 16px;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+    content: "";
+}
+
+.db-color-picker__close::before,
+.db-settings__remove-rule::before {
+    transform: rotate(45deg);
+}
+
+.db-color-picker__close::after,
+.db-settings__remove-rule::after {
+    transform: rotate(-45deg);
+}
+
+.db-color-picker__close:hover {
+    background: var(--b3-list-hover);
+    color: var(--b3-theme-on-surface);
+}
+
+.db-color-picker__field {
+    position: relative;
+    grid-column: 1 / -1;
+    height: 150px;
+    border-radius: 4px;
+    cursor: crosshair;
+    overflow: hidden;
+    touch-action: none;
+}
+
+.db-color-picker__field::before,
+.db-color-picker__field::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+}
+
+.db-color-picker__field::before {
+    background: linear-gradient(to right, #fff, transparent);
+}
+
+.db-color-picker__field::after {
+    background: linear-gradient(to bottom, transparent, #000);
+}
+
+.db-color-picker__field-cursor {
+    position: absolute;
+    z-index: 1;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+}
+
+.db-color-picker__hue,
+.db-color-picker__alpha {
+    grid-column: 1 / -1;
+    width: 100%;
+    height: 10px;
+    margin: 0;
+    appearance: none;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.db-color-picker__hue {
+    background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+
+.db-color-picker__alpha {
+    background-color: #fff;
+    background-image: repeating-conic-gradient(#d9d9d9 0 25%, transparent 0 50%);
+    background-size: 8px 8px;
+}
+
+.db-color-picker__hue::-webkit-slider-thumb,
+.db-color-picker__alpha::-webkit-slider-thumb {
+    width: 14px;
+    height: 14px;
+    appearance: none;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--b3-theme-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.db-color-picker__hex {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: var(--b3-font-family-code);
+    text-transform: uppercase;
+}
+
+.db-color-picker output {
+    align-self: center;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    text-align: right;
+}
+
+.db-color-picker__native-palette {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(7, 26px);
+    gap: 4px;
+    padding-top: 2px;
+    border-top: 1px solid var(--b3-border-color);
+}
+
+.db-color-picker__native-swatch {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--b3-border-radius);
+    box-shadow: 0 0 0 1px var(--b3-list-hover) inset;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.db-color-picker__native-swatch:hover,
+.db-color-picker__native-swatch:focus-visible {
+    box-shadow: 0 0 0 2px var(--b3-theme-primary) inset;
+}
+
+.db-color-picker__native-swatch--current {
+    box-shadow: 0 0 0 2px var(--b3-theme-primary) inset, 0 0 0 3px var(--b3-list-hover);
+}

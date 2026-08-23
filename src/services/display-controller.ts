@@ -11,104 +11,14 @@ import { ContentPopover } from "@/ui/content-popover";
 import { openChipMenu } from "@/ui/chip-menu";
 import { t } from "@/i18n";
 import { PRO_FEATURE_KEYS, ProFeature, requiredFeaturesForField } from "@/licensing";
+import { RefreshScheduler } from "./refresh-scheduler";
+import { DISPLAY_CONTAINER_SELECTOR, EditorObserver, findInvalidDisplayContainerParents } from "./editor-observer";
 
-const RELEVANT_NODE_SELECTOR = "[custom-avs], .protyle-title";
-const PROTYLE_SELECTOR = ".protyle";
-const DISPLAY_CONTAINER_SELECTOR = ".my-protyle-attr--av";
+// 刷新请求的去抖窗口（毫秒）
+const REFRESH_DEBOUNCE_MS = 20;
 // 思源编辑块内容时会替换整个块 DOM，注入的属性容器随旧块一起消失。
 // 立即恢复会造成"消失-恢复"闪烁，延迟到编辑静默后再恢复。
 const QUIET_REFRESH_DELAY = 300;
-
-function hasRelevantNode(node: Node): boolean {
-    if (!(node instanceof HTMLElement)) return false;
-    return node.matches(RELEVANT_NODE_SELECTOR) || Boolean(node.querySelector(RELEVANT_NODE_SELECTOR));
-}
-
-/**
- * 收集被移除 DOM 中丢失的属性容器所属的块 id。
- * 思源替换块（updateBlock 插新删旧）或重建 .protyle-attr 内部（updateAttrs 的
- * innerHTML 替换）时，我们注入的容器随旧 DOM 一起消失，据此定位需要快速恢复的块。
- */
-function findLostContainerBlockIds(records: MutationRecord[]): Set<string> {
-    const blockIds = new Set<string>();
-    const visit = (node: Node): void => {
-        if (!(node instanceof HTMLElement)) return;
-        if (node.classList.contains("my-protyle-attr--av")) {
-            const blockId = node.dataset.blockId;
-            if (blockId) blockIds.add(blockId);
-        }
-        node.querySelectorAll<HTMLElement>(".my-protyle-attr--av").forEach(container => {
-            const blockId = container.dataset.blockId;
-            if (blockId) blockIds.add(blockId);
-        });
-    };
-    for (const record of records) {
-        if (record.type !== "childList") continue;
-        record.removedNodes.forEach(visit);
-    }
-    return blockIds;
-}
-
-/**
- * 复制块时，思源可能会把 .protyle-attr 内的临时展示节点一并带入新块；
- * 但新块并不一定继承数据库属性。展示节点若残留在这种块中，会被编辑器
- * 当作普通内容处理，进而有机会转换为 HTML 块。
- *
- * 这里只检查本次新增的 DOM，避免每次编辑都遍历全文。文档标题的属性容器
- * 不带 custom-avs 属性，由标题组件单独维护，因此不参与本项块级校验。
- */
-function findInvalidDisplayContainerParents(nodes: Iterable<Node>): Map<HTMLElement, boolean> {
-    const invalidParents = new Map<HTMLElement, boolean>();
-    const inspect = (container: HTMLElement): void => {
-        const parent = container.closest<HTMLElement>("[data-node-id]");
-        if (!parent) {
-            container.remove();
-            return;
-        }
-        if (parent.classList.contains("protyle-title")) return;
-        const hasDatabaseAttributes = parent.hasAttribute("custom-avs");
-        const belongsToParent = !container.dataset.blockId || container.dataset.blockId === parent.dataset.nodeId;
-        if (!hasDatabaseAttributes || !belongsToParent) {
-            // true means the host still has attributes and needs a normal refresh
-            // after stale copied content has been removed.
-            invalidParents.set(parent, hasDatabaseAttributes);
-        }
-    };
-    const inspectNode = (node: Node): void => {
-        if (!(node instanceof HTMLElement)) return;
-        if (node.matches(DISPLAY_CONTAINER_SELECTOR)) inspect(node);
-        node.querySelectorAll<HTMLElement>(DISPLAY_CONTAINER_SELECTOR).forEach(inspect);
-    };
-    for (const node of nodes) inspectNode(node);
-    return invalidParents;
-}
-
-function findInvalidDisplayContainerParentsFromRecords(records: MutationRecord[]): Map<HTMLElement, boolean> {
-    const addedNodes: Node[] = [];
-    records.forEach(record => {
-        if (record.type === "childList") addedNodes.push(...record.addedNodes);
-    });
-    return findInvalidDisplayContainerParents(addedNodes);
-}
-
-/**
- * 收集新增 DOM 中的块元素（按 data-node-id 索引），用于快速恢复。
- * 只扫描本次事务实际涉及的节点，避免整篇文档的查询开销。
- */
-function collectBlockElements(node: Node, byId: Map<string, HTMLElement[]>): void {
-    if (!(node instanceof HTMLElement)) return;
-    const add = (element: HTMLElement): void => {
-        const blockId = element.dataset.nodeId;
-        if (!blockId) return;
-        const list = byId.get(blockId) || [];
-        list.push(element);
-        byId.set(blockId, list);
-    };
-    // querySelectorAll already returns every descendant; recursively querying
-    // from each descendant made this scan quadratic for large inserted blocks.
-    if (node.dataset.nodeId) add(node);
-    node.querySelectorAll<HTMLElement>("[data-node-id]").forEach(add);
-}
 
 export interface DisplayControllerOptions {
     getConfig: () => DisplayConfig;
@@ -124,21 +34,10 @@ export class DisplayController {
     private readonly repository: AttributeViewRepository = attributeViewRepository;
     private readonly renderer = new AttributeRenderer();
     private readonly popover: ContentPopover;
+    private readonly scheduler: RefreshScheduler;
+    private readonly editorObserver: EditorObserver;
     private documentId = "";
-    private refreshTimer: ReturnType<typeof setTimeout> | undefined;
-    private quietRefreshTimer: ReturnType<typeof setTimeout> | undefined;
     private autoTimer: ReturnType<typeof setInterval> | undefined;
-    private observer: MutationObserver | undefined;
-    private contentObservers = new Map<HTMLElement, MutationObserver>();
-    private refreshVersion = 0;
-    private refreshForcePending = false;
-    private refreshAllPending = false;
-    private readonly refreshBlockIdsPending = new Set<string>();
-    private refreshInFlight = false;
-    private refreshAfterInFlight = false;
-    private refreshForceAfterInFlight = false;
-    private refreshAllAfterInFlight = false;
-    private readonly refreshBlockIdsAfterInFlight = new Set<string>();
     private visibleAttributeViewIds = new Set<string>();
     private readonly visibleBlockIdsByAttributeViewId = new Map<string, Set<string>>();
     private lastRenderState = new Map<string, { items: DisplayItem[]; config: DisplayConfig; canInlineEdit: boolean }>();
@@ -148,6 +47,17 @@ export class DisplayController {
         this.popover = new ContentPopover({
             onNavigate: (target, openInSplit) => this.navigate(target, openInSplit),
             onEditAsset: (item, element) => this.editAsset(item, element)
+        });
+        this.scheduler = new RefreshScheduler(request => this.performRefresh(request.force, request.blockIds), {
+            debounceMs: REFRESH_DEBOUNCE_MS,
+            quietDelayMs: QUIET_REFRESH_DELAY
+        });
+        this.editorObserver = new EditorObserver({
+            isRefreshObservationEnabled: () => this.options.isObserverEnabled(),
+            clearInvalidContainers: (containers, invalidParents) => this.clearInvalidDisplayContainers(containers, invalidParents),
+            restoreLostContainers: (lostBlockIds, newBlockElements) => this.restoreLostContainers(lostBlockIds, newBlockElements),
+            scheduleRefresh: (force, blockIds) => this.scheduleRefresh(force, blockIds),
+            scheduleQuietRefresh: () => this.scheduler.scheduleQuiet()
         });
     }
 
@@ -159,74 +69,14 @@ export class DisplayController {
     }
 
     scheduleRefresh(force = false, blockIds?: ReadonlySet<string>): void {
-        if (this.disposed) return;
-        this.refreshForcePending ||= force;
-        if (blockIds === undefined) {
-            this.refreshAllPending = true;
-            this.refreshBlockIdsPending.clear();
-        } else if (!this.refreshAllPending) {
-            blockIds.forEach(blockId => this.refreshBlockIdsPending.add(blockId));
-        }
-        if (this.refreshTimer) clearTimeout(this.refreshTimer);
-        this.refreshTimer = setTimeout(() => {
-            this.refreshTimer = undefined;
-            const requestedForce = this.refreshForcePending;
-            const requestedBlockIds = this.refreshAllPending ? undefined : new Set(this.refreshBlockIdsPending);
-            this.refreshForcePending = false;
-            this.refreshAllPending = false;
-            this.refreshBlockIdsPending.clear();
-            void this.refresh(requestedForce, requestedBlockIds);
-        }, 20);
-    }
-
-    /**
-     * 编辑静默后再恢复的刷新：思源编辑事务会频繁替换块 DOM（注入容器随之消失），
-     * 立即恢复会造成闪烁，因此聚合到编辑停止后一次性恢复。
-     */
-    private scheduleQuietRefresh(): void {
-        if (this.quietRefreshTimer) clearTimeout(this.quietRefreshTimer);
-        this.quietRefreshTimer = setTimeout(() => {
-            this.quietRefreshTimer = undefined;
-            this.scheduleRefresh(false);
-        }, QUIET_REFRESH_DELAY);
-    }
-
-    async refresh(force = false, blockIds?: ReadonlySet<string>): Promise<void> {
-        if (this.disposed || !this.documentId) return;
-        if (this.refreshInFlight) {
-            this.refreshAfterInFlight = true;
-            this.refreshForceAfterInFlight ||= force;
-            if (blockIds === undefined) {
-                this.refreshAllAfterInFlight = true;
-                this.refreshBlockIdsAfterInFlight.clear();
-            } else if (!this.refreshAllAfterInFlight) {
-                blockIds.forEach(blockId => this.refreshBlockIdsAfterInFlight.add(blockId));
-            }
-            return;
-        }
-
-        this.refreshInFlight = true;
-        try {
-            await this.performRefresh(force, blockIds);
-        } finally {
-            this.refreshInFlight = false;
-            if (!this.disposed && this.refreshAfterInFlight) {
-                const requestedForce = this.refreshForceAfterInFlight;
-                const requestedBlockIds = this.refreshAllAfterInFlight ? undefined : new Set(this.refreshBlockIdsAfterInFlight);
-                this.refreshAfterInFlight = false;
-                this.refreshForceAfterInFlight = false;
-                this.refreshAllAfterInFlight = false;
-                this.refreshBlockIdsAfterInFlight.clear();
-                this.scheduleRefresh(requestedForce, requestedBlockIds);
-            }
-        }
+        this.scheduler.schedule(force, blockIds);
     }
 
     private async performRefresh(force: boolean, targetBlockIds?: ReadonlySet<string>): Promise<void> {
         if (this.disposed || !this.documentId) return;
         // 即使关闭了自动补充观察，也要在手动/定时刷新时清掉复制遗留的展示 DOM。
         this.clearInvalidDisplayContainers(document.querySelectorAll<HTMLElement>(DISPLAY_CONTAINER_SELECTOR));
-        const version = ++this.refreshVersion;
+        const version = this.scheduler.beginCycle();
         const documentId = this.documentId;
         const allBlockParents = getVisibleAttributeBlockParents();
         const isFullRefresh = targetBlockIds === undefined;
@@ -303,117 +153,15 @@ export class DisplayController {
     }
 
     updateObserver(): void {
-        this.observer?.disconnect();
-        this.contentObservers.forEach(observer => observer.disconnect());
-        this.contentObservers.clear();
-        this.observer = undefined;
-        // 即使用户关闭自动刷新，仍保留仅用于移除复制残留 DOM 的轻量观察；
-        // 这属于编辑器稳定性保护，不会触发数据库读取或常规渲染。
-        const refreshObservationEnabled = this.options.isObserverEnabled();
-
-        const observedRoots = new Set<HTMLElement>();
-        const scheduleForRelevantNodes = (records: MutationRecord[]): void => {
-            const invalidDisplayParents = findInvalidDisplayContainerParentsFromRecords(records);
-            const repairBlockIds = this.clearInvalidDisplayContainers(invalidDisplayParents.keys(), invalidDisplayParents);
-            if (!refreshObservationEnabled) return;
-            const lostBlockIds = findLostContainerBlockIds(records);
-            let relevantAdded = false;
-            // 从本次事务涉及的节点中收集新块，避免整篇文档查询：
-            // - 块替换（updateBlock 插新删旧）：新块在 addedNodes 中
-            // - .protyle-attr 内部重建（updateAttrs）：块元素本身没变，从 target 向上取
-            const newBlockElements = new Map<string, HTMLElement[]>();
-            for (const record of records) {
-                if (record.type !== "childList") continue;
-                for (const node of record.addedNodes) {
-                    if (hasRelevantNode(node)) relevantAdded = true;
-                    if (lostBlockIds.size > 0) collectBlockElements(node, newBlockElements);
-                }
-                if (lostBlockIds.size > 0 && record.target instanceof HTMLElement) {
-                    const block = record.target.closest<HTMLElement>("[data-node-id]");
-                    if (block?.dataset.nodeId) {
-                        const list = newBlockElements.get(block.dataset.nodeId) || [];
-                        if (!list.includes(block)) list.push(block);
-                        newBlockElements.set(block.dataset.nodeId, list);
-                    }
-                }
-            }
-            if (lostBlockIds.size > 0) {
-                // 容器随旧 DOM 消失：同一帧内用内存数据同步恢复（避免闪烁），
-                // 再安排静默刷新兜底（拉取最新数据 + 覆盖未命中内存状态的块）。
-                this.restoreLostContainers(lostBlockIds, newBlockElements);
-                this.scheduleQuietRefresh();
-            } else if (repairBlockIds.size > 0) {
-                this.scheduleRefresh(false, repairBlockIds);
-            } else if (relevantAdded) {
-                this.scheduleRefresh(false);
-            }
-        };
-        const observeProtyle = (root: HTMLElement): void => {
-            if (observedRoots.has(root)) return;
-            observedRoots.add(root);
-            const observer = new MutationObserver(scheduleForRelevantNodes);
-            observer.observe(root, { childList: true, subtree: true });
-            this.contentObservers.set(root, observer);
-        };
-
-        document.querySelectorAll<HTMLElement>(PROTYLE_SELECTOR).forEach(observeProtyle);
-        this.observer = new MutationObserver(records => {
-            let requiresRefresh = false;
-            for (const record of records) {
-                if (record.type === "childList") {
-                    for (const node of record.removedNodes) {
-                        if (!(node instanceof HTMLElement)) continue;
-                        const removedRoots = node.matches(PROTYLE_SELECTOR)
-                            ? [node]
-                            : [...node.querySelectorAll<HTMLElement>(PROTYLE_SELECTOR)];
-                        removedRoots.forEach(root => {
-                            const observer = this.contentObservers.get(root);
-                            observer?.disconnect();
-                            this.contentObservers.delete(root);
-                            observedRoots.delete(root);
-                        });
-                    }
-                }
-                const target = record.target instanceof HTMLElement ? record.target : undefined;
-                const insideProtyle = Boolean(target?.closest(PROTYLE_SELECTOR));
-                for (const node of record.addedNodes) {
-                    if (!(node instanceof HTMLElement)) continue;
-                    // Content observers handle changes inside an existing Protyle.
-                    // The body observer only discovers new roots and top-level content.
-                    if (!insideProtyle) {
-                        if (node.matches(PROTYLE_SELECTOR)) observeProtyle(node);
-                        node.querySelectorAll<HTMLElement>(PROTYLE_SELECTOR).forEach(observeProtyle);
-                        if (hasRelevantNode(node)) requiresRefresh = true;
-                    }
-                }
-            }
-            if (requiresRefresh) this.scheduleRefresh(false);
-        });
-        // Keep this watcher lightweight: detailed subtree observation is attached
-        // to each Protyle, while this watcher only discovers new roots.
-        this.observer.observe(document.body, { childList: true, subtree: true });
+        this.editorObserver.rebuild();
     }
 
     dispose(): void {
         this.disposed = true;
-        this.refreshVersion++;
-        if (this.refreshTimer) clearTimeout(this.refreshTimer);
-        if (this.quietRefreshTimer) clearTimeout(this.quietRefreshTimer);
+        this.scheduler.dispose();
+        this.editorObserver.dispose();
         if (this.autoTimer) clearInterval(this.autoTimer);
-        this.observer?.disconnect();
-        this.contentObservers.forEach(observer => observer.disconnect());
-        this.contentObservers.clear();
-        this.refreshTimer = undefined;
-        this.quietRefreshTimer = undefined;
         this.autoTimer = undefined;
-        this.observer = undefined;
-        this.refreshForcePending = false;
-        this.refreshAllPending = false;
-        this.refreshBlockIdsPending.clear();
-        this.refreshAfterInFlight = false;
-        this.refreshForceAfterInFlight = false;
-        this.refreshAllAfterInFlight = false;
-        this.refreshBlockIdsAfterInFlight.clear();
         this.visibleAttributeViewIds.clear();
         this.visibleBlockIdsByAttributeViewId.clear();
         this.lastRenderState.clear();
@@ -439,7 +187,7 @@ export class DisplayController {
         if (!blockId || parents.length === 0) return;
         try {
             const tables = await this.repository.getKeys(blockId);
-            if (version !== this.refreshVersion) return;
+            if (!this.scheduler.isCurrent(version)) return;
             tables.forEach(table => {
                 this.visibleAttributeViewIds.add(table.avID);
                 const blockIds = this.visibleBlockIdsByAttributeViewId.get(table.avID) || new Set<string>();

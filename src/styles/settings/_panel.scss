@@ -1,0 +1,328 @@
+// 设置面板：布局、页签导航、行/勾选控件、Pro/Beta 徽章、字段/值颜色规则
+.db-settings {
+    display: grid;
+    gap: 8px;
+    width: min(100%, 760px);
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.b3-dialog__header.db-settings-header--has-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.db-settings-nav {
+    display: flex;
+    flex: 1;
+    justify-content: flex-end;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.db-settings-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.db-settings-nav__item {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 3px 7px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    font: inherit;
+    font-size: 12px;
+    line-height: 20px;
+    cursor: pointer;
+    transition: color 120ms ease, background-color 120ms ease;
+}
+
+.db-settings-nav__item:hover {
+    background: var(--b3-list-hover);
+    color: var(--b3-theme-on-surface);
+}
+
+.db-settings-nav__item--active {
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+    font-weight: 600;
+}
+
+.db-settings-nav__item:focus-visible {
+    outline: 2px solid var(--b3-theme-primary);
+    outline-offset: -2px;
+}
+
+@media (max-width: 640px) {
+    .b3-dialog__header.db-settings-header--has-nav {
+        gap: 6px;
+    }
+
+    .db-settings-nav__item {
+        padding: 3px 5px;
+    }
+}
+
+.db-settings section {
+    display: grid;
+    gap: 4px;
+}
+
+.db-settings section + section {
+    padding-top: 8px;
+    border-top: 1px solid var(--b3-border-color);
+}
+
+.db-settings strong {
+    color: var(--b3-theme-on-surface);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.db-settings__row {
+    display: grid;
+    grid-template-columns: minmax(88px, 0.7fr) minmax(140px, 1.3fr);
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+    color: var(--b3-theme-on-surface);
+    font-size: 13px;
+}
+
+.db-settings__row .b3-text-field,
+.db-settings__row .b3-select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.db-settings__list-options {
+    display: grid;
+    gap: 4px;
+    padding: 2px 0;
+}
+
+.db-settings__hint {
+    margin: 0;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.db-settings__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.db-settings__check {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 1px 7px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    color: var(--b3-theme-on-surface);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.db-settings__check-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.db-settings__field-label {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: 5px;
+}
+
+.db-settings__pro-badge {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 15px;
+    padding: 0 4px;
+    border: 1px solid var(--b3-theme-primary-lightest);
+    border-radius: 3px;
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 13px;
+    cursor: help;
+}
+
+.db-settings__pro-badge[hidden] {
+    display: none;
+}
+
+.db-settings__beta-badge {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    height: 15px;
+    padding: 0 4px;
+    border: 1px solid var(--b3-font-color8);
+    border-radius: 3px;
+    color: var(--b3-font-color8);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    line-height: 13px;
+    cursor: help;
+}
+
+.db-settings__check--checked {
+    border-color: var(--b3-theme-primary);
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+}
+
+.db-settings__check--disabled {
+    cursor: not-allowed;
+    opacity: .62;
+}
+
+.db-settings__check--disabled.db-settings__check--checked {
+    border-color: var(--b3-border-color);
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+}
+
+.db-settings__palette {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    column-gap: 16px;
+}
+
+.db-settings__theme-tabs {
+    display: inline-flex;
+    overflow: hidden;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+}
+
+.db-settings__appearance-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.db-settings__restore-defaults {
+    min-height: 30px;
+    white-space: nowrap;
+}
+
+.db-settings__theme-tab {
+    min-width: 88px;
+    border: 0;
+    border-radius: 0;
+}
+
+.db-settings__theme-tab + .db-settings__theme-tab {
+    border-left: 1px solid var(--b3-border-color);
+}
+
+.db-settings__theme-tab--active {
+    background-color: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+}
+
+.db-settings__palette-row {
+    display: grid;
+    grid-template-columns: minmax(70px, 1fr) auto auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 32px;
+    padding: 3px 2px;
+    border-bottom: 1px solid var(--b3-border-color);
+    font-size: 12px;
+}
+
+.db-settings__value-rules {
+    display: grid;
+    gap: 6px;
+}
+
+.db-settings__value-rules-list {
+    display: grid;
+    gap: 0;
+}
+
+.db-settings__value-rule {
+    display: grid;
+    grid-template-columns: minmax(120px, 1fr) auto 28px auto 26px;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--b3-border-color);
+}
+
+.db-settings__value-rule .b3-text-field {
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.db-settings__field-rule {
+    grid-template-columns: 1fr 26px;
+}
+
+.db-settings__remove-rule {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 0;
+    cursor: pointer;
+}
+
+.db-settings__remove-rule:hover {
+    background: var(--b3-list-hover);
+    color: var(--b3-theme-error);
+}
+
+.db-settings__add-rule {
+    justify-self: start;
+}
+
+@media (max-width: 520px) {
+    .db-settings__row {
+        grid-template-columns: 1fr;
+        gap: 3px;
+    }
+
+    .db-settings__palette {
+        grid-template-columns: 1fr;
+    }
+
+    .db-settings__value-rule {
+        grid-template-columns: minmax(90px, 1fr) auto 28px auto 26px;
+    }
+
+    .db-settings__field-rule {
+        grid-template-columns: 1fr 26px;
+    }
+}
