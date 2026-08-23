@@ -10,7 +10,7 @@ export function addDisplayFormatPanel(
     shouldShowProBadge: () => boolean,
     isFeatureEnabled: (feature: ProFeature) => boolean
 ): void {
-    addPanel("display-format", JSON.stringify({ dateFormat: "YYYY-MM-DD", includeTime: false, checkboxStyle: "emoji", maxDisplayLength: 30, showFieldNames: false, listFontSize: 12, listMultiColumn: true, listLayoutStyle: "grid", cardEnabled: true, editTrigger: "click", layout: "below" }), text.format.title, text.format.description, (value, commit) => {
+    addPanel("display-format", JSON.stringify({ dateFormat: "YYYY-MM-DD", includeTime: false, checkboxStyle: "icon", maxDisplayLength: 30, showFieldNames: false, listFontSize: 12, listMultiColumn: true, listLayoutStyle: "grid", cardEnabled: true, editTrigger: "click", layout: "below" }), text.format.title, text.format.description, (value, commit) => {
         const state = parseObject<{ dateFormat?: string; includeTime?: boolean; checkboxStyle?: string; maxDisplayLength?: number; showFieldNames?: boolean; listFontSize?: number; listMultiColumn?: boolean; listLayoutStyle?: string; cardEnabled?: boolean; editTrigger?: string; layout?: string }>(value, {});
         const panel = createPanel("db-settings--format");
         const layout = createSelect(text.format.layoutOptions, state.layout === "above" ? "above" : state.layout === "inline" ? "inline" : "below");
@@ -26,7 +26,7 @@ export function addDisplayFormatPanel(
         editTrigger.disabled = !canUseInlineEdit;
         if (!canUseInlineEdit) editTrigger.title = text.format.inlineEditProTooltip;
         const date = createSelect(i18n.settings.dateFormat.options, state.dateFormat || "YYYY-MM-DD");
-        const checkbox = createSelect(i18n.settings.checkboxStyle.options, state.checkboxStyle || "emoji");
+        const checkbox = createSelect(i18n.settings.checkboxStyle.options, state.checkboxStyle === "text" ? "text" : "icon");
         const includeTime = createCheckbox(Boolean(state.includeTime));
         const showFieldNames = createCheckbox(state.showFieldNames === true);
         const cardEnabled = createCheckbox(state.cardEnabled !== false);

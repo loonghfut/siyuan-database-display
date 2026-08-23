@@ -4,7 +4,6 @@ import {
     AttributeViewTable,
     AttributeViewValue,
     BlockReference,
-    CheckboxStyle,
     DateFormat,
     DisplayItem,
     DisplayNavigationTarget,
@@ -37,10 +36,12 @@ function formatDate(value: number, format: DateFormat, includeTime: boolean, isN
     return includeTime && !isNotTime ? `${content} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}:${String(date.getSeconds()).padStart(2, "0")}` : content;
 }
 
-function checkboxText(checked: boolean, style: CheckboxStyle): string {
-    if (style === "symbol") return checked ? "☑" : "☐";
-    if (style === "text") return checked ? t("common.checked") : t("common.unchecked");
-    return checked ? "✅" : "❌";
+/**
+ * 复选框的文字表示：text 样式直接显示；icon 样式仅作为无障碍提示与纯文本回退，
+ * 视觉由渲染层替换为思源原生图标（iconCheck/iconUncheck）。
+ */
+function checkboxText(checked: boolean): string {
+    return checked ? t("common.checked") : t("common.unchecked");
 }
 
 function normalizeRelation(value: AttributeViewValue): RelationValue {
@@ -187,7 +188,7 @@ function texts(value: AttributeViewValue, type: FieldType, config: DisplayConfig
             return content ? [content] : [];
         }
         case "relation": return relationEntries(normalizeRelation(value)).map(entry => entry.text);
-        case "checkbox": return value.checkbox ? [checkboxText(Boolean(value.checkbox.checked), config.checkboxStyle)] : [];
+        case "checkbox": return value.checkbox ? [checkboxText(Boolean(value.checkbox.checked))] : [];
         case "phone": return value.phone?.content ? [value.phone.content] : [];
         case "url": return value.url?.content ? [value.url.content] : [];
         case "email": return value.email?.content ? [value.email.content] : [];

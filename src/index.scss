@@ -337,6 +337,58 @@
     height: 13px;
 }
 
+/* 复选框字段·图标样式：勾选=主题色填充块+白色对勾，未勾选=半透明方框，一眼可辨 */
+.db-display__checkbox-icon {
+    flex: 0 0 auto;
+    width: 13px;
+    height: 13px;
+    padding: 2px;
+    border-radius: 3px;
+    box-sizing: content-box;
+}
+
+.db-display__checkbox-icon--checked {
+    color: var(--b3-theme-on-primary);
+    background-color: var(--b3-theme-primary);
+}
+
+.db-display__checkbox-icon--unchecked {
+    color: var(--b3-theme-on-surface);
+    opacity: .45;
+}
+
+.db-display__chip[data-field-type="checkbox"] .db-display__value {
+    display: inline-flex;
+    align-items: center;
+}
+
+.my-protyle-attr--av--list .db-display__checkbox-icon {
+    width: 0.9em;
+    height: 0.9em;
+    padding: 0.16em;
+}
+
+/* 列表模式下图标盒占满首行行高，flex-start 顶部对齐即等于与文字行居中 */
+.my-protyle-attr--av--list .db-display__chip[data-field-type="checkbox"] .db-display__value {
+    min-height: 1.35em;
+}
+
+/* 复选框字段·文字样式：彩色徽章区分勾选状态 */
+.db-display__chip--checkbox-text .db-display__value {
+    padding: 0 5px;
+    border-radius: var(--b3-border-radius);
+}
+
+.db-display__chip--checkbox-text[data-checked="1"] .db-display__value {
+    background-color: color-mix(in srgb, var(--b3-theme-primary) 14%, transparent);
+    color: var(--b3-theme-primary);
+}
+
+.db-display__chip--checkbox-text[data-checked="0"] .db-display__value {
+    background-color: var(--b3-list-hover);
+    color: var(--b3-theme-on-surface-light);
+}
+
 .db-display__chip[data-field-type="template"] .db-display__value {
     display: inline-flex;
     align-items: center;

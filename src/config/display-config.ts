@@ -136,7 +136,8 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
         forceShowFields: new Set(parseCsv(fieldRules.force ?? get("force-show-fields")).filter(name => name !== "*")),
         dateFormat: ["YYYY-MM-DD", "YYYY/MM/DD", "MM/DD/YYYY", "DD/MM/YYYY", "full", "relative"].includes(String(dateFormat)) ? dateFormat as DateFormat : "YYYY-MM-DD",
         includeTime: formatSettings.includeTime ?? Boolean(get("include-time")),
-        checkboxStyle: ["emoji", "symbol", "text"].includes(String(checkboxStyle)) ? checkboxStyle as CheckboxStyle : "emoji",
+        // 旧的 emoji/symbol 样式已移除，读取时统一迁移为 icon
+        checkboxStyle: checkboxStyle === "text" ? "text" : "icon",
         maxDisplayLength: Number.isFinite(configuredMax) ? Math.min(200, Math.max(10, configuredMax || 30)) : 30,
         showFieldNames: formatSettings.showFieldNames === true,
         listFontSize: Number.isFinite(Number(formatSettings.listFontSize))

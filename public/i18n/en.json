@@ -106,9 +106,8 @@
             "title": "Checkbox style",
             "description": "Choose how checkbox fields are rendered.",
             "options": {
-                "emoji": "Emoji (✅ / ❌)",
-                "symbol": "Symbols (☑ / ☐)",
-                "text": "Text (Checked / Unchecked)"
+                "icon": "Icon (✓ / □)",
+                "text": "Badge (Checked / Unchecked)"
             },
             "logUpdated": "Checkbox style updated: ${style}"
         },

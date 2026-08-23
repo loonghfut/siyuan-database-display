@@ -1,7 +1,7 @@
 export const FIELD_TYPES = ["mSelect", "number", "date", "text", "template", "mAsset", "relation", "rollup", "block", "lineNumber", "checkbox", "phone", "url", "email", "created", "updated"] as const;
 
 export type FieldType = typeof FIELD_TYPES[number];
-export type CheckboxStyle = "emoji" | "symbol" | "text";
+export type CheckboxStyle = "icon" | "text";
 export type DateFormat = "YYYY-MM-DD" | "YYYY/MM/DD" | "MM/DD/YYYY" | "DD/MM/YYYY" | "full" | "relative";
 
 const READ_ONLY_FIELD_TYPES: readonly FieldType[] = ["block", "rollup", "lineNumber", "mAsset", "created", "updated"];

@@ -536,6 +536,9 @@ export class AttributeRenderer {
             : normalizeDisplayText(item.text);
         if (isTemplate) {
             // 模板值已由 renderTemplateValue 填充
+        } else if (item.type === "checkbox" && context.config.checkboxStyle === "icon" && typeof item.rawValue === "boolean") {
+            // 图标样式：用思源原生勾选图标替代文字，文字保留在 aria-label 中
+            value.appendChild(this.createCheckboxIcon(item.rawValue));
         } else if (item.segments?.length) {
             this.renderSegments(value, item.segments, context.config.maxDisplayLength);
         } else {
@@ -547,6 +550,11 @@ export class AttributeRenderer {
             element.appendChild(value);
         }
         element.dataset.fieldType = item.type;
+        if (item.type === "checkbox" && typeof item.rawValue === "boolean") {
+            // 记录样式与勾选状态，供文字徽章/图标样式的 CSS 着色
+            element.classList.add(`db-display__chip--checkbox-${context.config.checkboxStyle}`);
+            element.dataset.checked = item.rawValue ? "1" : "0";
+        }
         value.dataset.dbTruncated = plainText.length > context.config.maxDisplayLength ? "1" : "0";
         element.classList.toggle("ariaLabel", value.dataset.dbTruncated === "1");
         this.enableTruncatedTooltip(element, value);
@@ -611,6 +619,13 @@ export class AttributeRenderer {
         span.className = "db-display__block-icon db-display__block-icon--default";
         span.appendChild(iconElement("iconFile"));
         return span;
+    }
+
+    /** 复选框图标：与思源数据库单元格相同的 iconCheck/iconUncheck。 */
+    private createCheckboxIcon(checked: boolean): SVGSVGElement {
+        const icon = iconElement(checked ? "iconCheck" : "iconUncheck");
+        icon.classList.add("db-display__checkbox-icon", checked ? "db-display__checkbox-icon--checked" : "db-display__checkbox-icon--unchecked");
+        return icon;
     }
 
     private createFieldName(keyName: string, item: DisplayItem, config: DisplayConfig): HTMLSpanElement {
