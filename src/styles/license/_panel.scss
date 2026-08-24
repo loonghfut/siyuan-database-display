@@ -1,4 +1,4 @@
-// 授权设置面板：状态徽章、许可输入与展开分组
+// 授权设置面板：状态徽章、许可输入、展开分组与客服联系对话框
 .db-settings--license {
     display: grid;
     gap: 12px;
@@ -12,11 +12,32 @@
     gap: 8px;
 }
 
-.db-license__apply {
+.db-license__apply,
+.db-license__support {
     flex: 0 0 auto;
     min-height: 26px;
     padding: 0 8px;
     font-size: 12px;
+}
+
+.db-support {
+    display: grid;
+    gap: 10px;
+}
+
+.db-support__hint {
+    font-size: 13px;
+    color: var(--b3-theme-on-surface-light);
+}
+
+.db-support .fn__flex {
+    align-items: center;
+    gap: 8px;
+}
+
+.db-support .fn__flex .b3-text-field {
+    flex: 1;
+    min-width: 0;
 }
 
 .db-license__status {

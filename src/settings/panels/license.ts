@@ -1,10 +1,11 @@
-import { showMessage } from "siyuan";
+import { Dialog, showMessage } from "siyuan";
 import { LicenseService, TrialService } from "@/licensing";
 import { createCheckbox, createLabel } from "../components/controls";
 import { AddPanel, SettingsPanelText } from "../types";
 
 // Fill this in when the Pro application page is ready.
 const PRO_APPLICATION_URL = "https://www.kdocs.cn/l/cqkfx6NVc2BE?linkname=Diz87RtY2M";
+const SUPPORT_EMAIL = "istevei@qq.com";
 
 async function copyText(value: string): Promise<void> {
     if (navigator.clipboard?.writeText) {
@@ -24,7 +25,46 @@ function formatExpiry(value: string): string {
     return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
-function addApplicationButton(panel: HTMLElement, label: string): void {
+function openMailto(email: string): void {
+    // 与思源邮箱字段的跳转方式一致：经 Electron 的 openExternal 调起系统邮件客户端。
+    const link = document.createElement("a");
+    link.href = `mailto:${email}`;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.click();
+}
+
+function showSupportDialog(text: SettingsPanelText): void {
+    const dialog = new Dialog({
+        title: text.license.supportTitle,
+        content: `<div class="b3-dialog__content db-support">
+    <div class="db-support__hint">${text.license.supportHint}</div>
+    <div class="fn__flex">
+        <input class="b3-text-field" readonly value="${SUPPORT_EMAIL}">
+        <button class="b3-button b3-button--outline" id="dbSupportCopyBtn">${text.license.copyEmail}</button>
+    </div>
+</div>
+<div class="b3-dialog__action">
+    <button class="b3-button b3-button--cancel">${window.siyuan.languages.cancel}</button><div class="fn__space"></div>
+    <button class="b3-button b3-button--text" id="dbSupportMailBtn">${text.license.sendEmail}</button>
+</div>`,
+        width: "420px"
+    });
+    const copy = dialog.element.querySelector<HTMLButtonElement>("#dbSupportCopyBtn");
+    copy?.addEventListener("click", () => {
+        void copyText(SUPPORT_EMAIL).then(() => {
+            copy.textContent = text.license.copiedEmail;
+            window.setTimeout(() => { copy.textContent = text.license.copyEmail; }, 1500);
+        }).catch(() => undefined);
+    });
+    dialog.element.querySelector(".b3-button--cancel")?.addEventListener("click", () => dialog.destroy());
+    dialog.element.querySelector("#dbSupportMailBtn")?.addEventListener("click", () => {
+        dialog.destroy();
+        openMailto(SUPPORT_EMAIL);
+    });
+}
+
+function addTitleButtons(panel: HTMLElement, text: SettingsPanelText): void {
     queueMicrotask(() => {
         const configItem = panel.closest<HTMLElement>(".config-item");
         configItem?.classList.add("config-item--has-license");
@@ -34,11 +74,18 @@ function addApplicationButton(panel: HTMLElement, label: string): void {
         const apply = document.createElement("button");
         apply.type = "button";
         apply.className = "b3-button b3-button--outline db-license__apply";
-        apply.textContent = label;
+        apply.textContent = text.license.apply;
         apply.addEventListener("click", () => {
             if (PRO_APPLICATION_URL) window.open(PRO_APPLICATION_URL, "_blank", "noopener,noreferrer");
         });
-        title.append(apply);
+
+        const support = document.createElement("button");
+        support.type = "button";
+        support.className = "b3-button b3-button--outline db-license__support";
+        support.textContent = text.license.support;
+        support.addEventListener("click", () => showSupportDialog(text));
+
+        title.append(apply, support);
     });
 }
 
@@ -54,7 +101,7 @@ export function addLicensePanel(
     addPanel("pro-license", "", text.license.title, text.license.description, (value, commit) => {
         const panel = document.createElement("div");
         panel.className = "db-settings--license";
-        addApplicationButton(panel, text.license.apply);
+        addTitleButtons(panel, text);
         const userId = window.siyuan?.user?.userId || "";
 
         const status = document.createElement("span");
