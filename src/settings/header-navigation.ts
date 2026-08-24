@@ -3,7 +3,10 @@ import { t } from "@/i18n";
 
 export interface SettingsCategory {
     key: string;
+    /** 完整标题，用于匹配面板项（.config-name 的文本） */
     title: string;
+    /** 可选：导航按钮上实际显示的文本（如移动端短标题） */
+    label?: string;
 }
 
 /** Adds in-dialog anchors to a plugin settings dialog without changing SiYuan's Setting API. */
@@ -48,7 +51,7 @@ function mountNavigation(dialogElement: HTMLElement, categories: SettingsCategor
         const button = document.createElement("button");
         button.type = "button";
         button.className = "db-settings-nav__item";
-        button.textContent = target.title;
+        button.textContent = target.label ?? target.title;
         button.addEventListener("pointerdown", event => event.stopPropagation());
         button.addEventListener("click", event => {
             event.preventDefault();

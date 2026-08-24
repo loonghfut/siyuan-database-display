@@ -43,6 +43,9 @@ function adaptToBottomSheet(wrapper: HTMLElement, close: () => void): void {
     container.style.width = "100vw";
     container.style.height = SHEET_HEIGHT;
 
+    // 右上角关闭按钮多余：移动端可用把手下拉关闭，隐藏之
+    wrapper.querySelector<HTMLElement>(".b3-dialog__close")?.classList.add("fn__none");
+
     const handle = document.createElement("div");
     handle.className = "db-sheet__handle";
     handle.setAttribute("role", "button");

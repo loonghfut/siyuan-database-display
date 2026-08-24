@@ -10,7 +10,7 @@ import { LicenseService, TrialService } from "@/licensing";
 import type { ProFeature } from "@/licensing";
 import { AddPanel } from "./types";
 import { installSettingsHeaderNavigation } from "./header-navigation";
-import { installMobileSettingsSheet } from "./mobile-sheet";
+import { installMobileSettingsSheet, isMobileFrontend } from "./mobile-sheet";
 import { setProBadgeVisibility } from "./field-type-label";
 
 export { migrateLegacySettings } from "./migration";
@@ -61,12 +61,14 @@ export function addSettings(
     addRefreshPanel(addPanel, i18n.settings.panel);
     addLicensePanel(addPanel, i18n.settings.panel, license, trial, onChanged, shouldShowProBadge, saveShowProBadge);
     installMobileSettingsSheet(settings);
+    // 匹配面板项用完整 title；移动端导航空间有限，按钮文案用两字短标题，避免被把手遮挡
+    const compact = isMobileFrontend();
     installSettingsHeaderNavigation(settings, [
-        { key: "display-fields", title: i18n.settings.panel.displayFields.title },
-        { key: "field-rules", title: i18n.settings.panel.fieldRules.title },
-        { key: "format", title: i18n.settings.panel.format.title },
-        { key: "appearance", title: i18n.settings.panel.appearance.title },
-        { key: "refresh", title: i18n.settings.panel.refresh.title },
-        { key: "license", title: i18n.settings.panel.license.title }
+        { key: "display-fields", title: i18n.settings.panel.displayFields.title, label: compact ? i18n.settings.panel.displayFields.shortTitle : undefined },
+        { key: "field-rules", title: i18n.settings.panel.fieldRules.title, label: compact ? i18n.settings.panel.fieldRules.shortTitle : undefined },
+        { key: "format", title: i18n.settings.panel.format.title, label: compact ? i18n.settings.panel.format.shortTitle : undefined },
+        { key: "appearance", title: i18n.settings.panel.appearance.title, label: compact ? i18n.settings.panel.appearance.shortTitle : undefined },
+        { key: "refresh", title: i18n.settings.panel.refresh.title, label: compact ? i18n.settings.panel.refresh.shortTitle : undefined },
+        { key: "license", title: i18n.settings.panel.license.title, label: compact ? i18n.settings.panel.license.shortTitle : undefined }
     ]);
 }
