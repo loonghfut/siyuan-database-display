@@ -36,7 +36,7 @@
         "hideField": "隐藏此字段",
         "fieldHidden": "已隐藏字段：${name}",
         "openInSplit": "在分屏打开",
-        "inlineEditRequiresPro": "行内编辑是 Pro 功能"
+        "inlineEditRequiresPro": "数据库属性展示插件：行内编辑是 Pro 功能"
     },
     "messages": {
         "fieldColorParseFailed": "解析字段颜色 JSON 失败",
