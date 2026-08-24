@@ -336,6 +336,11 @@ export class AttributeRenderer {
         const label = target.kind === "block" ? t("common.openBlock") : t("common.openFile");
         element.title = label;
         element.setAttribute("aria-label", this.chipLabel(item, plainText, includeFieldName));
+        // 关联字段绑定块时标记为块引用，暴露其目标块 ID 供外部定位/跳转
+        if (item.type === "relation" && target.kind === "block") {
+            element.dataset.type = "block-ref";
+            element.dataset.id = target.blockId;
+        }
         this.applyColors(element, item, context.config);
         element.addEventListener("click", event => {
             event.stopPropagation();
