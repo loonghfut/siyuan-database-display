@@ -10,6 +10,7 @@ import { LicenseService, TrialService } from "@/licensing";
 import type { ProFeature } from "@/licensing";
 import { AddPanel } from "./types";
 import { installSettingsHeaderNavigation } from "./header-navigation";
+import { installMobileSettingsSheet } from "./mobile-sheet";
 import { setProBadgeVisibility } from "./field-type-label";
 
 export { migrateLegacySettings } from "./migration";
@@ -59,6 +60,7 @@ export function addSettings(
     addAppearancePanel(addPanel, i18n.settings.panel, shouldShowProBadge);
     addRefreshPanel(addPanel, i18n.settings.panel);
     addLicensePanel(addPanel, i18n.settings.panel, license, trial, onChanged, shouldShowProBadge, saveShowProBadge);
+    installMobileSettingsSheet(settings);
     installSettingsHeaderNavigation(settings, [
         { key: "display-fields", title: i18n.settings.panel.displayFields.title },
         { key: "field-rules", title: i18n.settings.panel.fieldRules.title },

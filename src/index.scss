@@ -12,6 +12,7 @@
 // 设置：面板布局与规则 → 取色器
 @use "./styles/settings/panel" as settings-panel;
 @use "./styles/settings/color-picker";
+@use "./styles/settings/mobile-sheet";
 
 // 直接编辑：面板基座与动画 → 各字段编辑器
 @use "./styles/inline-edit/panels";

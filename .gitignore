@@ -21,3 +21,6 @@ tmp
 docs/licensing.md
 scripts/generate-license-key.mjs
 docs/release.md
+siyuan-plugin-dev/SKILL.md
+siyuan-plugin-dev/references/project-structure.md
+siyuan-plugin-dev/references/source-map.md

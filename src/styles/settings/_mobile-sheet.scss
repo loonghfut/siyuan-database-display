@@ -1,0 +1,56 @@
+// 移动端设置面板：半屏底部弹窗（bottom sheet）
+// db-sheet 加在 Dialog 的 wrapper 上（b3-dialog--open 同级），不影响桌面端弹窗
+.db-sheet {
+    .b3-dialog {
+        align-items: flex-end;
+    }
+
+    .b3-dialog__container {
+        border: 0;
+        border-top: 1px solid var(--b3-theme-surface-lighter);
+        border-radius: var(--b3-border-radius-b) var(--b3-border-radius-b) 0 0;
+        max-width: 100vw;
+        // 入场自底部滑入；关闭（destroy 移除 --open）时滑回底部
+        transform: translateY(100%);
+        transition: transform 200ms cubic-bezier(0, 0, 0.2, 1), opacity 75ms linear;
+        will-change: transform;
+    }
+
+    &.b3-dialog--open .b3-dialog__container {
+        transform: none;
+    }
+
+    .b3-dialog__content {
+        padding: 8px 16px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .b3-dialog__action {
+        padding: 8px 16px max(8px, env(safe-area-inset-bottom));
+    }
+}
+
+// 顶部下拉把手：拖动关闭弹窗
+.db-sheet__handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    height: 22px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+
+    &::before {
+        content: "";
+        width: 36px;
+        height: 4px;
+        border-radius: 2px;
+        background-color: var(--b3-theme-surface-lighter);
+    }
+
+    &:active {
+        cursor: grabbing;
+    }
+}

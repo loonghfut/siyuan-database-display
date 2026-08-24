@@ -60,6 +60,7 @@
     },
     "settings": {
         "navigation": "Settings categories",
+        "sheetDragHandle": "Drag down to close settings",
         "panel": {
             "displayFields": { "title": "Fields to display", "description": "Choose the fields shown on document blocks and regular blocks", "document": "Document blocks", "block": "Regular blocks" },
             "fieldRules": { "title": "Field exceptions", "description": "Hidden fields are omitted. Forced fields retain their name when empty", "hidden": "Hide fields", "force": "Always show", "hiddenPlaceholder": "For example: Password", "forcePlaceholder": "For example: Status", "addHidden": "Add hidden field", "addForce": "Add always show", "removeRule": "Remove" },
