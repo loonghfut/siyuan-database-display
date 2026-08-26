@@ -238,14 +238,30 @@ export class DisplayController {
      * 一帧内快速恢复：容器随旧 DOM 消失后，用最近一次渲染的数据同步恢复到新块，
      * 避免"消失-恢复"闪烁。仅在 observer 微任务回调中调用（此时思源的回放已完成、
      * 新块已就位），不发起任何网络请求，也不做整篇文档查询。
+     *
+     * 恢复前必须重新校验宿主仍满足容器的所有权条件：文档标题或其普通块仍拥有
+     * custom-avs。若宿主已失去数据库绑定（例如用户从数据库属性面板解除绑定，
+     * 思源重建 .protyle-attr 导致容器消失），则该消失是目标后像而非意外丢失，
+     * 应丢弃旧缓存而非恢复，否则会触发"恢复→判定无效→删除→再次恢复"的死循环。
      */
     private restoreLostContainers(lostBlockIds: Set<string>, newBlockElements: Map<string, HTMLElement[]>): void {
         for (const blockId of lostBlockIds) {
             const state = this.lastRenderState.get(blockId);
             const parents = newBlockElements.get(blockId);
             if (!state || !parents?.length) continue;
+
+            const validParents = parents.filter(parent =>
+                parent.classList.contains("protyle-title") ||
+                parent.hasAttribute("custom-avs")
+            );
+
+            if (validParents.length === 0) {
+                this.forgetBlockRenderState(blockId);
+                continue;
+            }
+
             const context = this.createRenderContext(blockId, state.config, state.canInlineEdit);
-            parents.forEach(parent => this.renderer.render(parent, state.items, context));
+            validParents.forEach(parent => this.renderer.render(parent, state.items, context));
         }
     }
 
