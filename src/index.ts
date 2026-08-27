@@ -15,7 +15,7 @@ export default class DatabaseDisplay extends Plugin {
     private trial!: TrialService;
     private proAccess!: ProAccessService;
     private readonly onSwitchProtyle = (event: CustomEvent) => void this.controller.switchDocument(event.detail);
-    private readonly onLoaded = () => this.controller.handleProtyleLoaded();
+    private readonly onLoaded = () => this.controller.scheduleRefresh(false);
     private readonly onWebsocketMessage = (event: MessageEvent) => this.handleWebsocketMessage(event);
     private themeObserver: MutationObserver | undefined;
 
@@ -52,7 +52,7 @@ export default class DatabaseDisplay extends Plugin {
         this.applySettings();
         window.siyuan.ws.ws.addEventListener("message", this.onWebsocketMessage);
         this.themeObserver?.disconnect();
-        this.themeObserver = new MutationObserver(() => this.controller?.refreshPresentation());
+        this.themeObserver = new MutationObserver(() => this.controller?.scheduleRefresh(true));
         this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme-mode"] });
     }
 
@@ -66,10 +66,10 @@ export default class DatabaseDisplay extends Plugin {
     }
 
     private applySettings(): void {
-        void this.license.refresh(this.settings.get("pro-license")).then(() => this.controller?.refreshPresentation());
+        void this.license.refresh(this.settings.get("pro-license")).then(() => this.controller?.scheduleRefresh(true));
         this.controller?.updateAutoRefresh();
         this.controller?.updateObserver();
-        this.controller?.refreshPresentation();
+        this.controller?.scheduleRefresh(true);
     }
 
     private handleWebsocketMessage(event: MessageEvent): void {
@@ -114,7 +114,7 @@ export default class DatabaseDisplay extends Plugin {
         fieldRules.hidden = [...hidden].join(",");
         void this.settings.setAndSave("field-rules", JSON.stringify(fieldRules)).then(() => {
             showMessage(t("common.fieldHidden", { name: fieldName }), 3000, "info");
-            this.controller?.refreshPresentation();
+            this.controller?.scheduleRefresh(true);
         });
     }
 
