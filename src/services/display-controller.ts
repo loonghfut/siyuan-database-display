@@ -1,6 +1,6 @@
 import { showMessage } from "siyuan";
 import { DisplayConfig } from "@/config/display-config";
-import { getCurrentDocumentId, getVisibleAttributeBlockParents, resolveDocumentId } from "@/data/block-context";
+import { getCurrentDocumentId, resolveDocumentId } from "@/data/block-context";
 import { attributeViewRepository, AttributeViewRepository } from "@/data/attribute-view-repository";
 import { extractDisplayItems } from "@/domain/content-extractor";
 import { closeInlineEdit, enableInlineEdit } from "@/inline-edit";
@@ -11,14 +11,20 @@ import { ContentPopover } from "@/ui/content-popover";
 import { openChipMenu } from "@/ui/chip-menu";
 import { t } from "@/i18n";
 import { PRO_FEATURE_KEYS, ProFeature, requiredFeaturesForField } from "@/licensing";
+import { FrameRenderQueue } from "./frame-render-queue";
+import { IdleTaskQueue } from "./idle-task-queue";
 import { RefreshScheduler } from "./refresh-scheduler";
 import { DISPLAY_CONTAINER_SELECTOR, EditorObserver, findInvalidDisplayContainerParents } from "./editor-observer";
+import { ViewportBlockObserver } from "./viewport-block-observer";
 
 // 刷新请求的去抖窗口（毫秒）
 const REFRESH_DEBOUNCE_MS = 20;
 // 思源编辑块内容时会替换整个块 DOM，注入的属性容器随旧块一起消失。
 // 立即恢复会造成"消失-恢复"闪烁，延迟到编辑静默后再恢复。
 const QUIET_REFRESH_DELAY = 300;
+const MAX_RENDER_STATES = 512;
+const BACKGROUND_RESUME_DELAY = 400;
+type RenderScope = "document" | "block" | "background";
 
 export interface DisplayControllerOptions {
     getConfig: () => DisplayConfig;
@@ -36,13 +42,19 @@ export class DisplayController {
     private readonly popover: ContentPopover;
     private readonly scheduler: RefreshScheduler;
     private readonly editorObserver: EditorObserver;
+    private readonly viewportObserver: ViewportBlockObserver;
+    private readonly renderQueue = new FrameRenderQueue();
+    // 后台补全始终只占一个请求位，滚动后的首屏队列不会被它明显挤占。
+    private readonly backgroundQueue = new IdleTaskQueue({ concurrency: 1 });
     private documentId = "";
     // 文档切换序号：快速连续切换时丢弃慢响应的旧结果，避免覆盖新文档 ID
     private switchVersion = 0;
     private autoTimer: ReturnType<typeof setInterval> | undefined;
+    private backgroundResumeTimer: ReturnType<typeof setTimeout> | undefined;
     private visibleAttributeViewIds = new Set<string>();
     private readonly visibleBlockIdsByAttributeViewId = new Map<string, Set<string>>();
     private lastRenderState = new Map<string, { items: DisplayItem[]; config: DisplayConfig; canInlineEdit: boolean }>();
+    private needsFullContainerCleanup = true;
     private disposed = false;
 
     constructor(private readonly options: DisplayControllerOptions) {
@@ -50,16 +62,23 @@ export class DisplayController {
             onNavigate: (target, openInSplit) => this.navigate(target, openInSplit),
             onEditAsset: (item, element) => this.editAsset(item, element)
         });
-        this.scheduler = new RefreshScheduler(request => this.performRefresh(request.force, request.blockIds), {
+        this.scheduler = new RefreshScheduler(request => this.performRefresh(request.force, request.blockIds, request.includeBackground), {
             debounceMs: REFRESH_DEBOUNCE_MS,
             quietDelayMs: QUIET_REFRESH_DELAY
+        });
+        this.viewportObserver = new ViewportBlockObserver({
+            onEnter: blockIds => this.scheduleViewportRefresh(blockIds),
+            onVisible: blockIds => this.scheduleViewportRefresh(blockIds),
+            onLeave: blockIds => blockIds.forEach(blockId => this.untrackBlockAttributeViews(blockId))
         });
         this.editorObserver = new EditorObserver({
             isRefreshObservationEnabled: () => this.options.isObserverEnabled(),
             clearInvalidContainers: (containers, invalidParents) => this.clearInvalidDisplayContainers(containers, invalidParents),
             restoreLostContainers: (lostBlockIds, newBlockElements) => this.restoreLostContainers(lostBlockIds, newBlockElements),
+            observeRelevantNodes: nodes => this.viewportObserver.observeNodes(nodes),
+            removeRelevantNodes: nodes => this.viewportObserver.unobserveNodes(nodes),
             scheduleRefresh: (force, blockIds) => this.scheduleRefresh(force, blockIds),
-            scheduleQuietRefresh: () => this.scheduler.scheduleQuiet()
+            scheduleQuietRefresh: () => this.scheduleQuietRefresh()
         });
     }
 
@@ -67,6 +86,11 @@ export class DisplayController {
         const blockId = getCurrentDocumentId(detail);
         if (!blockId) return;
         const version = ++this.switchVersion;
+        // The new document is more important than every queued block of the old one.
+        this.scheduler.cancelPending();
+        this.renderQueue.discardStale();
+        this.backgroundQueue.clear();
+        this.clearBackgroundResume();
         let documentId: string;
         try {
             documentId = await resolveDocumentId(blockId);
@@ -77,33 +101,100 @@ export class DisplayController {
         }
         if (this.disposed || version !== this.switchVersion) return;
         this.documentId = documentId;
-        this.scheduleRefresh(true);
+        this.viewportObserver.discover(false);
+        this.scheduleRefresh(true, undefined, true);
     }
 
-    scheduleRefresh(force = false, blockIds?: ReadonlySet<string>): void {
-        this.scheduler.schedule(force, blockIds);
+    scheduleRefresh(force = false, blockIds?: ReadonlySet<string>, includeBackground = false): void {
+        this.clearBackgroundResume();
+        // 任意新刷新都不应让旧的低优先级补全继续占用空闲时间。
+        this.backgroundQueue.clear();
+        // Full and data-forced refreshes supersede the old work immediately. A
+        // viewport-enter request is additive, so it must not cancel visible work.
+        if (force || blockIds === undefined) {
+            this.scheduler.cancelCurrent();
+            this.renderQueue.discardStale();
+        }
+        this.scheduler.schedule(force, blockIds, includeBackground);
     }
 
-    private async performRefresh(force: boolean, targetBlockIds?: ReadonlySet<string>): Promise<void> {
+    /** 配置、主题等展示变化只需重绘当前视口，不应主动失效数据库缓存。 */
+    refreshPresentation(): void {
+        this.scheduleRefresh(false, undefined, true);
+    }
+
+    /** Protyle 加载完成后只登记候选块；实际取数仍由活跃视口决定。 */
+    handleProtyleLoaded(): void {
+        this.viewportObserver.ensureObserved();
+        this.viewportObserver.discover(false);
+        this.needsFullContainerCleanup = true;
+        this.scheduleRefresh(false, undefined, true);
+    }
+
+    /** 编辑静默刷新保留当前前台任务，但立即放弃尚未开始的后台补全。 */
+    private scheduleQuietRefresh(): void {
+        this.clearBackgroundResume();
+        this.backgroundQueue.clear();
+        this.scheduler.scheduleQuiet();
+    }
+
+    /**
+     * 滚动进入新区域时重排整个活跃窗口，而不是把新块追加到旧的低优先级队尾。
+     * 这会让旧周期失效；已在途的少量请求无法取消，但不会继续启动其余旧任务。
+     */
+    private scheduleViewportRefresh(blockIds: ReadonlySet<string>): void {
+        if (blockIds.size === 0) return;
+        this.scheduleRefresh(false);
+        this.scheduleBackgroundResume();
+    }
+
+    private scheduleBackgroundResume(): void {
+        this.backgroundResumeTimer = setTimeout(() => {
+            this.backgroundResumeTimer = undefined;
+            // 用户停止滚动后再做一次候选快照，后台队列随后在 idle 时间逐步补全。
+            this.scheduleRefresh(false, undefined, true);
+        }, BACKGROUND_RESUME_DELAY);
+    }
+
+    private clearBackgroundResume(): void {
+        if (this.backgroundResumeTimer) clearTimeout(this.backgroundResumeTimer);
+        this.backgroundResumeTimer = undefined;
+    }
+
+    private async performRefresh(force: boolean, targetBlockIds?: ReadonlySet<string>, includeBackground = false): Promise<void> {
         if (this.disposed || !this.documentId) return;
-        // 即使关闭了自动补充观察，也要在手动/定时刷新时清掉复制遗留的展示 DOM。
-        this.clearInvalidDisplayContainers(document.querySelectorAll<HTMLElement>(DISPLAY_CONTAINER_SELECTOR));
         const version = this.scheduler.beginCycle();
         const documentId = this.documentId;
-        const allBlockParents = getVisibleAttributeBlockParents();
+        // 首次打开时已在 Protyle 加载/观察器重建阶段登记候选块；滚动期间由
+        // IntersectionObserver 增量加入，刷新时无需重新扫描整篇文档。
+        this.viewportObserver.ensureObserved();
         const isFullRefresh = targetBlockIds === undefined;
         if (isFullRefresh) {
             // 可见属性视图集合随全量刷新重建，用于过滤无关 websocket 事务；
-            // 内存渲染状态同样重建，避免在长会话中累积。
+            // 数据强制刷新才丢弃渲染快照；滚动重排时保留它，供思源替换块 DOM
+            // 时同步恢复，也避免后台块较多时反复清空大 Map。
             this.visibleAttributeViewIds.clear();
             this.visibleBlockIdsByAttributeViewId.clear();
-            this.lastRenderState.clear();
+            if (force) this.lastRenderState.clear();
         } else {
             targetBlockIds!.forEach(blockId => this.forgetBlockRenderState(blockId));
         }
+        const activeBlockIds = this.viewportObserver.getActiveBlockIds();
         const blockParents = isFullRefresh
-            ? allBlockParents
-            : new Map([...allBlockParents].filter(([blockId]) => targetBlockIds!.has(blockId)));
+            ? this.viewportObserver.getPrioritizedParents(activeBlockIds, true)
+            : this.viewportObserver.getPrioritizedParents(targetBlockIds, true);
+        const backgroundParents = isFullRefresh && includeBackground
+            ? this.viewportObserver.getBackgroundParents(new Set(blockParents.keys()))
+            : new Map<string, HTMLElement[]>();
+        // 首次/新 Protyle 加载时保留一次全局清理，保证关闭自动观察后也能修复
+        // 已复制的残留节点；普通滚动刷新只检查活跃块，避免后台全部渲染后每次
+        // 滚动都再次扫描整篇文档。
+        if (this.needsFullContainerCleanup) {
+            this.clearInvalidDisplayContainers(document.querySelectorAll<HTMLElement>(DISPLAY_CONTAINER_SELECTOR));
+            this.needsFullContainerCleanup = false;
+        } else {
+            this.clearInvalidDisplayContainers(this.getDisplayContainers(blockParents));
+        }
         const refreshDocument = isFullRefresh || targetBlockIds!.has(documentId);
         const refreshedBlockIds = new Set(blockParents.keys());
         if (refreshDocument) refreshedBlockIds.add(documentId);
@@ -122,12 +213,16 @@ export class DisplayController {
             return;
         }
         if (force) {
-            refreshedBlockIds.forEach(blockId => this.repository.invalidateBlock(blockId));
+            if (isFullRefresh) this.repository.invalidateAll();
+            else refreshedBlockIds.forEach(blockId => this.repository.invalidateBlock(blockId));
         }
         await Promise.all([
             refreshDocument ? this.renderDocument(documentId, version, config, enabledFeatures) : Promise.resolve(),
             this.renderBlocks(blockParents, version, config, enabledFeatures)
         ]);
+        if (isFullRefresh && includeBackground && this.scheduler.isCurrent(version)) {
+            this.renderBackgroundBlocks(backgroundParents, version, config, enabledFeatures);
+        }
     }
 
     updateAutoRefresh(): void {
@@ -147,6 +242,9 @@ export class DisplayController {
             this.scheduleRefresh(true);
             return;
         }
+        // 延迟加载过的块可能仍命中 30 秒缓存。先按属性视图失效，之后滚入
+        // 视口时会获得新值；当前活跃块仍只做定向刷新。
+        attributeViewIds.forEach(attributeViewId => this.repository.invalidateAttributeView(attributeViewId));
         const affectedBlockIds = new Set<string>();
         for (const attributeViewId of attributeViewIds) {
             if (!this.visibleAttributeViewIds.has(attributeViewId)) continue;
@@ -165,6 +263,8 @@ export class DisplayController {
     }
 
     updateObserver(): void {
+        this.needsFullContainerCleanup = true;
+        this.viewportObserver.rebuild();
         this.editorObserver.rebuild();
     }
 
@@ -172,8 +272,12 @@ export class DisplayController {
         this.disposed = true;
         this.scheduler.dispose();
         this.editorObserver.dispose();
+        this.viewportObserver.dispose();
+        this.renderQueue.dispose();
+        this.backgroundQueue.dispose();
         if (this.autoTimer) clearInterval(this.autoTimer);
         this.autoTimer = undefined;
+        this.clearBackgroundResume();
         this.visibleAttributeViewIds.clear();
         this.visibleBlockIdsByAttributeViewId.clear();
         this.lastRenderState.clear();
@@ -184,7 +288,7 @@ export class DisplayController {
 
     private async renderDocument(blockId: string, version: number, config: DisplayConfig, enabledFeatures: ReadonlySet<ProFeature>): Promise<void> {
         const parents = [...document.querySelectorAll<HTMLElement>(".protyle-title[data-node-id]")]
-            .filter(element => element.dataset.nodeId === blockId && !element.classList.contains("fn__none"));
+            .filter(element => element.dataset.nodeId === blockId && !element.closest(".fn__none"));
         await this.render(blockId, parents, "document", version, config, enabledFeatures);
     }
 
@@ -192,32 +296,55 @@ export class DisplayController {
         const tasks = [...parentsByBlockId].map(([blockId, parents]) => async () => {
             await this.render(blockId, parents, "block", version, config, enabledFeatures);
         });
-        await this.runWithConcurrency(tasks, 4);
+        await this.runWithConcurrency(tasks, 4, () => this.isRenderCurrent("", "document", version));
     }
 
-    private async render(blockId: string, parents: HTMLElement[], scope: "document" | "block", version: number, config: DisplayConfig, enabledFeatures: ReadonlySet<ProFeature>): Promise<void> {
-        if (!blockId || parents.length === 0) return;
+    /** 首屏/预取区完成后，利用空闲时间逐步填充其余已挂载块。 */
+    private renderBackgroundBlocks(parentsByBlockId: Map<string, HTMLElement[]>, version: number, config: DisplayConfig, enabledFeatures: ReadonlySet<ProFeature>): void {
+        this.backgroundQueue.enqueue([...parentsByBlockId].map(([blockId, parents]) => async () => {
+            await this.render(blockId, parents, "background", version, config, enabledFeatures);
+        }));
+    }
+
+    private async render(blockId: string, parents: HTMLElement[], scope: RenderScope, version: number, config: DisplayConfig, enabledFeatures: ReadonlySet<ProFeature>): Promise<void> {
+        if (!blockId || parents.length === 0 || !this.isRenderCurrent(blockId, scope, version)) return;
         try {
             const tables = await this.repository.getKeys(blockId);
-            if (!this.scheduler.isCurrent(version)) return;
-            tables.forEach(table => {
-                this.visibleAttributeViewIds.add(table.avID);
-                const blockIds = this.visibleBlockIdsByAttributeViewId.get(table.avID) || new Set<string>();
-                blockIds.add(blockId);
-                this.visibleBlockIdsByAttributeViewId.set(table.avID, blockIds);
-            });
+            if (!this.isRenderCurrent(blockId, scope, version)) return;
             const fields = scope === "document" ? config.documentFields : config.blockFields;
             const visibleFields = fields.filter(type =>
                 requiredFeaturesForField(type).every(feature => enabledFeatures.has(feature))
             );
-            const items = extractDisplayItems(tables, visibleFields, config, blockId);
             const canInlineEdit = enabledFeatures.has("inline-edit");
-            parents.forEach(parent => this.renderer.render(parent, items, this.createRenderContext(blockId, config, canInlineEdit)));
-            // 保存最近一次渲染结果：块被思源替换时，同一帧内用它快速恢复显示
-            this.lastRenderState.set(blockId, { items, config, canInlineEdit });
+            await this.renderQueue.enqueue(() => {
+                const currentParents = scope === "block"
+                    ? this.viewportObserver.getActiveParents(blockId)
+                    : scope === "background"
+                        ? this.viewportObserver.getMountedParents(blockId)
+                        : parents.filter(parent => parent.isConnected && !parent.closest(".fn__none"));
+                if (currentParents.length === 0) return;
+                if (scope !== "background") {
+                    tables.forEach(table => {
+                        this.visibleAttributeViewIds.add(table.avID);
+                        const blockIds = this.visibleBlockIdsByAttributeViewId.get(table.avID) || new Set<string>();
+                        blockIds.add(blockId);
+                        this.visibleBlockIdsByAttributeViewId.set(table.avID, blockIds);
+                    });
+                }
+                const items = extractDisplayItems(tables, visibleFields, config, blockId);
+                const context = this.createRenderContext(blockId, config, canInlineEdit);
+                currentParents.forEach(parent => this.renderer.render(parent, items, context));
+                // 保存最近一次渲染结果：块被思源替换时，同一帧内用它快速恢复显示
+                this.rememberRenderState(blockId, { items, config, canInlineEdit });
+            }, () => this.isRenderCurrent(blockId, scope, version));
         } catch (error) {
             console.warn("[DatabaseDisplay] Failed to render attribute values", error);
         }
+    }
+
+    private isRenderCurrent(blockId: string, scope: RenderScope, version: number): boolean {
+        return !this.disposed && this.scheduler.isCurrent(version) &&
+            (scope === "document" || scope === "background" || this.viewportObserver.isActive(blockId));
     }
 
     private createRenderContext(blockId: string, config: DisplayConfig, canInlineEdit: boolean): RenderContext {
@@ -279,9 +406,37 @@ export class DisplayController {
         return repairBlockIds;
     }
 
-    /** Removes stale AV-to-block mappings before a targeted block refresh. */
+    private getDisplayContainers(parentsByBlockId: Map<string, HTMLElement[]>): HTMLElement[] {
+        const containers: HTMLElement[] = [];
+        for (const parents of parentsByBlockId.values()) {
+            parents.forEach(parent => {
+                const container = parent.querySelector<HTMLElement>(`:scope > .protyle-attr > ${DISPLAY_CONTAINER_SELECTOR}`);
+                if (container) containers.push(container);
+            });
+        }
+        return containers;
+    }
+
+    private rememberRenderState(blockId: string, state: { items: DisplayItem[]; config: DisplayConfig; canInlineEdit: boolean }): void {
+        // Map 的插入顺序可作为 LRU 顺序；保留最近的状态足够覆盖编辑器 DOM 替换，
+        // 又不会因为后台流式补全而无界增长。
+        this.lastRenderState.delete(blockId);
+        this.lastRenderState.set(blockId, state);
+        while (this.lastRenderState.size > MAX_RENDER_STATES) {
+            const oldestBlockId = this.lastRenderState.keys().next().value;
+            if (!oldestBlockId) break;
+            this.lastRenderState.delete(oldestBlockId);
+        }
+    }
+
+    /** Removes the cached render payload and its AV-to-block mappings. */
     private forgetBlockRenderState(blockId: string): void {
         this.lastRenderState.delete(blockId);
+        this.untrackBlockAttributeViews(blockId);
+    }
+
+    /** 离开视口预取区后不再因 WebSocket 更新而主动刷新该块。 */
+    private untrackBlockAttributeViews(blockId: string): void {
         for (const [attributeViewId, blockIds] of this.visibleBlockIdsByAttributeViewId) {
             if (!blockIds.delete(blockId)) continue;
             if (blockIds.size === 0) {
@@ -382,10 +537,10 @@ export class DisplayController {
         this.options.openAsset(target.path, openInSplit);
     }
 
-    private async runWithConcurrency(tasks: Array<() => Promise<void>>, limit: number): Promise<void> {
+    private async runWithConcurrency(tasks: Array<() => Promise<void>>, limit: number, shouldContinue: () => boolean): Promise<void> {
         let cursor = 0;
         const worker = async () => {
-            while (cursor < tasks.length) {
+            while (shouldContinue() && cursor < tasks.length) {
                 const task = tasks[cursor++];
                 await task();
             }

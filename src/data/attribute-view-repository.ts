@@ -135,6 +135,19 @@ export class AttributeViewRepository {
         }
     }
 
+    /**
+     * 清空所有块级 keys/item 缓存。未知来源的全量刷新（例如无法解析属性视图
+     * 的 websocket 事务）使用此入口，避免延迟加载的块继续命中旧数据。
+     */
+    invalidateAll(): void {
+        this.invalidationEpoch++;
+        for (const key of [...this.cache.keys(), ...this.pending.keys()]) {
+            this.dropPending(key);
+            this.dropCacheKey(key);
+        }
+        this.blocksByAttributeView.clear();
+    }
+
     /** 维护 avID → 块的反向索引，同步剔除块已不再使用的属性视图。 */
     private indexBlockKeys(blockId: string, tables: AttributeViewTable[]): void {
         const avIDs = new Set(tables.map(table => table.avID).filter(Boolean));

@@ -4,7 +4,9 @@ export function getVisibleAttributeBlockParents(): Map<string, HTMLElement[]> {
     const parentsByBlockId = new Map<string, HTMLElement[]>();
     document.querySelectorAll<HTMLElement>("[custom-avs][data-node-id]").forEach(element => {
         const blockId = element.dataset.nodeId;
-        if (!blockId) return;
+        // Hidden tabs/docks keep their Protyle DOM mounted. They are not candidates
+        // for the current document and would otherwise add needless requests.
+        if (!blockId || element.closest(".fn__none")) return;
         const parents = parentsByBlockId.get(blockId);
         if (parents) {
             parents.push(element);

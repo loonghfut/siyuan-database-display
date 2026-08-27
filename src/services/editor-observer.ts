@@ -7,6 +7,11 @@ function hasRelevantNode(node: Node): boolean {
     return node.matches(RELEVANT_NODE_SELECTOR) || Boolean(node.querySelector(RELEVANT_NODE_SELECTOR));
 }
 
+function hasDocumentTitle(node: Node): boolean {
+    if (!(node instanceof HTMLElement)) return false;
+    return node.matches(".protyle-title") || Boolean(node.querySelector(".protyle-title"));
+}
+
 /**
  * 收集被移除 DOM 中丢失的属性容器所属的块 id。
  * 思源替换块（updateBlock 插新删旧）或重建 .protyle-attr 内部（updateAttrs 的
@@ -100,6 +105,10 @@ export interface EditorObserverOptions {
     clearInvalidContainers(containers: Iterable<HTMLElement>, invalidParents?: Map<HTMLElement, boolean>): Set<string>;
     /** 容器随旧 DOM 消失后，用最近一次渲染的数据同步恢复到新块。 */
     restoreLostContainers(lostBlockIds: Set<string>, newBlockElements: Map<string, HTMLElement[]>): void;
+    /** 登记新增的属性块，由视口观察器决定是否需要请求数据。 */
+    observeRelevantNodes(nodes: Iterable<Node>): void;
+    /** 移除已离开 DOM 的属性块观察记录。 */
+    removeRelevantNodes?(nodes: Iterable<Node>): void;
     scheduleRefresh(force?: boolean, blockIds?: ReadonlySet<string>): void;
     scheduleQuietRefresh(): void;
 }
@@ -126,9 +135,12 @@ export class EditorObserver {
         const scheduleForRelevantNodes = (records: MutationRecord[]): void => {
             const invalidDisplayParents = findInvalidDisplayContainerParentsFromRecords(records);
             const repairBlockIds = this.options.clearInvalidContainers(invalidDisplayParents.keys(), invalidDisplayParents);
+            const removedNodes = records.flatMap(record => record.type === "childList" ? [...record.removedNodes] : []);
+            if (removedNodes.length > 0) this.options.removeRelevantNodes?.(removedNodes);
             if (!refreshObservationEnabled) return;
             const lostBlockIds = findLostContainerBlockIds(records);
-            let relevantAdded = false;
+            const relevantAddedNodes: Node[] = [];
+            let documentTitleAdded = false;
             // 从本次事务涉及的节点中收集新块，避免整篇文档查询：
             // - 块替换（updateBlock 插新删旧）：新块在 addedNodes 中
             // - .protyle-attr 内部重建（updateAttrs）：块元素本身没变，从 target 向上取
@@ -136,7 +148,8 @@ export class EditorObserver {
             for (const record of records) {
                 if (record.type !== "childList") continue;
                 for (const node of record.addedNodes) {
-                    if (hasRelevantNode(node)) relevantAdded = true;
+                    if (hasRelevantNode(node)) relevantAddedNodes.push(node);
+                    if (hasDocumentTitle(node)) documentTitleAdded = true;
                     if (lostBlockIds.size > 0) collectBlockElements(node, newBlockElements);
                 }
                 if (lostBlockIds.size > 0 && record.target instanceof HTMLElement) {
@@ -148,6 +161,8 @@ export class EditorObserver {
                     }
                 }
             }
+            // 新块不再触发整篇文档刷新；进入视口/预取区后才由观察器安排定向请求。
+            if (relevantAddedNodes.length > 0) this.options.observeRelevantNodes(relevantAddedNodes);
             if (lostBlockIds.size > 0) {
                 // 容器随旧 DOM 消失：同一帧内用内存数据同步恢复（避免闪烁），
                 // 再安排静默刷新兜底（拉取最新数据 + 覆盖未命中内存状态的块）。
@@ -155,7 +170,7 @@ export class EditorObserver {
                 this.options.scheduleQuietRefresh();
             } else if (repairBlockIds.size > 0) {
                 this.options.scheduleRefresh(false, repairBlockIds);
-            } else if (relevantAdded) {
+            } else if (documentTitleAdded) {
                 this.options.scheduleRefresh(false);
             }
         };
@@ -169,9 +184,12 @@ export class EditorObserver {
 
         document.querySelectorAll<HTMLElement>(PROTYLE_SELECTOR).forEach(observeProtyle);
         this.bodyObserver = new MutationObserver(records => {
+            const relevantAddedNodes: Node[] = [];
+            const removedNodes: Node[] = [];
             let requiresRefresh = false;
             for (const record of records) {
                 if (record.type === "childList") {
+                    removedNodes.push(...record.removedNodes);
                     for (const node of record.removedNodes) {
                         if (!(node instanceof HTMLElement)) continue;
                         const removedRoots = node.matches(PROTYLE_SELECTOR)
@@ -194,10 +212,14 @@ export class EditorObserver {
                     if (!insideProtyle) {
                         if (node.matches(PROTYLE_SELECTOR)) observeProtyle(node);
                         node.querySelectorAll<HTMLElement>(PROTYLE_SELECTOR).forEach(observeProtyle);
-                        if (hasRelevantNode(node)) requiresRefresh = true;
+                        if (hasRelevantNode(node)) relevantAddedNodes.push(node);
+                        if (hasDocumentTitle(node)) requiresRefresh = true;
                     }
                 }
             }
+            if (removedNodes.length > 0) this.options.removeRelevantNodes?.(removedNodes);
+            if (!refreshObservationEnabled) return;
+            if (relevantAddedNodes.length > 0) this.options.observeRelevantNodes(relevantAddedNodes);
             if (requiresRefresh) this.options.scheduleRefresh(false);
         });
         // Keep this watcher lightweight: detailed subtree observation is attached
