@@ -4,7 +4,6 @@ import { addAppearancePanel } from "./panels/appearance";
 import { addDisplayFieldsPanel } from "./panels/display-fields";
 import { addDisplayFormatPanel } from "./panels/display-format";
 import { addFieldRulesPanel } from "./panels/field-rules";
-import { addRefreshPanel } from "./panels/refresh";
 import { addLicensePanel } from "./panels/license";
 import { LicenseService, TrialService } from "@/licensing";
 import type { ProFeature } from "@/licensing";
@@ -58,7 +57,6 @@ export function addSettings(
     addFieldRulesPanel(addPanel, i18n.settings.panel);
     addDisplayFormatPanel(addPanel, i18n.settings.panel, i18n, shouldShowProBadge, isFeatureEnabled);
     addAppearancePanel(addPanel, i18n.settings.panel, shouldShowProBadge);
-    addRefreshPanel(addPanel, i18n.settings.panel);
     addLicensePanel(addPanel, i18n.settings.panel, license, trial, onChanged, shouldShowProBadge, saveShowProBadge);
     installMobileSettingsSheet(settings);
     // 匹配面板项用完整 title；移动端导航空间有限，按钮文案用两字短标题，避免被把手遮挡
@@ -68,7 +66,6 @@ export function addSettings(
         { key: "field-rules", title: i18n.settings.panel.fieldRules.title, label: compact ? i18n.settings.panel.fieldRules.shortTitle : undefined },
         { key: "format", title: i18n.settings.panel.format.title, label: compact ? i18n.settings.panel.format.shortTitle : undefined },
         { key: "appearance", title: i18n.settings.panel.appearance.title, label: compact ? i18n.settings.panel.appearance.shortTitle : undefined },
-        { key: "refresh", title: i18n.settings.panel.refresh.title, label: compact ? i18n.settings.panel.refresh.shortTitle : undefined },
         { key: "license", title: i18n.settings.panel.license.title, label: compact ? i18n.settings.panel.license.shortTitle : undefined }
     ]);
 }

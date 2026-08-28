@@ -22,8 +22,6 @@ const QUIET_REFRESH_DELAY = 300;
 
 export interface DisplayControllerOptions {
     getConfig: () => DisplayConfig;
-    getAutoRefreshInterval: () => number;
-    isObserverEnabled: () => boolean;
     isFeatureEnabled: (feature: ProFeature) => boolean;
     openBlock: (blockId: string, openInSplit: boolean) => void;
     openAsset: (path: string, openInSplit: boolean) => void;
@@ -39,7 +37,6 @@ export class DisplayController {
     private documentId = "";
     // 文档切换序号：快速连续切换时丢弃慢响应的旧结果，避免覆盖新文档 ID
     private switchVersion = 0;
-    private autoTimer: ReturnType<typeof setInterval> | undefined;
     private visibleAttributeViewIds = new Set<string>();
     private readonly visibleBlockIdsByAttributeViewId = new Map<string, Set<string>>();
     private lastRenderState = new Map<string, { items: DisplayItem[]; config: DisplayConfig; canInlineEdit: boolean }>();
@@ -55,12 +52,13 @@ export class DisplayController {
             quietDelayMs: QUIET_REFRESH_DELAY
         });
         this.editorObserver = new EditorObserver({
-            isRefreshObservationEnabled: () => this.options.isObserverEnabled(),
             clearInvalidContainers: (containers, invalidParents) => this.clearInvalidDisplayContainers(containers, invalidParents),
             restoreLostContainers: (lostBlockIds, newBlockElements) => this.restoreLostContainers(lostBlockIds, newBlockElements),
             scheduleRefresh: (force, blockIds) => this.scheduleRefresh(force, blockIds),
             scheduleQuietRefresh: () => this.scheduler.scheduleQuiet()
         });
+        // 自动补充观察始终启用，构造完成后立即挂载
+        this.editorObserver.rebuild();
     }
 
     async switchDocument(detail: unknown): Promise<void> {
@@ -130,13 +128,6 @@ export class DisplayController {
         ]);
     }
 
-    updateAutoRefresh(): void {
-        if (this.autoTimer) clearInterval(this.autoTimer);
-        this.autoTimer = undefined;
-        const seconds = Math.max(0, Number(this.options.getAutoRefreshInterval()) || 0);
-        if (seconds >= 5) this.autoTimer = setInterval(() => this.scheduleRefresh(false), seconds * 1000);
-    }
-
     /**
      * websocket 事务刷新入口：仅当事务涉及的属性视图与当前可见内容相关时才强制刷新。
      * 传入空数组时保持保守策略（无法判断相关性则刷新）。
@@ -164,16 +155,10 @@ export class DisplayController {
         }
     }
 
-    updateObserver(): void {
-        this.editorObserver.rebuild();
-    }
-
     dispose(): void {
         this.disposed = true;
         this.scheduler.dispose();
         this.editorObserver.dispose();
-        if (this.autoTimer) clearInterval(this.autoTimer);
-        this.autoTimer = undefined;
         this.visibleAttributeViewIds.clear();
         this.visibleBlockIdsByAttributeViewId.clear();
         this.lastRenderState.clear();

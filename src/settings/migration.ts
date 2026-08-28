@@ -36,8 +36,6 @@ export function migrateLegacySettings(settings: SettingUtils, saved: unknown): b
         }])),
         values: parseObject<Record<string, unknown>>(data["field-value-color-map"], {})
     });
-    migrate("refresh-options", { interval: data["auto-loaded-interval"] || 0, observerEnabled: data["enable-av-observer"] !== false });
-
     const format = parseObject<Record<string, unknown>>(settings.get("display-format"), {});
     if (Object.prototype.hasOwnProperty.call(format, "showTimestamps")) {
         const enabled = format.showTimestamps !== false;

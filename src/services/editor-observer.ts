@@ -94,9 +94,7 @@ function collectBlockElements(node: Node, byId: Map<string, HTMLElement[]>): voi
 }
 
 export interface EditorObserverOptions {
-    /** 是否启用会触发数据库读取/渲染的自动补充观察（复制残留清理始终启用）。 */
-    isRefreshObservationEnabled(): boolean;
-    /** 清理无效展示容器，返回需要常规刷新恢复的块 id。 */
+        /** 清理无效展示容器，返回需要常规刷新恢复的块 id。 */
     clearInvalidContainers(containers: Iterable<HTMLElement>, invalidParents?: Map<HTMLElement, boolean>): Set<string>;
     /** 容器随旧 DOM 消失后，用最近一次渲染的数据同步恢复到新块。 */
     restoreLostContainers(lostBlockIds: Set<string>, newBlockElements: Map<string, HTMLElement[]>): void;
@@ -119,14 +117,10 @@ export class EditorObserver {
     /** 重建全部观察（设置变更后调用）：先断开旧的，再按当前 DOM 重新挂载。 */
     rebuild(): void {
         this.dispose();
-        // 即使用户关闭自动刷新，仍保留仅用于移除复制残留 DOM 的轻量观察；
-        // 这属于编辑器稳定性保护，不会触发数据库读取或常规渲染。
-        const refreshObservationEnabled = this.options.isRefreshObservationEnabled();
 
         const scheduleForRelevantNodes = (records: MutationRecord[]): void => {
             const invalidDisplayParents = findInvalidDisplayContainerParentsFromRecords(records);
             const repairBlockIds = this.options.clearInvalidContainers(invalidDisplayParents.keys(), invalidDisplayParents);
-            if (!refreshObservationEnabled) return;
             const lostBlockIds = findLostContainerBlockIds(records);
             let relevantAdded = false;
             // 从本次事务涉及的节点中收集新块，避免整篇文档查询：

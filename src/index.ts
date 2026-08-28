@@ -1,6 +1,6 @@
 import { openTab, Plugin, showMessage } from "siyuan";
 import "@/index.scss";
-import { parseCsv, parseJsonObject, readDisplayConfig, readRefreshOptions } from "@/config/display-config";
+import { parseCsv, parseJsonObject, readDisplayConfig } from "@/config/display-config";
 import { DisplayController } from "@/services/display-controller";
 import { setI18n, t } from "@/i18n";
 import { SettingUtils } from "@/libs/setting-utils";
@@ -36,8 +36,6 @@ export default class DatabaseDisplay extends Plugin {
         void this.trial.reportLoad();
         this.controller = new DisplayController({
             getConfig: () => readDisplayConfig(key => this.settings.get(key)),
-            getAutoRefreshInterval: () => readRefreshOptions(key => this.settings.get(key)).interval,
-            isObserverEnabled: () => readRefreshOptions(key => this.settings.get(key)).observerEnabled,
             isFeatureEnabled: feature => this.proAccess.isFeatureEnabled(feature),
             openBlock: (blockId, openInSplit) => this.openBlock(blockId, openInSplit),
             openAsset: (path, openInSplit) => this.openAsset(path, openInSplit),
@@ -67,8 +65,6 @@ export default class DatabaseDisplay extends Plugin {
 
     private applySettings(): void {
         void this.license.refresh(this.settings.get("pro-license")).then(() => this.controller?.scheduleRefresh(true));
-        this.controller?.updateAutoRefresh();
-        this.controller?.updateObserver();
         this.controller?.scheduleRefresh(true);
     }
 

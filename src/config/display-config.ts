@@ -39,11 +39,6 @@ export interface DisplayConfig {
     valueColors: Record<string, string | ColorRule>;
 }
 
-export interface RefreshOptions {
-    interval: number;
-    observerEnabled: boolean;
-}
-
 const fieldTypeSet = new Set<string>(FIELD_TYPES);
 
 export const DEFAULT_FIELD_COLORS: Record<string, string> = {
@@ -163,15 +158,6 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
         fieldColors: { ...sanitizeColorMap(get("field-color-map"), defaultColors), ...colors },
         fieldBackgrounds: { ...sanitizeColorMap(get("field-bg-color-map"), defaultBackgrounds), ...backgrounds },
         valueColors: Object.keys(themeAppearance.values || {}).length ? sanitizeValueColors(JSON.stringify(themeAppearance.values)) : sanitizeValueColors(get("field-value-color-map"))
-    };
-}
-
-export function readRefreshOptions(get: (key: string) => unknown): RefreshOptions {
-    const settings = parseJsonObject<Partial<RefreshOptions>>(get("refresh-options"), {});
-    const value = Number(settings.interval ?? get("auto-loaded-interval"));
-    return {
-        interval: !Number.isFinite(value) || value <= 0 ? 0 : Math.max(5, value),
-        observerEnabled: settings.observerEnabled ?? Boolean(get("enable-av-observer"))
     };
 }
 
