@@ -94,7 +94,7 @@ function collectBlockElements(node: Node, byId: Map<string, HTMLElement[]>): voi
 }
 
 export interface EditorObserverOptions {
-        /** 清理无效展示容器，返回需要常规刷新恢复的块 id。 */
+    /** 清理无效展示容器，返回需要常规刷新恢复的块 id。 */
     clearInvalidContainers(containers: Iterable<HTMLElement>, invalidParents?: Map<HTMLElement, boolean>): Set<string>;
     /** 容器随旧 DOM 消失后，用最近一次渲染的数据同步恢复到新块。 */
     restoreLostContainers(lostBlockIds: Set<string>, newBlockElements: Map<string, HTMLElement[]>): void;
