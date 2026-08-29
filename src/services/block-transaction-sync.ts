@@ -36,6 +36,9 @@ export function waitForBlockTransaction(
         };
         const timer = window.setTimeout(finish, timeoutMs);
         const listener = (event: MessageEvent) => {
+            // 插件主监听（index.ts）已对每条消息做过一次 JSON.parse，这里先用字符串
+            // 预筛掉绝大多数无关消息，避免为每条广播再付一次完整解析的代价
+            if (typeof event.data !== "string" || !event.data.includes(blockID)) return;
             let payload: TransactionMessage;
             try {
                 payload = JSON.parse(event.data) as TransactionMessage;

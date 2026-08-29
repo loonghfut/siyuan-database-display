@@ -12,7 +12,8 @@ import {
     FIELD_TYPES,
     FieldType,
     RelationContent,
-    RelationValue
+    RelationValue,
+    SelectOption
 } from "@/core/types";
 import { DisplayConfig } from "@/config/display-config";
 import { t } from "@/i18n";
@@ -214,9 +215,9 @@ function matches(value: AttributeViewValue, type: FieldType): boolean {
     return Boolean((value[type as keyof AttributeViewValue] as { content?: unknown } | undefined)?.content);
 }
 
-function displayType(keyType: string, types: FieldType[]): FieldType | undefined {
+function displayType(keyType: string, types: ReadonlySet<FieldType>): FieldType | undefined {
     const normalized = normalizeFieldType(keyType);
-    return normalized && types.includes(normalized) ? normalized : undefined;
+    return normalized && types.has(normalized) ? normalized : undefined;
 }
 
 function isSelectKey(keyType: string): boolean {
@@ -258,28 +259,39 @@ function lineNumber(table: AttributeViewTable, blockId: string): number | undefi
 
 export function extractDisplayItems(tables: AttributeViewTable[], types: FieldType[], config: DisplayConfig, blockId = ""): DisplayItem[] {
     const result: DisplayItem[] = [];
+    // 每个字段都要判多次类型归属，转成 Set 免去重复的线性扫描
+    const showTypes = new Set(types || []);
     for (const table of tables || []) {
         for (const keyValue of table.keyValues || []) {
             const key = keyValue.key;
             if (!key || config.hiddenFields.has(key.name)) continue;
 
             if (isSelectKey(key.type)) {
+                if (!showTypes.has("mSelect")) continue;
                 // 每个选中选项一个分段。配色优先取列选项：整列改色后单元格值里
                 // 可能残留旧颜色，以列选项为准（与思源 getSelectHTML 一致）
-                const segments: DisplaySegment[] = (keyValue.values || [])
-                    .flatMap(value => (value.mSelect || []).map(item => {
+                const segments: DisplaySegment[] = [];
+                // 选项按名建索引，避免每个选中项都线性扫描一遍选项表；
+                // 惰性创建，字段没有选中值时不必为它建表
+                let optionsByName: Map<string, SelectOption> | undefined;
+                for (const value of keyValue.values || []) {
+                    for (const item of value.mSelect || []) {
                         const name = String(item.content || "");
-                        const option = (key.options || [])
-                            .find(candidate => (candidate.name || candidate.content) === name);
-                        return {
+                        if (!name) continue;
+                        if (!optionsByName) {
+                            optionsByName = new Map((key.options || [])
+                                .map(option => [String(option.name || option.content || ""), option]));
+                        }
+                        const option = optionsByName.get(name);
+                        segments.push({
                             text: name,
                             color: option?.color ?? item.color,
                             resolvedColor: option?.resolvedColor
-                        };
-                    }))
-                    .filter(segment => Boolean(segment.text));
-                const selected = segments.map(segment => segment.text);
-                if (types.includes("mSelect") && selected.length > 0) {
+                        });
+                    }
+                }
+                if (segments.length > 0) {
+                    const selected = segments.map(segment => segment.text);
                     result.push({
                         type: "mSelect",
                         text: selected.join("、"),
@@ -291,7 +303,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                         selectOptions: key.options,
                         segments
                     });
-                } else if (config.forceShowFields.has(key.name) && types.includes("mSelect")) {
+                } else if (config.forceShowFields.has(key.name)) {
                     result.push({ type: "mSelect", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: [], selectOptions: key.options });
                 }
                 continue;
@@ -300,7 +312,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
             if (key.type === "relation") {
                 const relation = mergeRelations(keyValue.values || []);
                 const entries = relationEntries(relation);
-                if (types.includes("relation") && entries.length > 0) {
+                if (showTypes.has("relation") && entries.length > 0) {
                     entries.forEach(entry => {
                         result.push({
                             type: "relation",
@@ -315,7 +327,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                             icon: entry.icon
                         });
                     });
-                } else if (config.forceShowFields.has(key.name) && types.includes("relation")) {
+                } else if (config.forceShowFields.has(key.name) && showTypes.has("relation")) {
                     result.push({
                         type: "relation",
                         text: key.name,
@@ -332,7 +344,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
 
             if (key.type === "mAsset") {
                 let shown = false;
-                if (types.includes("mAsset")) {
+                if (showTypes.has("mAsset")) {
                     for (const value of keyValue.values || []) {
                         const allAssets = value.mAsset ? [...value.mAsset] : [];
                         for (const asset of allAssets) {
@@ -353,7 +365,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                         }
                     }
                 }
-                if (!shown && config.forceShowFields.has(key.name) && types.includes("mAsset")) {
+                if (!shown && config.forceShowFields.has(key.name) && showTypes.has("mAsset")) {
                     result.push({ type: "mAsset", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null });
                 }
                 continue;
@@ -361,7 +373,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
 
             if (key.type === "lineNumber") {
                 const value = lineNumber(table, blockId);
-                if (types.includes("lineNumber") && value !== undefined) {
+                if (showTypes.has("lineNumber") && value !== undefined) {
                     result.push({
                         type: "lineNumber",
                         text: String(value),
@@ -371,7 +383,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                         keyType: key.type,
                         rawValue: value
                     });
-                } else if (config.forceShowFields.has(key.name) && types.includes("lineNumber")) {
+                } else if (config.forceShowFields.has(key.name) && showTypes.has("lineNumber")) {
                     result.push({ type: "lineNumber", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null });
                 }
                 continue;
@@ -379,7 +391,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
 
             let shown = false;
             for (const value of keyValue.values || []) {
-                for (const type of types) {
+                for (const type of showTypes) {
                     if (!matches(value, type)) continue;
                     for (const text of texts(value, type, config)) {
                         shown = true;
@@ -388,7 +400,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                 }
             }
             if (!shown && config.forceShowFields.has(key.name)) {
-                const type = displayType(key.type, types);
+                const type = displayType(key.type, showTypes);
                 if (type) result.push({ type, text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null, template: key.template, selectOptions: key.options, relation: key.relation });
             }
         }

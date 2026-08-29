@@ -5,9 +5,9 @@ import { createIconButton, positionPanelNear } from "../libs/dom";
 import { AVPaletteEntry } from "../core/types";
 import { t } from "../i18n";
 import {
-    applyAVColorVars,
     getAVColorStyle,
     getAVPaletteEntries,
+    mountAVColorVars,
     normalizeAVColorIndex
 } from "../domain/option-color";
 
@@ -124,7 +124,7 @@ export function openOptionColorPalette(options: {
     paletteElement.setAttribute('role', 'dialog');
     paletteElement.setAttribute('aria-label', t('inlineEdit.optionColor'));
     // 自定义色通过 CSS 变量解析，需在渲染色块前注入
-    applyAVColorVars(paletteElement);
+    mountAVColorVars();
     getAVPaletteEntries().forEach((entry, position) => {
         const index = normalizeAVColorIndex(entry.color);
         const square = document.createElement('button');

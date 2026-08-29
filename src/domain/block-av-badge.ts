@@ -40,8 +40,9 @@ function ensureBadge(block: HTMLElement): HTMLElement | undefined {
 export function repairDatabaseBadge(blockID: string, avID: string, avName: string): void {
     if (!blockID || !avID) return;
     const selector = `[data-av-id="${CSS.escape(avID)}"]`;
-    document.querySelectorAll<HTMLElement>("[data-node-id]").forEach(block => {
-        if (block.dataset.nodeId !== blockID) return;
+    // 同一块可同时出现在多个 protyle 中，故仍需取全部；但条件要写进选择器，
+    // 否则会先把整个 DOM 的块节点捞出来再在 JS 里过滤
+    document.querySelectorAll<HTMLElement>(`[data-node-id="${CSS.escape(blockID)}"]`).forEach(block => {
         const avIDs = (block.getAttribute("custom-avs") || "").split(",").filter(Boolean);
         if (!avIDs.includes(avID)) {
             avIDs.push(avID);

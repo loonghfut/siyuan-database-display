@@ -136,9 +136,17 @@ function mobileListHeight(): number {
  * 原生 openSearchAV（protyle/render/av/relation.ts）未对插件导出，这里用 Menu +
  * /api/av/searchAttributeView 复刻同样的交互（输入防抖、上下键导航、回车选中）。
  */
+/**
+ * 上一个弹层的 resize 监听回收函数。思源的公共菜单复用同一个 DOM，关闭方式也
+ * 不止一种，监听难以在关闭当下就摘掉；这里留一个回收入口，由下一次打开顺带清理，
+ * 保证同一时刻最多只有一份残留。
+ */
+let activePickerCleanup: (() => void) | undefined;
+
 export function openDatabasePicker(options: DatabasePickerOptions): void {
     // 菜单打开后事件会继续冒到 window，被全局监听当成"点击菜单外"而关闭
     options.event?.stopPropagation();
+    activePickerCleanup?.();
     const menu = new Menu();
     let requestSequence = 0;
     let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -184,6 +192,38 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
                 items[next].classList.add("b3-list-item--focus");
                 items[next].scrollIntoView({ block: "nearest" });
             };
+
+            // 旋转屏幕/软键盘/窗口缩放都会改变可用高度，重新收敛限高。
+            // 思源的公共菜单是复用的同一个 DOM：别的调用方接管后我们的列表节点会
+            // 脱离文档，据此判定本次弹层已失效并注销监听。
+            let resizeFrame = 0;
+            const disposeResize = (): void => {
+                if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+                resizeFrame = 0;
+                window.removeEventListener("resize", onResize);
+                if (activePickerCleanup === disposeResize) activePickerCleanup = undefined;
+            };
+            const onResize = (): void => {
+                // placeDesktop 读写交替会强制同步布局，而拖拽窗口时 resize 每秒触发
+                // 数十次，先按帧合并再执行
+                if (resizeFrame) return;
+                resizeFrame = window.requestAnimationFrame(() => {
+                    resizeFrame = 0;
+                    const stale = !menu.element.contains(listElement)
+                        || menu.element.classList.contains("fn__none");
+                    if (stale) {
+                        disposeResize();
+                        return;
+                    }
+                    if (isMobileFrontend()) {
+                        listElement.style.maxHeight = `${mobileListHeight()}px`;
+                        return;
+                    }
+                    placeDesktop(menu, options.target, listElement);
+                });
+            };
+            window.addEventListener("resize", onResize);
+            activePickerCleanup = disposeResize;
 
             const renderPinned = (): void => {
                 listElement.innerHTML = options.pinned.map(database => entryHTML({
@@ -245,6 +285,8 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
                     name: target.dataset.name || avID,
                     ...(target.dataset.blockId ? { blockID: target.dataset.blockId } : {})
                 });
+                // 走的是明确的关闭路径，直接注销监听，不必等下一次 resize 判定失效
+                disposeResize();
                 menu.close();
             };
 
@@ -263,6 +305,7 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
                 }
                 if (event.key === "Escape") {
                     event.preventDefault();
+                    disposeResize();
                     menu.close();
                 }
             });
@@ -278,20 +321,6 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
                 event.stopPropagation();
                 select((event.target as HTMLElement)?.closest<HTMLElement>(".b3-list-item"));
             });
-            // 旋转屏幕/软键盘/窗口缩放都会改变可用高度，重新收敛限高；
-            // 菜单关闭后首次触发时顺带注销监听，无需挂钩菜单的关闭事件。
-            const syncListHeight = (): void => {
-                if (menu.element.classList.contains("fn__none")) {
-                    window.removeEventListener("resize", syncListHeight);
-                    return;
-                }
-                if (isMobileFrontend()) {
-                    listElement.style.maxHeight = `${mobileListHeight()}px`;
-                    return;
-                }
-                placeDesktop(menu, options.target, listElement);
-            };
-            window.addEventListener("resize", syncListHeight);
 
             render();
         }

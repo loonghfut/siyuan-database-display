@@ -54,8 +54,13 @@ export interface SelectEditorOptions {
     onCancel?: () => void;
 }
 
+/** 输入过滤的防抖窗口：选项很多时逐键重建整个列表代价明显。 */
+const FILTER_DEBOUNCE_MS = 120;
+
 interface EditableOption {
     name: string;
+    /** name 的小写副本，供过滤复用，避免每次按键重复 toLowerCase()。 */
+    lower: string;
     color: string;
     resolvedColor?: AVResolvedColor;
     /** 本次会话新建、尚未写入内核的选项。 */
@@ -63,6 +68,13 @@ interface EditableOption {
 }
 
 const optionName = (option: SelectOption): string => String(option.name || option.content || "");
+
+const toEditableOption = (
+    name: string,
+    color: string,
+    resolvedColor: AVResolvedColor | undefined,
+    pending: boolean
+): EditableOption => ({ name, lower: name.toLowerCase(), color, resolvedColor, pending });
 
 const colorRef = (option: EditableOption): OptionColorRef => ({
     color: option.color,
@@ -86,12 +98,7 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
         const name = optionName(item);
         if (!name || seen.has(name)) return;
         seen.add(name);
-        allOptions.push({
-            name,
-            color: String(item.color || ""),
-            resolvedColor: item.resolvedColor,
-            pending: false
-        });
+        allOptions.push(toEditableOption(name, String(item.color || ""), item.resolvedColor, false));
     });
 
     const selected = new Set<string>(
@@ -102,7 +109,7 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
     selected.forEach(name => {
         if (seen.has(name)) return;
         seen.add(name);
-        allOptions.push({ name, color: "", resolvedColor: undefined, pending: true });
+        allOptions.push(toEditableOption(name, "", undefined, true));
     });
 
     const dropdown = document.createElement("div");
@@ -111,6 +118,7 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
     setOpenPanel(dropdown);
 
     const close = () => {
+        window.clearTimeout(filterTimer);
         closeEditorPanel(dropdown);
         options.onCancel?.();
     };
@@ -147,8 +155,10 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
     const save = async () => {
         if (isSaving) return;
         isSaving = true;
+        // 按名建索引，避免每个选中项都全表扫一遍选项表
+        const optionByName = new Map(allOptions.map(item => [item.name, item]));
         const entries: SelectValueEntry[] = Array.from(selected).map(name => {
-            const option = allOptions.find(item => item.name === name);
+            const option = optionByName.get(name);
             return { content: name, color: option ? option.color : "" };
         });
         try {
@@ -181,12 +191,13 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
     let rowElements: HTMLElement[] = [];
     let createRow: HTMLElement | null = null;
     let highlighted = -1;
+    /** 待执行的过滤渲染；非 undefined 表示列表尚未反映当前关键词。 */
+    let filterTimer: number | undefined;
 
     const matches = (keyword: string): EditableOption[] => {
         if (!keyword) return allOptions;
         const lower = keyword.toLowerCase();
-        return allOptions.filter(item =>
-            lower.includes(item.name.toLowerCase()) || item.name.toLowerCase().includes(lower));
+        return allOptions.filter(item => lower.includes(item.lower) || item.lower.includes(lower));
     };
 
     const applyHighlight = () => {
@@ -225,12 +236,7 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
     const createOption = (rawName: string) => {
         const name = rawName.trim();
         if (!name || allOptions.some(item => item.name === name)) return;
-        allOptions.push({
-            name,
-            color: getNextAVOptionColor(allOptions.length),
-            resolvedColor: undefined,
-            pending: true
-        });
+        allOptions.push(toEditableOption(name, getNextAVOptionColor(allOptions.length), undefined, true));
         if (!multi) selected.clear();
         selected.add(name);
         input.value = "";
@@ -304,6 +310,11 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
     };
 
     const renderOptions = () => {
+        // 兜住待执行的防抖渲染，保证落库前后列表与关键词一致
+        if (filterTimer !== undefined) {
+            window.clearTimeout(filterTimer);
+            filterTimer = undefined;
+        }
         const keyword = input.value.trim();
         const visible = matches(keyword);
         list.replaceChildren();
@@ -343,10 +354,18 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
         applyHighlight();
     };
 
+    /** 防抖窗口内按键时先同步一次，避免方向键/回车作用在过期的列表上。 */
+    const flushPendingRender = (): void => {
+        if (filterTimer === undefined) return;
+        renderOptions();
+    };
+
     input.addEventListener("input", () => {
         highlighted = -1;
-        renderOptions();
+        if (filterTimer !== undefined) window.clearTimeout(filterTimer);
+        filterTimer = window.setTimeout(renderOptions, FILTER_DEBOUNCE_MS);
     });
+    // 输入法上屏是明确的一次提交，立即渲染，不走防抖
     input.addEventListener("compositionend", () => {
         highlighted = -1;
         renderOptions();
@@ -355,11 +374,13 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
         if (event.isComposing) return;
         if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
+            flushPendingRender();
             moveHighlight(event.key === "ArrowDown" ? 1 : -1);
             return;
         }
         if (event.key !== "Enter") return;
         event.preventDefault();
+        flushPendingRender();
         // 回车优先创建新选项，与思源原生一致；否则触发当前高亮项（未导航时取第一项）
         if (createRow) {
             createOption(input.value.trim());

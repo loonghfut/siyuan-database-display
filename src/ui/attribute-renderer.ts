@@ -1,6 +1,6 @@
 import { DisplayConfig, isSafeColor } from "@/config/display-config";
 import { AssetReference, DisplayItem, DisplayNavigationTarget, DisplaySegment, isInlineEditableField } from "@/core/types";
-import { applyAVColorVars, getAVColorStyle } from "@/domain/option-color";
+import { getAVColorStyle, mountAVColorVars } from "@/domain/option-color";
 import { t } from "@/i18n";
 import { assetLabel, assetThumbnailUrl } from "@/ui/asset-utils";
 import { createIconButton, iconElement } from "@/libs/dom";
@@ -547,8 +547,8 @@ export class AttributeRenderer {
         const totalLength = segments.reduce((sum, segment) => sum + segment.text.length, 0);
         const full = totalLength <= maxLength;
         let remaining = maxLength;
-        // 自定义色以 CSS 变量挂在容器上，供 var(--b3-font-background{N}) 解析
-        applyAVColorVars(value);
+        // 自定义色以 CSS 变量挂在根节点上，供 var(--b3-font-background{N}) 解析
+        mountAVColorVars();
         segments.forEach(segment => {
             if (!full && remaining <= 0) return;
             const chip = document.createElement("span");
