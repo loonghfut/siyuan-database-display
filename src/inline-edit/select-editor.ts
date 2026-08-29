@@ -8,7 +8,7 @@ import { attributeViewRepository } from "../data/attribute-view-repository";
 import { t } from "../i18n";
 import { createIconButton, iconElement } from "../libs/dom";
 import { toErrorMessage } from "../libs/error-utils";
-import { getAVColorStyle, getAVResolvedColor, getNextAVOptionColor, loadAVPalette } from "../domain/option-color";
+import { getAVResolvedColor, getNextAVOptionColor, loadAVPalette } from "../domain/option-color";
 import {
     ICONS,
     appendHeaderAction,
@@ -18,6 +18,7 @@ import {
     combineCleanup,
     createDropdownOption,
     createMultiSelectOption,
+    createOptionColorSwatch,
     createPanelHeader,
     isWithinPalette,
     openOptionColorPalette,
@@ -262,20 +263,20 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
         const addIcon = iconElement(ICONS.add);
         addIcon.classList.add("inline-edit-select__create-icon");
 
-        // 预览新建选项的颜色：与保存后内核登记的颜色一致
-        const chip = document.createElement("span");
-        chip.className = "b3-chip";
-        chip.style.cssText = getAVColorStyle(getNextAVOptionColor(allOptions.length));
-        const chipText = document.createElement("span");
-        chipText.className = "fn__ellipsis";
-        chipText.textContent = name;
-        chip.appendChild(chipText);
+        // 预览新建选项的颜色：与正常选项一致使用小色块，视觉更统一
+        const color = getNextAVOptionColor(allOptions.length);
+        const swatch = createOptionColorSwatch(color);
+        swatch.classList.add("inline-edit-select__create-swatch");
+
+        const label = document.createElement("span");
+        label.className = "inline-edit-dropdown-option__label";
+        label.textContent = name;
 
         const hint = document.createElement("span");
         hint.className = "inline-edit-select__create-hint";
         hint.textContent = t("inlineEdit.enterToCreate");
 
-        row.append(addIcon, chip, hint);
+        row.append(addIcon, swatch, label, hint);
         row.addEventListener("click", event => {
             event.preventDefault();
             event.stopPropagation();
