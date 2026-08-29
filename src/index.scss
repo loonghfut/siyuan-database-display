@@ -8,6 +8,7 @@
 @use "./styles/display/chips";
 @use "./styles/display/assets";
 @use "./styles/display/popover";
+@use "./styles/display/database-picker";
 
 // 设置：面板布局与规则 → 取色器
 @use "./styles/settings/panel" as settings-panel;

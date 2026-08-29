@@ -1,10 +1,14 @@
-import { Menu } from "siyuan";
+import { getFrontend, Menu } from "siyuan";
 import { PinnedDatabase } from "@/config/pinned-databases";
 import { AttributeViewSearchItem } from "@/core/types";
 import { escapeHtml } from "@/libs/dom";
 
 const SEARCH_DEBOUNCE_MS = 200;
 const SEARCH_ALL_ACTION = "search-all";
+const VIEWPORT_MARGIN = 8;
+const MIN_LIST_HEIGHT = 120;
+/** 输入框 + 分隔线 + 菜单内边距的估算高度，从可用空间里扣减。 */
+const PANEL_CHROME_HEIGHT = 80;
 
 /** 选中的目标数据库。 */
 export interface DatabasePick {
@@ -61,6 +65,71 @@ function emptyHTML(message: string): string {
     return `<div class="b3-list--empty">${escapeHtml(message)}</div>`;
 }
 
+function isMobileFrontend(): boolean {
+    const frontend = getFrontend();
+    return frontend === "mobile" || frontend === "browser-mobile";
+}
+
+/**
+ * 桌面端定位与限高：优先在锚点下方展开，下方放不下时翻到锚点上方。
+ *
+ * 高度必须在定位前定下来。若完全交给思源的 setPosition，它会按"溢出后的高度"
+ * 摆放，再由 popup() 给 .b3-menu__items 算出 maxHeight（menus/Menu.ts:427），
+ * 这个上限与列表自身的滚动会叠出两条滚动条。
+ *
+ * 先按估算的输入区高度定位，再用实测值重排一次：既消除估算误差，
+ * 也让菜单紧贴锚点（向上展开时不会盖住按钮）。
+ */
+function placeDesktop(menu: Menu, target: HTMLElement, list: HTMLElement | undefined): void {
+    const rect = target.getBoundingClientRect();
+    const desired = Math.round(window.innerHeight * 0.45);
+    const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_MARGIN;
+    const spaceAbove = rect.top - VIEWPORT_MARGIN;
+    // 下方放得下就用下方；放不下时取空间更大的一侧
+    const useBelow = spaceBelow - PANEL_CHROME_HEIGHT >= MIN_LIST_HEIGHT || spaceBelow >= spaceAbove;
+    const space = useBelow ? spaceBelow : spaceAbove;
+
+    if (!list) {
+        menu.open({ x: rect.left, y: rect.bottom, h: rect.height });
+        return;
+    }
+    list.style.maxHeight = `${Math.max(MIN_LIST_HEIGHT, Math.min(desired, space - PANEL_CHROME_HEIGHT))}px`;
+    menu.open({
+        x: rect.left,
+        y: useBelow ? rect.bottom : Math.max(VIEWPORT_MARGIN, rect.top - MIN_LIST_HEIGHT - PANEL_CHROME_HEIGHT),
+        h: rect.height
+    });
+    // 实测输入区高度后重排：此时菜单尺寸已确定，可以直接算出精确位置
+    const chrome = menu.element.getBoundingClientRect().height - list.getBoundingClientRect().height;
+    const listHeight = Math.max(MIN_LIST_HEIGHT, Math.min(desired, space - chrome));
+    list.style.maxHeight = `${listHeight}px`;
+    const top = useBelow ? rect.bottom : Math.max(VIEWPORT_MARGIN, rect.top - listHeight - chrome);
+    menu.element.style.top = `${top}px`;
+}
+
+/**
+ * 只保留列表自己的滚动条：popup() 给 .b3-menu__items 设的 maxHeight 配上默认
+ * overflow 会在列表之外再叠一条滚动条。高度已由本模块收敛，放开即可。
+ *
+ * 同时把 .b3-menu__items 的 max-height 也放开：否则向上弹出后我增大列表高度时，
+ * 背景只渲染到旧的 maxHeight，内容会溢出到背景外面。
+ */
+function useSingleScrollbar(menu: Menu): void {
+    const items = menu.element.lastElementChild as HTMLElement | null;
+    if (!items) return;
+    items.style.setProperty("overflow", "initial");
+    items.style.setProperty("max-height", "none");
+}
+
+/**
+ * 移动端列表限高。抽屉高度由思源 setSheetHeight 定为 56vh
+ * （menus/Menu.ts:352-358），扣掉标题栏与输入区后即为列表可用高度，
+ * 使列表在抽屉内滚动而不是把内容撑出抽屉。
+ */
+function mobileListHeight(): number {
+    return Math.max(MIN_LIST_HEIGHT, Math.round(window.innerHeight * 0.56) - PANEL_CHROME_HEIGHT - 24);
+}
+
 /**
  * 数据库选择弹层：常用数据库置顶，底部提供「搜索更多数据库…」入口打开完整搜索。
  *
@@ -73,6 +142,8 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
     const menu = new Menu();
     let requestSequence = 0;
     let searchTimer: ReturnType<typeof setTimeout> | undefined;
+    // bind 由 addItem 同步调用，open 前即可拿到列表引用
+    let pickerList: HTMLElement | undefined;
 
     const searchAllHTML = (): string => `<div class="b3-list-item b3-list-item--narrow" data-action="${SEARCH_ALL_ACTION}">
     <svg class="b3-list-item__graphic"><use xlink:href="#iconSearch"></use></svg>
@@ -82,15 +153,16 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
     menu.addItem({
         iconHTML: "",
         type: "empty",
-        label: `<div class="fn__flex-column b3-menu__filter db-database-picker" style="width: 320px">
+        label: `<div class="fn__flex-column b3-menu__filter db-display__picker">
     <input class="b3-text-field fn__flex-shrink" placeholder="${escapeHtml(options.text.placeholder)}"/>
     <div class="fn__hr"></div>
-    <div class="b3-list fn__flex-1 b3-list--background">${emptyHTML(options.text.loading)}</div>
+    <div class="b3-list fn__flex-1 b3-list--background db-display__picker-list">${emptyHTML(options.text.loading)}</div>
 </div>`,
         bind(element) {
             const inputElement = element.querySelector("input") as HTMLInputElement;
-            const listElement = element.querySelector(".b3-list") as HTMLElement;
+            const listElement = element.querySelector<HTMLElement>(".db-display__picker-list");
             if (!inputElement || !listElement) return;
+            pickerList = listElement;
 
             const focusableItems = (): HTMLElement[] =>
                 [...listElement.querySelectorAll<HTMLElement>(".b3-list-item")];
@@ -206,11 +278,33 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
                 event.stopPropagation();
                 select((event.target as HTMLElement)?.closest<HTMLElement>(".b3-list-item"));
             });
+            // 旋转屏幕/软键盘/窗口缩放都会改变可用高度，重新收敛限高；
+            // 菜单关闭后首次触发时顺带注销监听，无需挂钩菜单的关闭事件。
+            const syncListHeight = (): void => {
+                if (menu.element.classList.contains("fn__none")) {
+                    window.removeEventListener("resize", syncListHeight);
+                    return;
+                }
+                if (isMobileFrontend()) {
+                    listElement.style.maxHeight = `${mobileListHeight()}px`;
+                    return;
+                }
+                placeDesktop(menu, options.target, listElement);
+            };
+            window.addEventListener("resize", syncListHeight);
 
             render();
         }
     });
-    menu.element.querySelector(".b3-menu__items")?.setAttribute("style", "overflow: initial");
-    const rect = options.target.getBoundingClientRect();
-    menu.open({ x: rect.left, y: rect.bottom, h: rect.height });
+    if (isMobileFrontend()) {
+        // 移动端用思源自带的底部抽屉，比小屏上的浮层更好操作
+        if (pickerList) {
+            pickerList.style.maxHeight = `${mobileListHeight()}px`;
+        }
+        menu.fullscreen();
+        useSingleScrollbar(menu);
+        return;
+    }
+    placeDesktop(menu, options.target, pickerList);
+    useSingleScrollbar(menu);
 }

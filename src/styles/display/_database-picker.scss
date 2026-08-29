@@ -1,0 +1,19 @@
+// 弹出层：数据库选择（设置面板「添加数据库」使用）
+.db-display__picker {
+    box-sizing: border-box;
+    width: min(320px, calc(100vw - 16px));
+}
+
+// flex 子项默认 min-height:auto，归零后才能在限高容器内滚动
+.db-display__picker-list {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+// 移动端：思源的菜单抽屉/全屏面板自带宽度（setSheetHeight 给 56vh 高），取消固定宽度
+.b3-menu--sheet .db-display__picker,
+.b3-menu--fullscreen .db-display__picker {
+    width: auto;
+}
