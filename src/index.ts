@@ -1,4 +1,4 @@
-import { openTab, Plugin, showMessage } from "siyuan";
+import { openTab, Plugin } from "siyuan";
 import "@/index.scss";
 import { parseCsv, parseJsonObject, readDisplayConfig } from "@/config/display-config";
 import { getAVCustomColors, loadAVPalette } from "@/domain/option-color";
@@ -7,6 +7,7 @@ import { parseAttributeViewUpdateSignal } from "@/services/attribute-view-update
 import { createDatabaseSlashCommands } from "@/services/slash-command";
 import { parsePinnedDatabases, SETTING_KEY_PINNED_DATABASES } from "@/config/pinned-databases";
 import { setI18n, t } from "@/i18n";
+import { notify, setShowNotifications } from "@/libs/notify";
 import { SettingUtils } from "@/libs/setting-utils";
 import { addSettings, migrateLegacySettings } from "@/settings";
 import { LicenseService, ProAccessService, TrialService } from "@/licensing";
@@ -36,6 +37,7 @@ export default class DatabaseDisplay extends Plugin {
             (feature: ProFeature) => this.proAccess.isFeatureEnabled(feature));
         const savedSettings = await this.settings.load();
         if (migrateLegacySettings(this.settings, savedSettings)) await this.settings.save();
+        setShowNotifications(String(this.settings.get("show-messages")) !== "false");
         await this.license.refresh(this.settings.get("pro-license"));
         void this.trial.reportLoad();
         this.controller = new DisplayController({
@@ -75,6 +77,7 @@ export default class DatabaseDisplay extends Plugin {
     }
 
     private applySettings(): void {
+        setShowNotifications(String(this.settings.get("show-messages")) !== "false");
         void this.license.refresh(this.settings.get("pro-license")).then(() => this.controller?.scheduleRefresh(true));
         this.controller?.scheduleRefresh(true);
         this.syncSlashCommands();
@@ -111,7 +114,7 @@ export default class DatabaseDisplay extends Plugin {
         const hidden = new Set([...parseCsv(fieldRules.hidden), ...parseCsv(this.settings.get("hidden-fields")), fieldName]);
         fieldRules.hidden = [...hidden].join(",");
         void this.settings.setAndSave("field-rules", JSON.stringify(fieldRules)).then(() => {
-            showMessage(t("common.fieldHidden", { name: fieldName }), 3000, "info");
+            notify(t("common.fieldHidden", { name: fieldName }), 3000, "info");
             this.controller?.scheduleRefresh(true);
         });
     }

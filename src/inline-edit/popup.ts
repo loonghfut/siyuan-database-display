@@ -217,6 +217,12 @@ export function appendHeaderAction(header: HTMLElement, action: HTMLButtonElemen
     header.querySelector<HTMLElement>('.inline-edit-panel__actions')?.appendChild(action);
 }
 
+/** 将操作按钮插入操作区最前面（关闭按钮左侧），供面板头部的次要操作使用。 */
+export function prependHeaderAction(header: HTMLElement, action: HTMLButtonElement): void {
+    const actions = header.querySelector<HTMLElement>('.inline-edit-panel__actions');
+    if (actions) actions.insertBefore(action, actions.firstChild);
+}
+
 /** 选项颜色的写法：调色板索引，或附带明暗取值的自定义色条目。 */
 export type OptionColorRef = string | AVPaletteEntry | undefined;
 

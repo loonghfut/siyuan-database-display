@@ -2,12 +2,12 @@
 // 新建的选项不需要单独的"添加选项"接口：保存单元格时由内核自动登记为列选项，
 // 并采用随值提交的颜色（见 kernel/model/attribute_view.go 的 updateAttributeViewValue0）。
 
-import { showMessage } from "siyuan";
 import { AVResolvedColor, SelectOption } from "../core/types";
 import { attributeViewRepository } from "../data/attribute-view-repository";
 import { t } from "../i18n";
 import { createIconButton, iconElement } from "../libs/dom";
 import { toErrorMessage } from "../libs/error-utils";
+import { notify } from "../libs/notify";
 import { getAVResolvedColor, getNextAVOptionColor, loadAVPalette } from "../domain/option-color";
 import {
     ICONS,
@@ -24,6 +24,7 @@ import {
     openOptionColorPalette,
     OptionColorRef,
     positionDropdown,
+    prependHeaderAction,
     prepareEditorPanel,
     setOpenPanel,
     setOpenPanelCleanup
@@ -159,6 +160,23 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
         }
     };
 
+    // 单选：清空入口放在面板头部、关闭按钮左侧（多选需逐项取消勾选，不提供清空）
+    let clearButton: HTMLButtonElement | undefined;
+    if (!multi) {
+        clearButton = createIconButton(ICONS.clear, t("common.clear"), "inline-edit-action");
+        // createIconButton 同时设置了 title 与 aria-label（按钮带 ariaLabel 类，
+        // 思源会用 aria-label 渲染悬浮提示），去掉原生 title 避免出现两条重复提示
+        clearButton.removeAttribute("title");
+        clearButton.disabled = selected.size === 0;
+        clearButton.addEventListener("click", event => {
+            event.stopPropagation();
+            if (selected.size === 0 || isSaving) return;
+            selected.clear();
+            void save();
+        });
+        prependHeaderAction(header, clearButton);
+    }
+
     // 列表高亮：索引指向 rowElements，等于 rowElements.length 时指向创建行
     let rowElements: HTMLElement[] = [];
     let createRow: HTMLElement | null = null;
@@ -243,12 +261,12 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
                         option.color = newColor;
                         option.resolvedColor = getAVResolvedColor(newColor);
                         renderOptions();
-                        showMessage(t("common.saveSuccess"), 2000, "info");
+                        notify(t("common.saveSuccess"), 2000, "info");
                         options.onRefresh?.();
                     } catch (error) {
                         const message = toErrorMessage(error);
                         console.error(t("common.saveFailed", { message }), error);
-                        showMessage(t("common.saveFailed", { message }), 5000, "error");
+                        notify(t("common.saveFailed", { message }), 5000, "error");
                     }
                 })();
             }
@@ -292,17 +310,7 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
         rowElements = [];
         createRow = null;
 
-        if (!multi) {
-            const clearRow = createDropdownOption("", t("common.clear"), selected.size === 0);
-            clearRow.addEventListener("click", event => {
-                event.preventDefault();
-                event.stopPropagation();
-                selected.clear();
-                void save();
-            });
-            list.appendChild(clearRow);
-            rowElements.push(clearRow);
-        }
+        if (clearButton) clearButton.disabled = selected.size === 0;
 
         visible.forEach(option => {
             const isSelected = selected.has(option.name);

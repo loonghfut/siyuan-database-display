@@ -1,10 +1,11 @@
-import { IProtyle, Protyle, showMessage } from "siyuan";
+import { IProtyle, Protyle } from "siyuan";
 import { PinnedDatabase } from "@/config/pinned-databases";
 import { attributeViewRepository } from "@/data/attribute-view-repository";
 import { repairDatabaseBadge } from "@/domain/block-av-badge";
 import { eraseSlashCommandText, resolveSlashTargetBlock } from "@/domain/slash-target";
 import { escapeHtml } from "@/libs/dom";
 import { toErrorMessage } from "@/libs/error-utils";
+import { notify } from "@/libs/notify";
 import { waitForBlockTransaction } from "@/services/block-transaction-sync";
 import { t } from "@/i18n";
 
@@ -54,7 +55,7 @@ function createNotConfiguredCommand(): DatabaseSlashCommand {
         filter: [label, "database", "add to database", "shujuku", "sjk"],
         html: itemHTML(label),
         callback: () => {
-            showMessage(t("slash.notConfiguredHint"), 5000, "info");
+            notify(t("slash.notConfiguredHint"), 5000, "info");
         }
     };
 }
@@ -75,7 +76,7 @@ async function addToPinnedDatabase(
     const targetBlock = resolveSlashTargetBlock(nodeElement);
     const blockID = targetBlock?.dataset.nodeId;
     if (!blockID) {
-        showMessage(t("common.missingBlockId"), 3000, "error");
+        notify(t("common.missingBlockId"), 3000, "error");
         return;
     }
     await eraseCommandText(editor, nodeElement);
@@ -95,9 +96,9 @@ async function addToPinnedDatabase(
         // 等绑定产生的 updateAttrs 落地，再兜底校验角标（DOM 已是最新时直接跳过）
         await waitForBlockTransaction(blockID, ["updateAttrs"]);
         repairDatabaseBadge(blockID, database.avID, database.name);
-        showMessage(t("slash.added", { name: database.name }), 3000, "info");
+        notify(t("slash.added", { name: database.name }), 3000, "info");
     } catch (error) {
-        showMessage(t("slash.addFailed", { message: toErrorMessage(error) }), 5000, "error");
+        notify(t("slash.addFailed", { message: toErrorMessage(error) }), 5000, "error");
     }
 }
 

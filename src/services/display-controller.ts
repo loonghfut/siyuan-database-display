@@ -1,10 +1,10 @@
-import { showMessage } from "siyuan";
 import { DisplayConfig } from "@/config/display-config";
 import { getCurrentDocumentId, getVisibleAttributeBlockParents, resolveDocumentId } from "@/data/block-context";
 import { attributeViewRepository, AttributeViewRepository } from "@/data/attribute-view-repository";
 import { extractDisplayItems } from "@/domain/content-extractor";
 import { closeInlineEdit, enableInlineEdit } from "@/inline-edit";
 import { toErrorMessage } from "@/libs/error-utils";
+import { notify } from "@/libs/notify";
 import { DisplayItem, DisplayNavigationTarget, isInlineEditableField } from "@/core/types";
 import { AttributeRenderer, RenderContext } from "@/ui/attribute-renderer";
 import { ContentPopover } from "@/ui/content-popover";
@@ -215,7 +215,7 @@ export class DisplayController {
             config,
             canInlineEdit,
             onEdit: (item, element) => this.edit(blockId, item, element),
-            onInlineEditLocked: () => showMessage(t("common.inlineEditRequiresPro"), 3000, "info"),
+            onInlineEditLocked: () => notify(t("common.inlineEditRequiresPro"), 3000, "info"),
             onNavigate: (target, event) => this.navigate(target, event.ctrlKey || event.metaKey),
             onShowRollupSources: (item, element) => this.popover.showRollupSources(item, element),
             onPreviewAsset: (item, element) => this.popover.showAssetPreview(item, element, this.options.isFeatureEnabled("inline-edit")),
@@ -299,7 +299,7 @@ export class DisplayController {
         if (!this.options.isFeatureEnabled("inline-edit")) return;
         const blockId = this.blockIdFor(element);
         if (!blockId) {
-            showMessage(t("common.missingBlockId"), 3000, "error");
+            notify(t("common.missingBlockId"), 3000, "error");
             return;
         }
         void this.openEditor(blockId, item, element, true);
@@ -331,7 +331,7 @@ export class DisplayController {
             }
             const itemID = await this.repository.getItemId(item.avID, blockId);
             if (!itemID) {
-                showMessage(t("common.missingRowId"), 3000, "error");
+                notify(t("common.missingRowId"), 3000, "error");
                 return;
             }
             if (!this.canEditItem(item, allowReadOnlyField)) return;
@@ -350,7 +350,7 @@ export class DisplayController {
             });
         } catch (error) {
             const message = toErrorMessage(error);
-            showMessage(t("common.fetchRowIdFailed", { message }), 5000, "error");
+            notify(t("common.fetchRowIdFailed", { message }), 5000, "error");
         }
     }
 

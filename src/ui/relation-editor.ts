@@ -1,7 +1,7 @@
-import { showMessage } from "siyuan";
 import { AttributeViewRelation, AttributeViewWriteValue, RelationContent, RelationValue, RelationCandidateRow } from "@/core/types";
 import { attributeViewRepository } from "@/data/attribute-view-repository";
 import { toErrorMessage } from "@/libs/error-utils";
+import { notify } from "@/libs/notify";
 import { t } from "@/i18n";
 import { createIconButton, iconElement, positionPanelNear } from "@/libs/dom";
 
@@ -86,7 +86,7 @@ function positionPanel(panel: HTMLElement, target: HTMLElement): void {
 
 export function openRelationEditor(options: RelationEditorOptions): RelationEditorHandle | undefined {
     if (!options.relation?.avID) {
-        showMessage(t("common.relationTargetMissing"), 3000, "error");
+        notify(t("common.relationTargetMissing"), 3000, "error");
         return undefined;
     }
 
@@ -237,7 +237,7 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
         } catch (error) {
             if (!requestController.signal.aborted) {
                 const message = toErrorMessage(error);
-                showMessage(t("common.relationLoadFailed", { message }), 5000, "error");
+                notify(t("common.relationLoadFailed", { message }), 5000, "error");
             }
         } finally {
             if (controller === requestController) {
@@ -264,12 +264,12 @@ export function openRelationEditor(options: RelationEditorOptions): RelationEdit
         };
         try {
             await repository.setValue(options.avID, options.keyID, options.itemID, value);
-            showMessage(t("common.saveSuccess"), 2000, "info");
+            notify(t("common.saveSuccess"), 2000, "info");
             options.onSave?.(value.relation);
             options.onClose();
         } catch (error) {
             const message = toErrorMessage(error);
-            showMessage(t("common.saveFailed", { message }), 5000, "error");
+            notify(t("common.saveFailed", { message }), 5000, "error");
             saving = false;
             saveButton.disabled = false;
         }

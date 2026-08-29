@@ -3,10 +3,11 @@
  * 使用思源原生 Menu API，由 DisplayController 注入动作回调。
  */
 
-import { Menu, showMessage } from "siyuan";
+import { Menu } from "siyuan";
 import { DisplayItem, DisplayNavigationTarget } from "@/core/types";
 import { t } from "@/i18n";
 import { copyText } from "@/libs/dom";
+import { notify } from "@/libs/notify";
 
 export interface ChipMenuOptions {
     canEdit: boolean;
@@ -23,9 +24,9 @@ export function openChipMenu(item: DisplayItem, event: MouseEvent, options: Chip
         click: () => {
             void copyText(item.text).then(ok => {
                 if (ok) {
-                    showMessage(t("common.valueCopied"), 2000, "info");
+                    notify(t("common.valueCopied"), 2000, "info");
                 } else {
-                    showMessage(t("common.copyFailed"), 3000, "error");
+                    notify(t("common.copyFailed"), 3000, "error");
                 }
             });
         }

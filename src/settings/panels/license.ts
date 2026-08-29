@@ -1,5 +1,6 @@
-import { Dialog, showMessage } from "siyuan";
+import { Dialog } from "siyuan";
 import { LicenseService, TrialService } from "@/licensing";
+import { notify } from "@/libs/notify";
 import { createCheckbox, createLabel } from "../components/controls";
 import { AddPanel, SettingsPanelText } from "../types";
 
@@ -150,10 +151,10 @@ export function addLicensePanel(
             void trial.start().then(next => {
                 onChanged();
                 renderStatus();
-                showMessage(next.state === "active" ? text.trial.started : text.trial.failed, 3000, next.state === "active" ? "info" : "error");
+                notify(next.state === "active" ? text.trial.started : text.trial.failed, 3000, next.state === "active" ? "info" : "error");
             }).catch(() => {
                 renderStatus();
-                showMessage(text.trial.failed, 3000, "error");
+                notify(text.trial.failed, 3000, "error");
             }).finally(() => {
                 startTrial.disabled = false;
                 startTrial.textContent = text.trial.start;
@@ -226,10 +227,10 @@ export function addLicensePanel(
             clear.disabled = !licenseInput.value;
             if (clearing) {
                 licenseDetails.open = false;
-                showMessage(text.license.cleared, 3000, "info");
+                notify(text.license.cleared, 3000, "info");
                 return;
             }
-            showMessage("reason" in next ? text.license.verifyFailed : text.license.verifySuccess, 3000, "reason" in next ? "error" : "info");
+            notify("reason" in next ? text.license.verifyFailed : text.license.verifySuccess, 3000, "reason" in next ? "error" : "info");
         };
         verify.addEventListener("click", () => void saveAndVerify());
         clear.addEventListener("click", () => {

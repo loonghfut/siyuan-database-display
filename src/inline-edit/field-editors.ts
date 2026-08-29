@@ -1,10 +1,11 @@
 // 各字段类型的直接编辑处理器：按字段类型弹出对应的编辑界面并写回内核。
 
-import { fetchSyncPost, IWebSocketData, showMessage } from "siyuan";
+import { fetchSyncPost, IWebSocketData } from "siyuan";
 import { attributeViewRepository } from "../data/attribute-view-repository";
 import { AssetReference, AttributeViewWriteValue, SelectOption } from "../core/types";
 import { t } from "../i18n";
 import { toErrorMessage } from "../libs/error-utils";
+import { notify } from "../libs/notify";
 import { openRelationEditor, RelationEditorHandle } from "../ui/relation-editor";
 import { assetLabel } from "../ui/asset-utils";
 import { createIconButton, iconElement } from "../libs/dom";
@@ -62,7 +63,7 @@ async function handleCheckboxEdit(options: InlineEditOptions) {
         const value = convertToAVValue('checkbox', newValue);
         await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
 
-        showMessage(t('common.saveSuccess'), 2000, 'info');
+        notify(t('common.saveSuccess'), 2000, 'info');
 
         if (onSave) {
             onSave(newValue);
@@ -70,7 +71,7 @@ async function handleCheckboxEdit(options: InlineEditOptions) {
     } catch (error) {
         const message = toErrorMessage(error);
         console.error(t('common.saveFailed', { message }), error);
-        showMessage(t('common.saveFailed', { message }), 5000, 'error');
+        notify(t('common.saveFailed', { message }), 5000, 'error');
     } finally {
         checkboxWritesInFlight.delete(writeKey);
     }
@@ -102,12 +103,12 @@ function openSelectOptionsEditor(options: InlineEditOptions, multi: boolean): vo
                 const value: AttributeViewWriteValue = { mSelect: entries };
                 await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
                 closeOpenPanel();
-                showMessage(t("common.saveSuccess"), 2000, "info");
+                notify(t("common.saveSuccess"), 2000, "info");
                 onSave?.(multi ? entries.map(entry => entry.content) : (entries[0]?.content ?? ""));
             } catch (error) {
                 const message = toErrorMessage(error);
                 console.error(t("common.saveFailed", { message }), error);
-                showMessage(t("common.saveFailed", { message }), 5000, "error");
+                notify(t("common.saveFailed", { message }), 5000, "error");
                 // 抛回给面板解锁 isSaving，便于修正后重试
                 throw error;
             }
@@ -227,7 +228,7 @@ function handleAssetEdit(options: InlineEditOptions): void {
         }).catch(error => {
             const message = toErrorMessage(error);
             console.error(t('common.saveFailed', { message }), error);
-            showMessage(t('common.saveFailed', { message }), 5000, 'error');
+            notify(t('common.saveFailed', { message }), 5000, 'error');
         });
     });
     const addRow = document.createElement('div');
@@ -246,12 +247,12 @@ function handleAssetEdit(options: InlineEditOptions): void {
             const value: AttributeViewWriteValue = { mAsset: assets };
             await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
             closePopup();
-            showMessage(t('common.saveSuccess'), 2000, 'info');
+            notify(t('common.saveSuccess'), 2000, 'info');
             onSave?.(assets);
         } catch (error) {
             const message = toErrorMessage(error);
             console.error(t('common.saveFailed', { message }), error);
-            showMessage(t('common.saveFailed', { message }), 5000, 'error');
+            notify(t('common.saveFailed', { message }), 5000, 'error');
             isSaving = false;
         }
     };
@@ -386,7 +387,7 @@ function handleDateEdit(options: InlineEditOptions) {
             await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
 
             closeDropdown(datePicker);
-            showMessage(t('common.saveSuccess'), 2000, 'info');
+            notify(t('common.saveSuccess'), 2000, 'info');
 
             if (onSave) {
                 onSave({ content: startTs, hasEndDate: hasEnd, content2: endTs });
@@ -394,7 +395,7 @@ function handleDateEdit(options: InlineEditOptions) {
         } catch (error) {
             const message = toErrorMessage(error);
             console.error(t('common.saveFailed', { message }), error);
-            showMessage(t('common.saveFailed', { message }), 5000, 'error');
+            notify(t('common.saveFailed', { message }), 5000, 'error');
         }
     };
 
@@ -542,7 +543,7 @@ function handlePopupEdit(options: InlineEditOptions) {
             // 关闭弹窗
             closePopup();
 
-            showMessage(t('common.saveSuccess'), 2000, 'info');
+            notify(t('common.saveSuccess'), 2000, 'info');
 
             if (onSave) {
                 onSave(newValue);
@@ -550,7 +551,7 @@ function handlePopupEdit(options: InlineEditOptions) {
         } catch (error) {
             const message = toErrorMessage(error);
             console.error(t('common.saveFailed', { message }), error);
-            showMessage(t('common.saveFailed', { message }), 5000, 'error');
+            notify(t('common.saveFailed', { message }), 5000, 'error');
             isSaving = false;
         }
     };
