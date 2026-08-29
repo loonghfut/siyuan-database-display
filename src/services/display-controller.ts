@@ -12,6 +12,7 @@ import { openChipMenu } from "@/ui/chip-menu";
 import { t } from "@/i18n";
 import { PRO_FEATURE_KEYS, ProFeature, requiredFeaturesForField } from "@/licensing";
 import { RefreshScheduler } from "./refresh-scheduler";
+import { AttributeViewUpdateSignal } from "./attribute-view-update-signal";
 import { DISPLAY_CONTAINER_SELECTOR, EditorObserver, findInvalidDisplayContainerParents } from "./editor-observer";
 
 // 刷新请求的去抖窗口（毫秒）
@@ -37,7 +38,6 @@ export class DisplayController {
     private documentId = "";
     // 文档切换序号：快速连续切换时丢弃慢响应的旧结果，避免覆盖新文档 ID
     private switchVersion = 0;
-    private visibleAttributeViewIds = new Set<string>();
     private readonly visibleBlockIdsByAttributeViewId = new Map<string, Set<string>>();
     private lastRenderState = new Map<string, { items: DisplayItem[]; config: DisplayConfig; canInlineEdit: boolean }>();
     private disposed = false;
@@ -91,9 +91,8 @@ export class DisplayController {
         const allBlockParents = getVisibleAttributeBlockParents();
         const isFullRefresh = targetBlockIds === undefined;
         if (isFullRefresh) {
-            // 可见属性视图集合随全量刷新重建，用于过滤无关 websocket 事务；
+            // 可见属性视图 → 块映射随全量刷新重建，用于过滤无关 websocket 事务；
             // 内存渲染状态同样重建，避免在长会话中累积。
-            this.visibleAttributeViewIds.clear();
             this.visibleBlockIdsByAttributeViewId.clear();
             this.lastRenderState.clear();
         } else {
@@ -129,37 +128,43 @@ export class DisplayController {
     }
 
     /**
-     * websocket 事务刷新入口：仅当事务涉及的属性视图与当前可见内容相关时才强制刷新。
-     * 传入空数组时保持保守策略（无法判断相关性则刷新）。
+     * websocket 变更刷新入口：仅当变更与当前可见内容相关时才强制刷新。
+     *
+     * 相关性有两路依据：
+     * 1. 信号直接指明的块 ID（insertAttrViewBlock 的 srcs 等）——刚加入数据库的块
+     *    还没有渲染记录，不在 visibleBlockIdsByAttributeViewId 内，只有这条路能把
+     *    刷新定向到它，否则就会出现"块加入数据库后属性不显示"；
+     * 2. 属性视图 → 可见块映射——覆盖已有块的属性值变化。
+     *
+     * 两路都没有命中时无法判定相关性，退化为全量刷新。
      */
-    handleAttributeViewUpdate(attributeViewIds: string[]): void {
+    handleAttributeViewUpdate(signal: AttributeViewUpdateSignal): void {
         if (this.disposed || !this.documentId) return;
-        if (attributeViewIds.length === 0) {
+        const affectedBlockIds = new Set<string>(signal.blockIds);
+        if (signal.attributeViewIds.length === 0 && affectedBlockIds.size === 0) {
             this.scheduleRefresh(true);
             return;
         }
-        const affectedBlockIds = new Set<string>();
-        for (const attributeViewId of attributeViewIds) {
-            if (!this.visibleAttributeViewIds.has(attributeViewId)) continue;
+        for (const attributeViewId of signal.attributeViewIds) {
             const blockIds = this.visibleBlockIdsByAttributeViewId.get(attributeViewId);
-            // Mapping can be absent during the initial render; preserve the
-            // old conservative behavior rather than missing an update.
-            if (!blockIds?.size) {
+            if (blockIds?.size) {
+                blockIds.forEach(blockId => affectedBlockIds.add(blockId));
+                continue;
+            }
+            // 该属性视图尚未在当前文档渲染过：可能是新绑定（块 ID 已由事务指明、
+            // 已纳入 affectedBlockIds），也可能与本文无关。无法判定时宁可多刷不可漏刷。
+            if (affectedBlockIds.size === 0) {
                 this.scheduleRefresh(true);
                 return;
             }
-            blockIds.forEach(blockId => affectedBlockIds.add(blockId));
         }
-        if (affectedBlockIds.size > 0) {
-            this.scheduleRefresh(true, affectedBlockIds);
-        }
+        this.scheduleRefresh(true, affectedBlockIds);
     }
 
     dispose(): void {
         this.disposed = true;
         this.scheduler.dispose();
         this.editorObserver.dispose();
-        this.visibleAttributeViewIds.clear();
         this.visibleBlockIdsByAttributeViewId.clear();
         this.lastRenderState.clear();
         closeInlineEdit();
@@ -186,7 +191,6 @@ export class DisplayController {
             const tables = await this.repository.getKeys(blockId);
             if (!this.scheduler.isCurrent(version)) return;
             tables.forEach(table => {
-                this.visibleAttributeViewIds.add(table.avID);
                 const blockIds = this.visibleBlockIdsByAttributeViewId.get(table.avID) || new Set<string>();
                 blockIds.add(blockId);
                 this.visibleBlockIdsByAttributeViewId.set(table.avID, blockIds);
@@ -269,10 +273,7 @@ export class DisplayController {
         this.lastRenderState.delete(blockId);
         for (const [attributeViewId, blockIds] of this.visibleBlockIdsByAttributeViewId) {
             if (!blockIds.delete(blockId)) continue;
-            if (blockIds.size === 0) {
-                this.visibleBlockIdsByAttributeViewId.delete(attributeViewId);
-                this.visibleAttributeViewIds.delete(attributeViewId);
-            }
+            if (blockIds.size === 0) this.visibleBlockIdsByAttributeViewId.delete(attributeViewId);
         }
     }
 
