@@ -3,6 +3,8 @@ import "@/index.scss";
 import { parseCsv, parseJsonObject, readDisplayConfig } from "@/config/display-config";
 import { DisplayController } from "@/services/display-controller";
 import { parseAttributeViewUpdateSignal } from "@/services/attribute-view-update-signal";
+import { createDatabaseSlashCommands } from "@/services/slash-command";
+import { parsePinnedDatabases, SETTING_KEY_PINNED_DATABASES } from "@/config/pinned-databases";
 import { setI18n, t } from "@/i18n";
 import { SettingUtils } from "@/libs/setting-utils";
 import { addSettings, migrateLegacySettings } from "@/settings";
@@ -45,6 +47,8 @@ export default class DatabaseDisplay extends Plugin {
         this.eventBus.on("switch-protyle", this.onSwitchProtyle);
         this.eventBus.on("loaded-protyle-dynamic", this.onLoaded);
         this.eventBus.on("loaded-protyle-static", this.onLoaded);
+        // 布局就绪前就把命令注册好，避免 onLayoutReady 之前打开 / 面板时缺项
+        this.syncSlashCommands();
     }
 
     onLayoutReady(): void {
@@ -67,6 +71,20 @@ export default class DatabaseDisplay extends Plugin {
     private applySettings(): void {
         void this.license.refresh(this.settings.get("pro-license")).then(() => this.controller?.scheduleRefresh(true));
         this.controller?.scheduleRefresh(true);
+        this.syncSlashCommands();
+    }
+
+    /**
+     * 按当前设置为每个常用数据库注册一条斜杠命令。
+     * 思源每次打开 / 面板都会重新读取 protyleSlash，原地更新即可生效。
+     */
+    private syncSlashCommands(): void {
+        const databases = parsePinnedDatabases(this.settings.get(SETTING_KEY_PINNED_DATABASES));
+        this.protyleSlash.length = 0;
+        this.protyleSlash.push(...createDatabaseSlashCommands({
+            databases,
+            onAdded: blockID => this.controller?.scheduleRefresh(true, new Set([blockID]))
+        }));
     }
 
     private handleWebsocketMessage(event: MessageEvent): void {

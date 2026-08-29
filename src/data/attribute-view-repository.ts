@@ -1,5 +1,5 @@
 import { Constants, fetchSyncPost, IWebSocketData } from "siyuan";
-import { AttributeViewTable, AttributeViewWriteValue, RelationCandidatesPage } from "@/core/types";
+import { AttributeViewSearchItem, AttributeViewTable, AttributeViewWriteValue, RelationCandidatesPage } from "@/core/types";
 
 interface CacheEntry<T> {
     value: T;
@@ -12,6 +12,23 @@ const MAX_CACHE_ENTRIES = 512;
 // 触发受影响块的强制刷新，因此周期自动刷新（≥5s）可以放心命中缓存，
 // 避免每轮对每个可见块重复请求内核。
 const KEYS_TTL_MS = 30_000;
+
+export interface AttributeViewSearchOptions {
+    /** 当前数据库，用于结果里的"当前数据库"标记。 */
+    avID?: string;
+    blockID?: string;
+    /** 是否附带匹配的视图，原生「添加到数据库」面板会开启。 */
+    includeViewMatches?: boolean;
+}
+
+export interface AddBlocksToDatabaseParams {
+    avID: string;
+    /** 选中具体视图时传入，按视图默认列模板填充新行。 */
+    viewID?: string;
+    blockIDs: string[];
+    /** 数据库所在的块（dbBlockID），用于定位目标数据库。 */
+    databaseBlockID?: string;
+}
 
 export class AttributeViewRepository {
     private readonly cache = new Map<string, CacheEntry<unknown>>();
@@ -106,6 +123,53 @@ export class AttributeViewRepository {
             page,
             pageSize,
             selectedBlockIDs
+        });
+    }
+
+    /** 搜索数据库；includeViewMatches 为真时结果附带匹配的视图（与原生"添加到数据库"面板一致）。 */
+    async searchAttributeView(keyword: string, options: AttributeViewSearchOptions = {}): Promise<AttributeViewSearchItem[]> {
+        const response = await this.post<{ results?: AttributeViewSearchItem[] }>("searchAttributeView", {
+            keyword,
+            avID: options.avID || "",
+            blockID: options.blockID || "",
+            includeViewMatches: options.includeViewMatches ?? false
+        });
+        return response?.results || [];
+    }
+
+    /**
+     * 把块加入数据库，走公开端点 /api/av/addAttributeViewBlocks
+     * （kernel/api/router.go:600）。内核负责在属性视图里建行、给块绑定
+     * custom-avs 并广播刷新，等同于原生「添加到数据库」。
+     *
+     * itemID 交给内核生成；块已在库中时内核会按重复绑定处理。
+     */
+    async addBlocksToDatabase(params: AddBlocksToDatabaseParams): Promise<void> {
+        const { avID, viewID, blockIDs, databaseBlockID } = params;
+        if (!avID || blockIDs.length === 0) return;
+        await this.post("addAttributeViewBlocks", {
+            avID,
+            blockID: databaseBlockID,
+            viewID,
+            srcs: blockIDs.map(id => ({ id, isDetached: false })),
+            // 选中具体视图时按视图的默认列模板填充，否则不填充
+            ignoreDefaultFill: viewID ? false : true
+        });
+    }
+
+    /**
+     * 把块的 DOM 变化同步给内核。斜杠命令选中后，思源不会替插件删除 "/xxx" 这段
+     * 命令文本（hint/index.ts 的 plugin 分支直接 return），需自行删除并回写。
+     *
+     * 走公开端点 /api/block/updateBlock（kernel/api/router.go:291），dataType 为
+     * "dom" 时可直接传块的 outerHTML，内核会广播事务让所有窗口同步。
+     */
+    async updateBlockHTML(blockID: string, html: string): Promise<void> {
+        if (!blockID) return;
+        await this.postBlock("updateBlock", {
+            id: blockID,
+            data: html,
+            dataType: "dom"
         });
     }
 
@@ -218,6 +282,11 @@ export class AttributeViewRepository {
         const response = await fetchSyncPost(`/api/av/${endpoint}`, data) as IWebSocketData;
         if (response.code !== 0) throw new Error(response.msg || `Attribute view request failed: ${endpoint}`);
         return response.data as T;
+    }
+
+    private async postBlock(endpoint: string, data: unknown): Promise<void> {
+        const response = await fetchSyncPost(`/api/block/${endpoint}`, data) as IWebSocketData;
+        if (response.code !== 0) throw new Error(response.msg || `Block request failed: ${endpoint}`);
     }
 }
 

@@ -3,6 +3,19 @@
  * 供 attribute-renderer / content-popover / relation-editor / inline-edit 等 UI 模块复用。
  */
 
+/** 转义插入到 innerHTML 中的文本，避免数据库名/路径里的特殊字符破坏结构。 */
+export function escapeHtml(value: string): string {
+    return value.replace(/[&<>"']/g, character => {
+        switch (character) {
+            case "&": return "&amp;";
+            case "<": return "&lt;";
+            case ">": return "&gt;";
+            case "\"": return "&quot;";
+            default: return "&#39;";
+        }
+    });
+}
+
 export function iconElement(iconName: string): SVGSVGElement {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     const use = document.createElementNS("http://www.w3.org/2000/svg", "use");

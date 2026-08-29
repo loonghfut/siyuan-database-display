@@ -38,6 +38,18 @@
         "openInSplit": "在分屏打开",
         "inlineEditRequiresPro": "数据库属性展示插件：行内编辑是 Pro 功能"
     },
+    "slash": {
+        "addTo": "添加到：${name}",
+        "notConfigured": "添加到数据库（未配置）",
+        "notConfiguredHint": "请先在插件设置 → 斜杠命令数据库 中添加数据库",
+        "pickerPlaceholder": "搜索数据库…",
+        "searchAll": "搜索全部数据库…",
+        "noResult": "未找到匹配的数据库",
+        "loading": "加载中…",
+        "searchFailed": "搜索数据库失败",
+        "added": "已添加到数据库：${name}",
+        "addFailed": "添加到数据库失败：${message}"
+    },
     "messages": {
         "fieldColorParseFailed": "解析字段颜色 JSON 失败",
         "fieldBgColorParseFailed": "解析字段背景颜色 JSON 失败",
@@ -68,7 +80,8 @@
             "appearance": { "title": "标签样式", "shortTitle": "样式", "description": "按字段类型选择文字和背景色；按值覆盖仅用于少数需要特别强调的值", "lightTheme": "浅色主题", "darkTheme": "深色主题", "useDefaultColors": "使用默认配色", "typeRules": "字段类型", "textColor": "文字颜色", "backgroundColor": "背景颜色", "opacity": "透明度", "valueRules": "按值覆盖", "valueName": "匹配值", "enableBackground": "背景色", "addValueRule": "添加规则", "removeValueRule": "删除规则", "newValue": "新值" },
             "license": { "title": "Pro 授权", "shortTitle": "Pro", "description": "Pro 为一次性买断，仅绑定思源用户 ID。同一账号在所有设备上均可使用。", "apply": "申请", "support": "客服", "supportTitle": "联系客服", "supportHint": "如有 Pro 授权相关问题，可通过邮箱联系作者。", "copyEmail": "复制邮箱", "copiedEmail": "已复制", "sendEmail": "发送邮件", "statusLabel": "授权状态", "showProBadge": "显示 Pro 标识", "userId": "当前思源用户 ID", "copyUserId": "复制 ID", "copiedUserId": "已复制", "license": "授权码", "placeholder": "粘贴购买后收到的授权码", "verify": "保存并验证", "verifying": "验证中...", "verifySuccess": "Pro 已激活", "verifyFailed": "授权码验证失败，请检查内容和当前账号", "clear": "清除授权", "cleared": "已清除 Pro 授权", "status": { "active": "已激活 Pro", "missing": "未激活", "invalid": "授权码无效", "wrong-user": "授权账号不匹配", "unconfigured": "当前版本未配置授权", "unsupported": "当前思源版本不支持验证" } },
             "trial": { "title": "Pro 试用", "description": "可免费试用 Pro 功能 7 天，每个思源账号仅可启用一次。启用时会记录当前账号信息。", "statusLabel": "试用状态", "start": "启用 7 天试用", "starting": "启用中...", "started": "已启用 7 天 Pro 试用", "failed": "当前无法启用试用", "active": "试用中，至 ${expiresAt}", "status": { "available": "可启用 7 天试用", "used": "试用已使用", "missing-profile": "缺少思源账号 ID 或用户名", "unavailable": "当前版本未配置试用" } },
-            "fieldTypes": { "mSelect": "多选", "number": "数字", "date": "日期", "text": "文本", "template": "模板", "mAsset": "文件", "relation": "关联", "rollup": "汇总", "block": "块", "lineNumber": "行号", "checkbox": "复选框", "phone": "电话", "url": "链接", "email": "邮箱", "created": "创建时间", "updated": "更新时间", "pro": "PRO", "proTooltip": "需要 Pro 授权" }
+            "fieldTypes": { "mSelect": "多选", "number": "数字", "date": "日期", "text": "文本", "template": "模板", "mAsset": "文件", "relation": "关联", "rollup": "汇总", "block": "块", "lineNumber": "行号", "checkbox": "复选框", "phone": "电话", "url": "链接", "email": "邮箱", "created": "创建时间", "updated": "更新时间", "pro": "PRO", "proTooltip": "需要 Pro 授权" },
+            "pinnedDatabases": { "title": "斜杠命令数据库", "shortTitle": "斜杠", "description": "此处每个数据库对应一条独立的 / 命令，选中后直接把块加入该数据库，无需再选择。命令作用于光标所在块；若该块被容器块（列表项、超级块、引述块、标注块）包裹，则作用于最靠近的那一层容器块。", "add": "添加数据库", "remove": "移除", "empty": "尚未配置，不会注册任何 / 命令。", "unnamed": "未命名数据库" }
         },
         "disShow": {
             "title": "文档块展示字段",

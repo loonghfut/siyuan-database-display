@@ -284,6 +284,18 @@
     grid-template-columns: 1fr 26px;
 }
 
+.db-settings__pinned-row {
+    grid-template-columns: 1fr 26px;
+}
+
+.db-settings__pinned-name {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 14px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
 .db-settings__remove-rule {
     position: relative;
     display: grid;

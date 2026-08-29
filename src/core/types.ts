@@ -152,3 +152,19 @@ export type AttributeViewWriteValue =
     | { phone: { content: string } }
     | { relation: { blockIDs: string[]; contents: RelationContent[] } }
     | { mAsset: AssetReference[] };
+
+/**
+ * /api/av/searchAttributeView 的返回条目。顶层条目是数据库，
+ * children 是 includeViewMatches 为真时附带的匹配视图。
+ */
+export interface AttributeViewSearchItem {
+    avID: string;
+    avName: string;
+    blockID: string;
+    hPath: string;
+    matched?: boolean;
+    viewName?: string;
+    viewID?: string;
+    viewLayout?: string;
+    children?: AttributeViewSearchItem[];
+}
