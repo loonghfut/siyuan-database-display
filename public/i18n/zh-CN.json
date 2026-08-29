@@ -45,6 +45,7 @@
         "pickerPlaceholder": "搜索数据库…",
         "searchAll": "搜索全部数据库…",
         "noResult": "未找到匹配的数据库",
+        "allAdded": "匹配到的数据库都已添加",
         "loading": "加载中…",
         "searchFailed": "搜索数据库失败",
         "added": "已添加到数据库：${name}",

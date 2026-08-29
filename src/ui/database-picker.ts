@@ -23,6 +23,8 @@ export interface DatabasePickerText {
     noResult: string;
     loading: string;
     searchFailed: string;
+    /** 结果被 exclude 全部过滤掉时的提示，缺省回落到 noResult。 */
+    allExcluded?: string;
 }
 
 export interface DatabasePickerOptions {
@@ -38,6 +40,11 @@ export interface DatabasePickerOptions {
     pinned: readonly PinnedDatabase[];
     text: DatabasePickerText;
     search: (keyword: string) => Promise<AttributeViewSearchItem[]>;
+    /**
+     * 不参与展示的数据库 avID。设置面板用它过滤掉已经添加过的数据库，
+     * 避免重复添加同一项。
+     */
+    exclude?: readonly string[];
     onPick: (pick: DatabasePick) => void;
 }
 
@@ -148,10 +155,15 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
     options.event?.stopPropagation();
     activePickerCleanup?.();
     const menu = new Menu();
+    const excluded = new Set((options.exclude ?? []).filter(Boolean));
     let requestSequence = 0;
     let searchTimer: ReturnType<typeof setTimeout> | undefined;
     // bind 由 addItem 同步调用，open 前即可拿到列表引用
     let pickerList: HTMLElement | undefined;
+
+    /** 结果被排除项过滤后为空时，给出区别于"搜不到"的提示。 */
+    const emptyListHTML = (hasExcluded: boolean): string =>
+        emptyHTML(hasExcluded ? options.text.allExcluded || options.text.noResult : options.text.noResult);
 
     const searchAllHTML = (): string => `<div class="b3-list-item b3-list-item--narrow" data-action="${SEARCH_ALL_ACTION}">
     <svg class="b3-list-item__graphic"><use xlink:href="#iconSearch"></use></svg>
@@ -226,7 +238,9 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
             activePickerCleanup = disposeResize;
 
             const renderPinned = (): void => {
-                listElement.innerHTML = options.pinned.map(database => entryHTML({
+                const visible = options.pinned.filter(database => !excluded.has(database.avID));
+                // 常用项被过滤空时只剩搜索入口，还有东西可点，不必提示为空
+                listElement.innerHTML = visible.map(database => entryHTML({
                     avID: database.avID,
                     name: database.name,
                     blockID: database.blockID
@@ -240,11 +254,12 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
                 try {
                     const results = await options.search(keyword);
                     if (sequence !== requestSequence) return;
-                    if (results.length === 0) {
-                        listElement.innerHTML = emptyHTML(options.text.noResult);
+                    const visible = results.filter(item => !excluded.has(item.avID));
+                    if (visible.length === 0) {
+                        listElement.innerHTML = emptyListHTML(results.length > 0);
                         return;
                     }
-                    listElement.innerHTML = results.map(item => entryHTML({
+                    listElement.innerHTML = visible.map(item => entryHTML({
                         avID: item.avID,
                         name: item.avName || item.avID,
                         blockID: item.blockID,

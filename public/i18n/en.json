@@ -45,6 +45,7 @@
         "pickerPlaceholder": "Search databases…",
         "searchAll": "Search all databases…",
         "noResult": "No matching database",
+        "allAdded": "All matching databases are already added",
         "loading": "Loading…",
         "searchFailed": "Failed to search databases",
         "added": "Added to database: ${name}",

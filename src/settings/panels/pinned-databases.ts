@@ -70,10 +70,13 @@ export function addPinnedDatabasesPanel(addPanel: AddPanel, text: SettingsPanelT
                 target: add,
                 event,
                 pinned: [],
+                // 已添加的数据库不再列出，避免重复添加同一项
+                exclude: databases.map(database => database.avID),
                 text: {
                     placeholder: t("slash.pickerPlaceholder"),
                     searchAll: t("slash.searchAll"),
                     noResult: t("slash.noResult"),
+                    allExcluded: t("slash.allAdded"),
                     loading: t("slash.loading"),
                     searchFailed: t("slash.searchFailed")
                 },
