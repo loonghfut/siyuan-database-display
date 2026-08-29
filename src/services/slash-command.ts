@@ -1,9 +1,11 @@
 import { IProtyle, Protyle, showMessage } from "siyuan";
 import { PinnedDatabase } from "@/config/pinned-databases";
 import { attributeViewRepository } from "@/data/attribute-view-repository";
+import { repairDatabaseBadge } from "@/domain/block-av-badge";
 import { eraseSlashCommandText, resolveSlashTargetBlock } from "@/domain/slash-target";
 import { escapeHtml } from "@/libs/dom";
 import { toErrorMessage } from "@/libs/error-utils";
+import { waitForBlockTransaction } from "@/services/block-transaction-sync";
 import { t } from "@/i18n";
 
 export interface DatabaseSlashCommand {
@@ -77,6 +79,9 @@ async function addToPinnedDatabase(
         return;
     }
     await eraseCommandText(editor, nodeElement);
+    // 等改写块文本的 update 事务落地后再绑定：该事务会重建块 DOM，若晚于
+    // updateAttrs 到达，会把刚渲染的数据库角标冲掉（表现为角标闪一下就没了）
+    await waitForBlockTransaction(blockID, ["update"]);
     try {
         await attributeViewRepository.addBlocksToDatabase({
             avID: database.avID,
@@ -87,6 +92,9 @@ async function addToPinnedDatabase(
         // 主动刷新而非等广播：内核的 refreshAttributeView 只发给 protyle 连接
         // （kernel/model/push_reload.go:523），插件监听的主 ws 是 main 类型，收不到。
         onAdded(blockID);
+        // 等绑定产生的 updateAttrs 落地，再兜底校验角标（DOM 已是最新时直接跳过）
+        await waitForBlockTransaction(blockID, ["updateAttrs"]);
+        repairDatabaseBadge(blockID, database.avID, database.name);
         showMessage(t("slash.added", { name: database.name }), 3000, "info");
     } catch (error) {
         showMessage(t("slash.addFailed", { message: toErrorMessage(error) }), 5000, "error");
