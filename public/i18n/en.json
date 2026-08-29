@@ -67,6 +67,10 @@
         "noRelationResults": "No related items found",
         "loadMoreRelation": "Load more",
         "optionColor": "Option color",
+        "searchOrCreate": "Search or create an option",
+        "enterToCreate": "Enter",
+        "noOption": "No options yet. Type to create one",
+        "noMatchOption": "No matching option",
         "confirmTemplateTitle": "Confirm template change",
         "confirmTemplateContent": "The template expression applies to every row of this column. Continue?"
     },

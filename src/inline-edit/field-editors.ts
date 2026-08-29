@@ -2,7 +2,7 @@
 
 import { fetchSyncPost, IWebSocketData, showMessage } from "siyuan";
 import { attributeViewRepository } from "../data/attribute-view-repository";
-import { AssetReference, AttributeViewWriteValue } from "../core/types";
+import { AssetReference, AttributeViewWriteValue, SelectOption } from "../core/types";
 import { t } from "../i18n";
 import { toErrorMessage } from "../libs/error-utils";
 import { openRelationEditor, RelationEditorHandle } from "../ui/relation-editor";
@@ -13,20 +13,18 @@ import {
     prepareEditorPanel,
     createPanelHeader,
     appendHeaderAction,
-    createDropdownOption,
-    createMultiSelectOption,
-    openOptionColorPalette,
     positionPopup,
     positionDropdown,
     closeDropdown,
     closeEditorPanel,
+    closeOpenPanel,
     bindOutsideDismiss,
     bindEscapeDismiss,
     combineCleanup,
     setOpenPanel,
-    setOpenPanelCleanup,
-    isWithinPalette
+    setOpenPanelCleanup
 } from "./popup";
+import { openSelectEditor } from "./select-editor";
 import {
     createTextInput,
     createTextArea,
@@ -79,271 +77,61 @@ async function handleCheckboxEdit(options: InlineEditOptions) {
 }
 
 /**
+ * 单选/多选的共用入口：搜索、直接创建新选项、选项配色编辑都在 select-editor 实现。
+ */
+function openSelectOptionsEditor(options: InlineEditOptions, multi: boolean): void {
+    const { element, avID, itemID, selectOptions, onSave } = options;
+    const initial = (Array.isArray(options.currentValue)
+        ? options.currentValue
+        : (options.currentValue ? [options.currentValue] : []))
+        .map(value => String(value ?? ""))
+        .filter(Boolean);
+
+    void openSelectEditor({
+        element,
+        avID,
+        keyID: options.keyID,
+        keyName: options.keyName,
+        multi,
+        columnOptions: (selectOptions || []) as SelectOption[],
+        initialSelected: multi ? initial : initial.slice(0, 1),
+        async onSave(entries) {
+            try {
+                // 每个值都带上颜色：内核对已存在的选项会忽略传入色，
+                // 对新建选项则采用它，避免随机取色
+                const value: AttributeViewWriteValue = { mSelect: entries };
+                await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
+                closeOpenPanel();
+                showMessage(t("common.saveSuccess"), 2000, "info");
+                onSave?.(multi ? entries.map(entry => entry.content) : (entries[0]?.content ?? ""));
+            } catch (error) {
+                const message = toErrorMessage(error);
+                console.error(t("common.saveFailed", { message }), error);
+                showMessage(t("common.saveFailed", { message }), 5000, "error");
+                // 抛回给面板解锁 isSaving，便于修正后重试
+                throw error;
+            }
+        },
+        onRefresh() {
+            // 选项配色等列级变更已落库，用原值触发正文重渲染
+            onSave?.(multi ? initial : (initial[0] ?? ""));
+        },
+        onCancel: () => options.onCancel?.()
+    });
+}
+
+/**
  * 处理单选下拉菜单
  */
-function handleSelectEdit(options: InlineEditOptions) {
-    const { element, avID, itemID, currentValue, selectOptions, onSave, onCancel } = options;
-    const selectedValue = Array.isArray(currentValue) ? currentValue[0] : currentValue;
-
-    // 创建下拉菜单容器
-    const dropdown = document.createElement('div');
-    dropdown.className = 'inline-edit-dropdown';
-    prepareEditorPanel(dropdown, options.keyName);
-    setOpenPanel(dropdown);
-
-    // 创建选项列表
-    const optionsList = document.createElement('div');
-    optionsList.className = 'inline-edit-dropdown-list';
-
-    const header = createPanelHeader(options.keyName, () => {
-        closeDropdown(dropdown);
-        onCancel?.();
-    });
-    dropdown.appendChild(header);
-
-    // 修改选项颜色：写回内核并刷新选项列表与文档显示
-    const editOptionColor = (option: any) => (swatch: HTMLElement) => {
-        const optionName = String(option.name || option.content || option.id || '');
-        openOptionColorPalette({
-            swatch,
-            avID,
-            keyID: options.keyID,
-            optionName,
-            color: String(option.color || ''),
-            onApplied: (newColor) => {
-                void (async () => {
-                    try {
-                        await attributeViewRepository.updateSelectOptionColor(avID, options.keyID, optionName, String(option.color || ''), newColor);
-                        option.color = newColor;
-                        renderOptions();
-                        showMessage(t('common.saveSuccess'), 2000, 'info');
-                        onSave?.(selectedValue);
-                    } catch (error) {
-                        const message = toErrorMessage(error);
-                        console.error(t('common.saveFailed', { message }), error);
-                        showMessage(t('common.saveFailed', { message }), 5000, 'error');
-                    }
-                })();
-            }
-        });
-    };
-
-    const renderOptions = () => {
-        optionsList.replaceChildren();
-        // 添加空选项
-        const emptyOption = createDropdownOption('', t('common.clear'), selectedValue === '' || !selectedValue);
-        optionsList.appendChild(emptyOption);
-        // 添加备选项
-        (selectOptions || []).forEach(option => {
-            // 选项值：优先使用 name，然后 id，最后 content
-            const optionId = option.name || option.id || option.content;
-            const optionText = option.name || option.content || option.id;
-            const isSelected = (optionId === selectedValue);
-            const optionElement = createDropdownOption(optionId, optionText, isSelected, option.color, editOptionColor(option));
-            optionsList.appendChild(optionElement);
-        });
-    };
-    renderOptions();
-
-    dropdown.appendChild(optionsList);
-    document.body.appendChild(dropdown);
-
-    // 定位下拉菜单
-    positionDropdown(dropdown, element);
-
-    // 保存函数
-    let isSaving = false;
-    const save = async (selectedValue: string) => {
-        if (isSaving) return;
-        isSaving = true;
-        try {
-            const value = convertToAVValue('select', selectedValue);
-            await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
-
-            closeDropdown(dropdown);
-            showMessage(t('common.saveSuccess'), 2000, 'info');
-
-            if (onSave) {
-                onSave(selectedValue);
-            }
-        } catch (error) {
-            const message = toErrorMessage(error);
-            console.error(t('common.saveFailed', { message }), error);
-            showMessage(t('common.saveFailed', { message }), 5000, 'error');
-            isSaving = false;
-        }
-    };
-
-    // 点击选项事件
-    optionsList.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const optionElement = target.closest('.inline-edit-dropdown-option') as HTMLElement;
-        if (optionElement) {
-            const value = optionElement.dataset.value || '';
-            save(value);
-        }
-    });
-
-    const close = () => {
-        closeDropdown(dropdown);
-        if (onCancel) onCancel();
-    };
-
-    // 点击外部关闭 + Esc 关闭
-    const handleClickOutside = (e: MouseEvent) => {
-        const target = e.target as HTMLElement;
-        if (isWithinPalette(target)) return;
-        if (!dropdown.contains(target) && !element.contains(target)) {
-            close();
-        }
-    };
-
-    setOpenPanelCleanup(combineCleanup(
-        bindOutsideDismiss(handleClickOutside),
-        bindEscapeDismiss(close)
-    ));
+function handleSelectEdit(options: InlineEditOptions): void {
+    openSelectOptionsEditor(options, false);
 }
 
 /**
  * 处理多选下拉菜单
  */
-function handleMultiSelectEdit(options: InlineEditOptions) {
-    const { element, avID, itemID, currentValue, selectOptions, onSave, onCancel } = options;
-
-    // 创建多选容器
-    const dropdown = document.createElement('div');
-    dropdown.className = 'inline-edit-dropdown inline-edit-dropdown--multi';
-    prepareEditorPanel(dropdown, options.keyName);
-    setOpenPanel(dropdown);
-
-    // 当前选中的值
-    const selectedValues = new Set(Array.isArray(currentValue) ? currentValue : (currentValue ? [currentValue] : []));
-
-    // 创建选项列表
-    const optionsList = document.createElement('div');
-    optionsList.className = 'inline-edit-dropdown-list';
-
-    const header = createPanelHeader(options.keyName, () => {
-        closeDropdown(dropdown);
-        onCancel?.();
-    });
-    dropdown.appendChild(header);
-
-    // 修改选项颜色：写回内核并刷新选项列表与文档显示
-    const editOptionColor = (option: any) => (swatch: HTMLElement) => {
-        const optionName = String(option.name || option.content || option.id || '');
-        openOptionColorPalette({
-            swatch,
-            avID,
-            keyID: options.keyID,
-            optionName,
-            color: String(option.color || ''),
-            onApplied: (newColor) => {
-                void (async () => {
-                    try {
-                        await attributeViewRepository.updateSelectOptionColor(avID, options.keyID, optionName, String(option.color || ''), newColor);
-                        option.color = newColor;
-                        renderOptions();
-                        showMessage(t('common.saveSuccess'), 2000, 'info');
-                        onSave?.(Array.from(selectedValues));
-                    } catch (error) {
-                        const message = toErrorMessage(error);
-                        console.error(t('common.saveFailed', { message }), error);
-                        showMessage(t('common.saveFailed', { message }), 5000, 'error');
-                    }
-                })();
-            }
-        });
-    };
-
-    // 添加备选项（带复选框）
-    const renderOptions = () => {
-        optionsList.replaceChildren();
-        (selectOptions || []).forEach(option => {
-            // 选项值：优先使用 name，然后 id，最后 content
-            const optionId = option.name || option.id || option.content;
-            const optionText = option.name || option.content || option.id;
-            const isSelected = selectedValues.has(optionId);
-
-            const optionElement = createMultiSelectOption(optionId, optionText, isSelected, option.color, editOptionColor(option));
-            optionsList.appendChild(optionElement);
-
-            // 点击切换选中状态
-            optionElement.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const checkbox = optionElement.querySelector('input[type="checkbox"]') as HTMLInputElement;
-                checkbox.checked = !checkbox.checked;
-                optionElement.classList.toggle('inline-edit-dropdown-option--selected', checkbox.checked);
-
-                if (checkbox.checked) {
-                    selectedValues.add(optionId);
-                } else {
-                    selectedValues.delete(optionId);
-                }
-            });
-        });
-    };
-    renderOptions();
-
-    dropdown.appendChild(optionsList);
-
-    const saveButton = createIconButton(ICONS.check, t('common.save'), 'inline-edit-action inline-edit-action--primary');
-    appendHeaderAction(header, saveButton);
-
-    document.body.appendChild(dropdown);
-
-    // 定位下拉菜单
-    positionDropdown(dropdown, element);
-
-    // 保存函数
-    let isSaving = false;
-    const save = async () => {
-        if (isSaving) return;
-        isSaving = true;
-        try {
-            const values = Array.from(selectedValues);
-            const value = convertToAVValue('mSelect', values);
-            await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
-
-            closeDropdown(dropdown);
-            showMessage(t('common.saveSuccess'), 2000, 'info');
-
-            if (onSave) {
-                onSave(values);
-            }
-        } catch (error) {
-            const message = toErrorMessage(error);
-            console.error(t('common.saveFailed', { message }), error);
-            showMessage(t('common.saveFailed', { message }), 5000, 'error');
-            isSaving = false;
-        }
-    };
-
-    // 按钮事件
-    saveButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        save();
-    });
-
-    const close = () => {
-        closeDropdown(dropdown);
-        if (onCancel) onCancel();
-    };
-
-    // 点击外部关闭 + Esc 关闭
-    const handleClickOutside = (e: MouseEvent) => {
-        const target = e.target as HTMLElement;
-        if (isWithinPalette(target)) return;
-        if (!dropdown.contains(target) && !element.contains(target)) {
-            close();
-        }
-    };
-
-    setOpenPanelCleanup(combineCleanup(
-        bindOutsideDismiss(handleClickOutside),
-        bindEscapeDismiss(close)
-    ));
+function handleMultiSelectEdit(options: InlineEditOptions): void {
+    openSelectOptionsEditor(options, true);
 }
 
 function handleRelationEdit(options: InlineEditOptions): void {

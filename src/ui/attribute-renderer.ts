@@ -1,5 +1,6 @@
 import { DisplayConfig, isSafeColor } from "@/config/display-config";
 import { AssetReference, DisplayItem, DisplayNavigationTarget, DisplaySegment, isInlineEditableField } from "@/core/types";
+import { applyAVColorVars, getAVColorStyle } from "@/domain/option-color";
 import { t } from "@/i18n";
 import { assetLabel, assetThumbnailUrl } from "@/ui/asset-utils";
 import { createIconButton, iconElement } from "@/libs/dom";
@@ -539,21 +540,20 @@ export class AttributeRenderer {
     }
 
     /**
-     * 多选字段分段渲染：每个选项一个色块（背景/文字色来自思源调色板，
-     * 与数据库单元格内的原生选项样式一致），总长超出上限时逐段截断。
+     * 多选字段分段渲染：每个选项一个色块（配色与数据库单元格内的原生选项一致，
+     * 支持工作空间自定义色与明暗主题），总长超出上限时逐段截断。
      */
     private renderSegments(value: HTMLElement, segments: DisplaySegment[], maxLength: number): void {
         const totalLength = segments.reduce((sum, segment) => sum + segment.text.length, 0);
         const full = totalLength <= maxLength;
         let remaining = maxLength;
+        // 自定义色以 CSS 变量挂在容器上，供 var(--b3-font-background{N}) 解析
+        applyAVColorVars(value);
         segments.forEach(segment => {
             if (!full && remaining <= 0) return;
             const chip = document.createElement("span");
             chip.className = "db-display__option-chip";
-            if (/^[1-9]$|^1[0-4]$/.test(segment.color || "")) {
-                chip.style.backgroundColor = `var(--b3-font-background${segment.color})`;
-                chip.style.color = `var(--b3-font-color${segment.color})`;
-            }
+            chip.style.cssText = getAVColorStyle(segment.color, segment.resolvedColor);
             const text = document.createElement("span");
             if (full) {
                 text.textContent = segment.text;

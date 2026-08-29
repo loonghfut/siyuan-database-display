@@ -46,8 +46,9 @@
     white-space: nowrap;
 }
 
-/* 多选选项色块：背景/文字色来自思源调色板 var(--b3-font-background{1..14})，
-   与数据库单元格内的原生选项样式一致；无颜色时跟随思源默认 chip 背景 */
+/* 多选选项色块：行内样式由 domain/option-color 的 getAVColorStyle 生成，
+   内置色走 var(--b3-font-background{N})（1-14），工作空间自定义色走 light-dark()，
+   与数据库单元格内的原生选项样式一致。此处背景仅作兜底 */
 .db-display__option-chip {
     display: inline-flex;
     align-items: center;

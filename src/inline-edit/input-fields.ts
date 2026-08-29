@@ -100,6 +100,15 @@ export function getInputValue(element: HTMLInputElement | HTMLTextAreaElement | 
 /**
  * 转换为数据库格式
  */
+/** 归一化选项值：支持字符串或 { content, color }，颜色为空时由内核按可见内置色取用。 */
+function toSelectEntry(value: unknown): { content: string; color: string } {
+    if (value && typeof value === 'object') {
+        const entry = value as { content?: unknown; color?: unknown };
+        return { content: String(entry.content ?? ''), color: String(entry.color ?? '') };
+    }
+    return { content: String(value ?? ''), color: '' };
+}
+
 export function convertToAVValue(keyType: string, value: any): AttributeViewWriteValue {
     switch (keyType) {
         case 'text':
@@ -137,11 +146,11 @@ export function convertToAVValue(keyType: string, value: any): AttributeViewWrit
             return { checkbox: { checked: Boolean(value) } };
         case 'select':
             // 单选也使用 mSelect 格式（单个元素的数组）
-            return { mSelect: value ? [{ content: String(value), color: '' }] : [] };
+            return { mSelect: value ? [toSelectEntry(value)] : [] };
         case 'mSelect':
-            // 多选返回数组
+            // 多选返回数组，元素可以是字符串或 { content, color }
             const values = Array.isArray(value) ? value : [value];
-            return { mSelect: values.filter(v => v).map(v => ({ content: String(v), color: '' })) };
+            return { mSelect: values.filter(v => v).map(toSelectEntry) };
         default:
             return { text: { content: String(value || '') } };
     }

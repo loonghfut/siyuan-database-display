@@ -264,9 +264,19 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
             if (!key || config.hiddenFields.has(key.name)) continue;
 
             if (isSelectKey(key.type)) {
-                // 每个选中选项一个分段，携带选项颜色索引用于渲染色点
+                // 每个选中选项一个分段。配色优先取列选项：整列改色后单元格值里
+                // 可能残留旧颜色，以列选项为准（与思源 getSelectHTML 一致）
                 const segments: DisplaySegment[] = (keyValue.values || [])
-                    .flatMap(value => (value.mSelect || []).map(item => ({ text: item.content || "", color: item.color })))
+                    .flatMap(value => (value.mSelect || []).map(item => {
+                        const name = String(item.content || "");
+                        const option = (key.options || [])
+                            .find(candidate => (candidate.name || candidate.content) === name);
+                        return {
+                            text: name,
+                            color: option?.color ?? item.color,
+                            resolvedColor: option?.resolvedColor
+                        };
+                    }))
                     .filter(segment => Boolean(segment.text));
                 const selected = segments.map(segment => segment.text);
                 if (types.includes("mSelect") && selected.length > 0) {

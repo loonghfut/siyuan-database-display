@@ -2,7 +2,14 @@
 // 内联编辑的各个字段编辑器共享这里的"当前打开弹窗"单例状态。
 
 import { createIconButton, positionPanelNear } from "../libs/dom";
+import { AVPaletteEntry } from "../core/types";
 import { t } from "../i18n";
+import {
+    applyAVColorVars,
+    getAVColorStyle,
+    getAVPaletteEntries,
+    normalizeAVColorIndex
+} from "../domain/option-color";
 
 export const ICONS = {
     cancel: 'iconClose',
@@ -99,7 +106,7 @@ export function closeOptionColorPalette(): void {
 }
 
 /**
- * 打开选项调色板（思源 14 色调色板，与原生 color__square 一致），
+ * 打开选项调色板：条目与思源原生一致（可见内置色 + 工作空间自定义色，按工作空间排序）。
  * 选择后回调应用新颜色并关闭。
  */
 export function openOptionColorPalette(options: {
@@ -111,19 +118,22 @@ export function openOptionColorPalette(options: {
     onApplied: (newColor: string) => void;
 }): void {
     closeOptionColorPalette();
+    const currentIndex = normalizeAVColorIndex(options.color);
     const paletteElement = document.createElement('div');
     paletteElement.className = 'inline-edit-palette';
     paletteElement.setAttribute('role', 'dialog');
     paletteElement.setAttribute('aria-label', t('inlineEdit.optionColor'));
-    for (let index = 1; index <= 14; index++) {
+    // 自定义色通过 CSS 变量解析，需在渲染色块前注入
+    applyAVColorVars(paletteElement);
+    getAVPaletteEntries().forEach((entry, position) => {
+        const index = normalizeAVColorIndex(entry.color);
         const square = document.createElement('button');
         square.type = 'button';
-        square.className = 'inline-edit-palette__swatch' + (String(index) === options.color ? ' inline-edit-palette__swatch--current' : '');
-        square.dataset.color = String(index);
-        square.style.color = `var(--b3-font-color${index})`;
-        square.style.backgroundColor = `var(--b3-font-background${index})`;
+        square.className = 'inline-edit-palette__swatch' + (index === currentIndex ? ' inline-edit-palette__swatch--current' : '');
+        square.dataset.color = entry.color;
+        square.style.cssText = getAVColorStyle(entry.color, entry.resolvedColor);
         square.textContent = 'A';
-        square.setAttribute('aria-label', t('inlineEdit.optionColor') + ` ${index}`);
+        square.setAttribute('aria-label', t('inlineEdit.optionColor') + ` ${position + 1}`);
         square.addEventListener('click', event => {
             event.stopPropagation();
             const newColor = square.dataset.color || '';
@@ -133,7 +143,7 @@ export function openOptionColorPalette(options: {
             closeOptionColorPalette();
         });
         paletteElement.appendChild(square);
-    }
+    });
     document.body.appendChild(paletteElement);
     positionPanelNear(paletteElement, options.swatch, 4);
     palette = paletteElement;
@@ -207,14 +217,24 @@ export function appendHeaderAction(header: HTMLElement, action: HTMLButtonElemen
     header.querySelector<HTMLElement>('.inline-edit-panel__actions')?.appendChild(action);
 }
 
+/** 选项颜色的写法：调色板索引，或附带明暗取值的自定义色条目。 */
+export type OptionColorRef = string | AVPaletteEntry | undefined;
+
+function toColorEntry(color: OptionColorRef): AVPaletteEntry | undefined {
+    if (typeof color === "string") return color ? { color } : undefined;
+    return color;
+}
+
 /**
- * 创建选项色块：显示选项颜色（思源调色板索引），点击时回调打开调色板编辑。
+ * 创建选项色块：显示选项颜色（内置色走主题变量，自定义色走 light-dark()），
+ * 点击时回调打开调色板编辑。
  */
-export function createOptionColorSwatch(color: string | undefined, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
+export function createOptionColorSwatch(color: OptionColorRef, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
     const swatch = document.createElement('span');
     swatch.className = 'inline-edit-option-color';
-    if (/^[1-9]$|^1[0-4]$/.test(color || '')) {
-        swatch.style.backgroundColor = `var(--b3-font-color${color})`;
+    const entry = toColorEntry(color);
+    if (entry) {
+        swatch.style.cssText = getAVColorStyle(entry.color, entry.resolvedColor);
     } else {
         swatch.classList.add('inline-edit-option-color--none');
     }
@@ -233,7 +253,7 @@ export function createOptionColorSwatch(color: string | undefined, onColorEdit?:
 /**
  * 创建下拉选项元素
  */
-export function createDropdownOption(value: string, text: string, isSelected: boolean, color?: string, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
+export function createDropdownOption(value: string, text: string, isSelected: boolean, color?: OptionColorRef, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
     const option = document.createElement('button');
     option.type = 'button';
     option.className = 'inline-edit-dropdown-option' + (isSelected ? ' inline-edit-dropdown-option--selected' : '');
@@ -255,7 +275,7 @@ export function createDropdownOption(value: string, text: string, isSelected: bo
 /**
  * 创建多选下拉选项元素
  */
-export function createMultiSelectOption(value: string, text: string, isSelected: boolean, color?: string, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
+export function createMultiSelectOption(value: string, text: string, isSelected: boolean, color?: OptionColorRef, onColorEdit?: (swatch: HTMLElement) => void): HTMLElement {
     const option = document.createElement('label');
     option.className = 'inline-edit-dropdown-option inline-edit-dropdown-option--multi' + (isSelected ? ' inline-edit-dropdown-option--selected' : '');
 

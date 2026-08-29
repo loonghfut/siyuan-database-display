@@ -1,6 +1,7 @@
 import { openTab, Plugin, showMessage } from "siyuan";
 import "@/index.scss";
 import { parseCsv, parseJsonObject, readDisplayConfig } from "@/config/display-config";
+import { getAVCustomColors, loadAVPalette } from "@/domain/option-color";
 import { DisplayController } from "@/services/display-controller";
 import { parseAttributeViewUpdateSignal } from "@/services/attribute-view-update-signal";
 import { createDatabaseSlashCommands } from "@/services/slash-command";
@@ -57,6 +58,11 @@ export default class DatabaseDisplay extends Plugin {
         this.themeObserver?.disconnect();
         this.themeObserver = new MutationObserver(() => this.controller?.scheduleRefresh(true));
         this.themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme-mode"] });
+        // 预载工作空间配色：自定义色与隐藏的内置色会影响选项色块，
+        // 首屏渲染时还没有缓存，载入后按需重刷一次
+        void loadAVPalette().then(() => {
+            if (getAVCustomColors().length > 0) this.controller?.scheduleRefresh(true);
+        });
     }
 
     onunload(): void {

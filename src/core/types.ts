@@ -23,7 +23,34 @@ export interface SelectOption {
     id?: string;
     name?: string;
     content?: string;
+    /** 调色板索引：1-14 为内置色，15-78 为自定义色。 */
     color?: string;
+    desc?: string;
+    /** 内核解析出的自定义色明暗取值，存在时优先用于渲染。 */
+    resolvedColor?: AVResolvedColor;
+}
+
+/** 明暗主题下的一套前景/背景色，取值为 #rrggbb。 */
+export interface AVColorTheme {
+    color?: string;
+    backgroundColor?: string;
+}
+
+export interface AVResolvedColor {
+    light?: AVColorTheme;
+    dark?: AVColorTheme;
+}
+
+/** 工作空间自定义色：索引落在 15-78，可被单独隐藏。 */
+export interface AVCustomColor extends AVResolvedColor {
+    index: number;
+    hidden?: boolean;
+}
+
+/** 调色板条目：内置色只有索引，自定义色附带明暗取值。 */
+export interface AVPaletteEntry {
+    color: string;
+    resolvedColor?: AVResolvedColor;
 }
 
 export interface AttributeViewRelation {
@@ -114,11 +141,13 @@ export interface DisplaySource {
 }
 
 /**
- * 多选字段的单个选项片段：文本 + 思源调色板颜色索引（1-14，见内核 FilterColorValue）。
+ * 多选字段的单个选项片段：文本 + 选项配色。
+ * 颜色优先取列选项的 resolvedColor，其次才是调色板索引（见内核 FilterColorValue）。
  */
 export interface DisplaySegment {
     text: string;
     color?: string;
+    resolvedColor?: AVResolvedColor;
 }
 
 export interface DisplayItem {

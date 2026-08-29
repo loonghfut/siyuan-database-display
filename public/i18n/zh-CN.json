@@ -67,6 +67,10 @@
         "noRelationResults": "没有可关联的项目",
         "loadMoreRelation": "加载更多",
         "optionColor": "选项颜色",
+        "searchOrCreate": "搜索或直接创建选项",
+        "enterToCreate": "回车创建",
+        "noOption": "暂无选项，输入即可新建",
+        "noMatchOption": "没有匹配的选项",
         "confirmTemplateTitle": "确认修改模板",
         "confirmTemplateContent": "模板表达式会应用到该列的每一行，确定继续吗？"
     },
