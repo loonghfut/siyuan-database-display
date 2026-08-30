@@ -28,7 +28,7 @@ export type ListItemRadius = "auto" | "none" | "small" | "medium" | "pill";
 /** 卡片圆角：auto 跟随思源主题圆角 */
 export type CardRadius = "auto" | "none" | "small" | "medium" | "large";
 /** 卡片内边距（同时决定属性列表与卡片边缘的间距） */
-export type CardPadding = "tight" | "normal" | "loose";
+export type CardPadding = "tight" | "normal";
 
 export const LIST_LINE_HEIGHTS: Record<ListLineHeight, number> = { compact: 1.25, normal: 1.35, relaxed: 1.6 };
 export const LIST_ROW_GAPS: Record<ListRowGap, number> = { tight: 0, normal: 2, relaxed: 6 };
@@ -36,7 +36,7 @@ export const LIST_VALUE_LINES: Record<ListValueLines, number> = { unlimited: 0, 
 /** null = 不写入变量，回落样式表内置圆角 */
 export const LIST_ITEM_RADII: Record<ListItemRadius, string | null> = { auto: null, none: "0px", small: "3px", medium: "6px", pill: "999px" };
 export const CARD_RADII: Record<CardRadius, string | null> = { auto: null, none: "0px", small: "4px", medium: "8px", large: "12px" };
-export const CARD_PADDINGS: Record<CardPadding, number> = { tight: 4, normal: 8, loose: 14 };
+export const CARD_PADDINGS: Record<CardPadding, number> = { tight: 4, normal: 8 };
 
 export interface DisplayConfig {
     documentFields: FieldType[];

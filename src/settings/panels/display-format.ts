@@ -53,7 +53,7 @@ export function addDisplayFormatPanel(
         const valueLines = createSelect(text.format.listValueLinesOptions, state.listValueLines === "one" ? "one" : state.listValueLines === "two" ? "two" : state.listValueLines === "three" ? "three" : "unlimited");
         const itemRadius = createSelect(text.format.listItemRadiusOptions, ["none", "small", "medium", "pill"].includes(state.listItemRadius || "") ? state.listItemRadius as string : "auto");
         const cardRadius = createSelect(text.format.cardRadiusOptions, ["none", "small", "medium", "large"].includes(state.cardRadius || "") ? state.cardRadius as string : "auto");
-        const cardPadding = createSelect(text.format.cardPaddingOptions, state.cardPadding === "tight" ? "tight" : state.cardPadding === "loose" ? "loose" : "normal");
+        const cardPadding = createSelect(text.format.cardPaddingOptions, state.cardPadding === "tight" ? "tight" : "normal");
         const listSettings = document.createElement("div");
         listSettings.className = "db-settings__list-options";
         const listHint = document.createElement("p");
