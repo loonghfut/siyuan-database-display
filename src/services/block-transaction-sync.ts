@@ -1,10 +1,13 @@
 // 等待块的事务在前端落地，用于给跨请求的广播定序。
 //
 // 内核对不同 HTTP 请求的事务广播没有顺序保证（各自 Broadcast，见
-// kernel/util/websocket.go PushEvent）。斜杠命令会先后发出改写块文本的
-// update（kernel/api/block_op.go broadcastTransactions）与绑定数据库的
-// updateAttrs（kernel/model/blockial.go pushBlockAttrs），update 晚到时会
-// 重建块 DOM，把先到的 updateAttrs 刚渲染的角标冲掉。
+// kernel/util/websocket.go PushEvent）。斜杠命令先后发出两笔写入：擦除命令文本的
+// update（Protyle#updateTransactionElement）与绑定数据库的 updateAttrs
+// （kernel/model/blockial.go pushBlockAttrs）。
+// - update 要先落库：它携带的块 HTML 生成于绑定之前，没有 custom-avs，晚于绑定
+//   到达会把刚写入的绑定属性覆盖掉；
+// - updateAttrs 会用 innerHTML 重建 .protyle-attr（protyle/wysiwyg/
+//   transaction.ts:963），清掉插件注入的展示节点，因此要等它落地后再补渲染。
 
 const DEFAULT_TIMEOUT_MS = 150;
 

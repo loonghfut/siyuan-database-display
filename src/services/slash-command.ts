@@ -79,10 +79,10 @@ async function addToPinnedDatabase(
         notify(t("common.missingBlockId"), 3000, "error");
         return;
     }
-    await eraseCommandText(editor, nodeElement);
-    // 等改写块文本的 update 事务落地后再绑定：该事务会重建块 DOM，若晚于
-    // updateAttrs 到达，会把刚渲染的数据库角标冲掉（表现为角标闪一下就没了）
-    await waitForBlockTransaction(blockID, ["update"]);
+    // 等擦除事务落库后再绑定：事务里带的块 HTML 还没有 custom-avs，晚于绑定到达
+    // 会覆盖掉刚写入的绑定属性。
+    const erasedBlockID = eraseCommandText(protyle, editor, nodeElement);
+    if (erasedBlockID) await waitForBlockTransaction(erasedBlockID, ["update"]);
     try {
         await attributeViewRepository.addBlocksToDatabase({
             avID: database.avID,
@@ -102,14 +102,21 @@ async function addToPinnedDatabase(
     }
 }
 
-/** 原生 fill() 的 plugin 分支不会删除 "/xxx"，需自行擦除并把结果回写内核。 */
-async function eraseCommandText(editor: IProtyle | undefined, nodeElement: HTMLElement): Promise<void> {
-    const newHTML = eraseSlashCommandText(editor?.toolbar?.range, nodeElement);
-    const blockID = nodeElement.dataset.nodeId;
-    if (!newHTML || !blockID) return;
-    try {
-        await attributeViewRepository.updateBlockHTML(blockID, newHTML);
-    } catch (error) {
-        console.warn("[DatabaseDisplay] Failed to erase slash command text", error);
-    }
+/**
+ * 原生 fill() 的 plugin 分支不会删除 "/xxx"，需自行擦除并把结果回写内核，
+ * 返回被改写的块 id（无改动时为 undefined）。
+ *
+ * 回写走思源自身的本地编辑路径（Protyle#updateTransactionElement，插件公开
+ * API）：本地 DOM 改好后由它比对新旧 HTML 生成 update 事务，并给块打上编辑标记，
+ * 事务在发起方不再回放，块 DOM 不会被整体替换，光标得以留在命令文本的起始处。
+ *
+ * 若改用 /api/block/updateBlock，事务会广播给所有会话，当前编辑器同样会用新
+ * HTML 替换块 DOM（protyle/wysiwyg/transaction.ts:599 updateBlock，非撤销分支
+ * 不还原光标），命令执行后光标就被丢到块首。
+ */
+function eraseCommandText(protyle: Protyle, editor: IProtyle | undefined, nodeElement: HTMLElement): string | undefined {
+    const erased = eraseSlashCommandText(editor?.toolbar?.range, nodeElement);
+    if (!erased?.changed) return undefined;
+    protyle.updateTransactionElement(nodeElement, erased.previousHTML);
+    return nodeElement.dataset.nodeId;
 }

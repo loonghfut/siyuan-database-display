@@ -157,22 +157,6 @@ export class AttributeViewRepository {
         });
     }
 
-    /**
-     * 把块的 DOM 变化同步给内核。斜杠命令选中后，思源不会替插件删除 "/xxx" 这段
-     * 命令文本（hint/index.ts 的 plugin 分支直接 return），需自行删除并回写。
-     *
-     * 走公开端点 /api/block/updateBlock（kernel/api/router.go:291），dataType 为
-     * "dom" 时可直接传块的 outerHTML，内核会广播事务让所有窗口同步。
-     */
-    async updateBlockHTML(blockID: string, html: string): Promise<void> {
-        if (!blockID) return;
-        await this.postBlock("updateBlock", {
-            id: blockID,
-            data: html,
-            dataType: "dom"
-        });
-    }
-
     invalidateBlock(blockId: string): void {
         this.invalidationEpoch++;
         this.dropPending(`keys:${blockId}`);
@@ -282,11 +266,6 @@ export class AttributeViewRepository {
         const response = await fetchSyncPost(`/api/av/${endpoint}`, data) as IWebSocketData;
         if (response.code !== 0) throw new Error(response.msg || `Attribute view request failed: ${endpoint}`);
         return response.data as T;
-    }
-
-    private async postBlock(endpoint: string, data: unknown): Promise<void> {
-        const response = await fetchSyncPost(`/api/block/${endpoint}`, data) as IWebSocketData;
-        if (response.code !== 0) throw new Error(response.msg || `Block request failed: ${endpoint}`);
     }
 }
 
