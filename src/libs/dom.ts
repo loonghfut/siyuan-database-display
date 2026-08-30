@@ -25,11 +25,16 @@ export function iconElement(iconName: string): SVGSVGElement {
     return svg;
 }
 
+/**
+ * 图标按钮。
+ *
+ * 只设 aria-label + ariaLabel 类：思源会用 aria-label 渲染带主题的悬浮提示，
+ * 再设原生 title 会让浏览器在其之上再叠一条提示，同一个按钮出现两条。
+ */
 export function createIconButton(icon: string, label: string, className: string): HTMLButtonElement {
     const button = document.createElement("button");
     button.type = "button";
     button.className = `${className} ariaLabel`;
-    button.title = label;
     button.setAttribute("aria-label", label);
     button.appendChild(iconElement(icon));
     return button;

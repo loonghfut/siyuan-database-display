@@ -188,7 +188,7 @@ export function prepareEditorPanel(panel: HTMLElement, label: string): void {
     panel.setAttribute('aria-label', label);
 }
 
-export function createPanelHeader(titleText: string, onClose: () => void): HTMLElement {
+export function createPanelHeader(titleText: string, onClose: () => void, options?: { center?: () => HTMLElement }): HTMLElement {
     const header = document.createElement('header');
     header.className = 'inline-edit-panel__header';
 
@@ -201,6 +201,12 @@ export function createPanelHeader(titleText: string, onClose: () => void): HTMLE
 
     const title = document.createElement('strong');
     title.textContent = titleText;
+    // 中列：标题 + 可选的自定义插槽（日期面板的 开始/结束 切换放在这里）
+    const center = document.createElement('span');
+    center.className = 'inline-edit-panel__header-center';
+    center.append(title);
+    if (options?.center) center.append(options.center());
+
     const actions = document.createElement('span');
     actions.className = 'inline-edit-panel__actions';
     const close = createIconButton(ICONS.cancel, t('common.cancel'), 'inline-edit-panel__close');
@@ -209,7 +215,7 @@ export function createPanelHeader(titleText: string, onClose: () => void): HTMLE
         onClose();
     });
     actions.appendChild(close);
-    header.append(icon, title, actions);
+    header.append(icon, center, actions);
     return header;
 }
 

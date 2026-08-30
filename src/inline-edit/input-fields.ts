@@ -126,15 +126,26 @@ export function convertToAVValue(keyType: string, value: any): AttributeViewWrit
         case 'date': {
             // 兼容数值与对象两种输入
             if (value && typeof value === 'object') {
-                const content = Number(value.content ?? 0);
-                const hasEndDate = Boolean(value.hasEndDate);
-                // 结束时间为空/无效时不写 content2，避免把 null 归一成 0（1970 年）
-                const content2 = hasEndDate && value.content2 !== null && value.content2 !== undefined
-                    ? Number(value.content2)
-                    : undefined;
-                return { date: { content, isNotTime: Boolean(value.isNotTime) || false, hasEndDate, content2 } } as any;
+                const content = Number(value.content ?? 0) || 0;
+                const content2 = Number(value.content2 ?? 0) || 0;
+                // isNotEmpty 决定内核是否保留时间：内核 UpdateAttributeViewCell 里
+                // isNotEmpty 为假时会把 content 清零，缺了这个标记写入的日期会被抹掉。
+                // 调用方未显式给出时按 content 是否为 0 推断。
+                const isNotEmpty = typeof value.isNotEmpty === 'boolean' ? value.isNotEmpty : content !== 0;
+                const isNotEmpty2 = typeof value.isNotEmpty2 === 'boolean' ? value.isNotEmpty2 : content2 !== 0;
+                return {
+                    date: {
+                        content,
+                        isNotEmpty,
+                        content2,
+                        isNotEmpty2,
+                        hasEndDate: Boolean(value.hasEndDate),
+                        isNotTime: Boolean(value.isNotTime)
+                    }
+                };
             }
-            return { date: { content: Number(value ?? 0), isNotTime: false } };
+            const content = Number(value ?? 0) || 0;
+            return { date: { content, isNotEmpty: content !== 0, content2: 0, isNotEmpty2: false, isNotTime: false } };
         }
         case 'url':
             return { url: { content: String(value || '') } };
@@ -173,19 +184,26 @@ function getInputType(keyType: string): string {
 }
 
 /**
- * 时间戳转换为 datetime-local 格式
+ * 时间戳归一到毫秒。
+ * 内核统一按毫秒存（time.UnixMilli），但历史上出现过秒级值，这里一并兼容。
  */
+export function normalizeTimestamp(timestamp: number): number {
+    if (!timestamp) return 0;
+    return timestamp > 10000000000 ? timestamp : timestamp * 1000;
+}
+
+function padTimePart(value: number): string {
+    return String(value).padStart(2, '0');
+}
+
+/** 毫秒时间戳 → "YYYY-MM-DDTHH:mm"，datetime-local 的输入格式。 */
+export function toDateTimeLocal(timestamp: number): string {
+    const date = new Date(timestamp);
+    return `${date.getFullYear()}-${padTimePart(date.getMonth() + 1)}-${padTimePart(date.getDate())}`
+        + `T${padTimePart(date.getHours())}:${padTimePart(date.getMinutes())}`;
+}
+
+/** 时间戳转换为 datetime-local 格式，0 与空值得到空串。 */
 export function timestampToDateInput(timestamp: number): string {
-    if (!timestamp) return '';
-
-    const ts = timestamp > 10000000000 ? timestamp : timestamp * 1000;
-    const date = new Date(ts);
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    return timestamp ? toDateTimeLocal(normalizeTimestamp(timestamp)) : '';
 }

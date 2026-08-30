@@ -35,7 +35,7 @@ import {
     sizeTextAreaToContent,
     getInputValue,
     convertToAVValue,
-    timestampToDateInput
+    normalizeTimestamp
 } from "./input-fields";
 import type { InlineEditOptions } from "./index";
 
@@ -291,144 +291,462 @@ async function uploadAsset(file: File): Promise<AssetReference> {
     };
 }
 
+/** 日期快捷项相对今天的偏移天数。 */
+const DATE_PRESET_OFFSETS: Record<string, number> = {
+    today: 0, tomorrow: 1, yesterday: -1, in7Days: 7, in30Days: 30
+};
+/** 时段快捷项对应的整点：早上 9 点、中午 12 点、下午 3 点、晚上 9 点。 */
+const TIME_PRESET_HOURS: Record<string, number> = { morning: 9, noon: 12, afternoon: 15, evening: 21 };
+const DATE_PRESET_KEYS = ["now", "today", "tomorrow", "yesterday", "in7Days", "in30Days"] as const;
+const TIME_PRESET_KEYS = ["morning", "noon", "afternoon", "evening"] as const;
+
+/** 自绘日期面板内部的时间分量（month 为 0 基，与 Date 一致）。 */
+interface DateTimeParts {
+    year: number;
+    month: number;
+    day: number;
+    hours: number;
+    minutes: number;
+}
+
+function partsFromTimestamp(timestamp: number): DateTimeParts {
+    const date = new Date(timestamp);
+    return {
+        year: date.getFullYear(),
+        month: date.getMonth(),
+        day: date.getDate(),
+        hours: date.getHours(),
+        minutes: date.getMinutes()
+    };
+}
+
+function partsToTimestamp(parts: DateTimeParts): number {
+    return new Date(parts.year, parts.month, parts.day, parts.hours, parts.minutes).getTime();
+}
+
+/** 周一开头的星期短标签，随界面语言本地化（2024-01-01 恰好是周一）。 */
+function weekdayLabels(): string[] {
+    return Array.from({ length: 7 }, (_, index) =>
+        new Date(2024, 0, 1 + index).toLocaleDateString(undefined, { weekday: "narrow" }));
+}
+
 /**
- * 处理日期编辑
+ * 处理日期编辑：自绘日历面板，不再依赖浏览器原生日期控件。
+ *
+ * 面板内容：目标切换（开始/结束）、月历、时/分下拉、
+ * 「包含结束时间」「包含具体时间」开关、快捷预设与清除/保存。
+ * 日历与快捷预设作用于当前选中的目标，开始与结束在同一面板内即可设置完整时间段。
  */
 function handleDateEdit(options: InlineEditOptions) {
     const { element, avID, itemID, currentValue, onSave, onCancel } = options;
 
-    // 归一化当前值
     const current = (currentValue && typeof currentValue === 'object')
-        ? currentValue
-        : { content: currentValue ?? null, hasEndDate: false, content2: null, isNotTime: false };
+        ? currentValue as { content?: number; content2?: number; hasEndDate?: boolean; isNotTime?: boolean }
+        : { content: typeof currentValue === 'number' ? currentValue : null };
 
-    // 创建日期选择容器
+    // 已存值保留其"是否含时间"的设定；新值默认含时间
+    let includeTime = current.isNotTime !== true;
+    const hasStoredEnd = Boolean(current.hasEndDate && current.content2);
+    let hasEnd = hasStoredEnd;
+    const start = partsFromTimestamp(current.content ? normalizeTimestamp(current.content) : Date.now());
+    const end: DateTimeParts = hasStoredEnd
+        ? partsFromTimestamp(normalizeTimestamp(current.content2 as number))
+        : { ...start };
+    // 日历当前编辑的目标；切到结束时若尚未设置，日历跳到开始所在月份
+    let target: "start" | "end" = "start";
+    let viewYear = start.year;
+    let viewMonth = start.month;
+
     const datePicker = document.createElement('div');
     datePicker.className = 'inline-edit-datepicker';
     prepareEditorPanel(datePicker, options.keyName);
     setOpenPanel(datePicker);
 
-    const header = createPanelHeader(options.keyName, () => {
+    const close = () => {
         closeDropdown(datePicker);
         onCancel?.();
-    });
+    };
+    // 目标切换（开始 / 结束）芯片放在面板标题中间，与标题同行
+    const targetsRow = document.createElement('div');
+    targetsRow.className = 'inline-edit-datepicker-targets';
+    const header = createPanelHeader(options.keyName, close, { center: () => targetsRow });
     datePicker.appendChild(header);
 
-    // 开始时间
-    const startWrap = document.createElement('div');
-    startWrap.className = 'inline-edit-datepicker-row';
-    const startLabel = document.createElement('label');
-    startLabel.className = 'inline-edit-datepicker-label';
-    startLabel.textContent = t('inlineEdit.start') || 'Start';
-    const startInput = document.createElement('input');
-    startInput.type = 'datetime-local';
-    startInput.value = timestampToDateInput(current.content);
-    startInput.className = 'inline-edit-datepicker-input';
-    startWrap.appendChild(startLabel);
-    startWrap.appendChild(startInput);
+    // ---- 月历导航 ----
+    const navRow = document.createElement('div');
+    navRow.className = 'inline-edit-datepicker-nav';
+    const prevButton = document.createElement('button');
+    prevButton.type = 'button';
+    prevButton.className = 'inline-edit-datepicker-nav-button';
+    prevButton.setAttribute('aria-label', t('inlineEdit.prevMonth'));
+    prevButton.textContent = '‹';
+    const monthLabel = document.createElement('span');
+    monthLabel.className = 'inline-edit-datepicker-month';
+    const nextButton = document.createElement('button');
+    nextButton.type = 'button';
+    nextButton.className = 'inline-edit-datepicker-nav-button';
+    nextButton.setAttribute('aria-label', t('inlineEdit.nextMonth'));
+    nextButton.textContent = '›';
+    const shiftMonth = (delta: number): void => {
+        const anchor = new Date(viewYear, viewMonth + delta, 1);
+        viewYear = anchor.getFullYear();
+        viewMonth = anchor.getMonth();
+        renderCalendar();
+    };
+    prevButton.addEventListener('click', () => shiftMonth(-1));
+    nextButton.addEventListener('click', () => shiftMonth(1));
+    navRow.append(prevButton, monthLabel, nextButton);
 
-    // 是否有结束时间
-    const rangeWrap = document.createElement('div');
-    rangeWrap.className = 'inline-edit-datepicker-row inline-edit-datepicker-row--single';
-    const rangeLabel = document.createElement('label');
-    rangeLabel.className = 'inline-edit-datepicker-label inline-edit-datepicker-label--checkbox';
-    const rangeCheckbox = document.createElement('input');
-    rangeCheckbox.type = 'checkbox';
-    rangeCheckbox.checked = Boolean(current.hasEndDate && current.content2);
-    rangeLabel.appendChild(rangeCheckbox);
-    rangeLabel.appendChild(document.createTextNode(' ' + (t('inlineEdit.hasEnd') || 'Has end')));
-    rangeWrap.appendChild(rangeLabel);
-
-    // 结束时间
-    const endWrap = document.createElement('div');
-    endWrap.className = 'inline-edit-datepicker-row';
-    const endLabel = document.createElement('label');
-    endLabel.className = 'inline-edit-datepicker-label';
-    endLabel.textContent = t('inlineEdit.end') || 'End';
-    const endInput = document.createElement('input');
-    endInput.type = 'datetime-local';
-    endInput.value = timestampToDateInput(current.content2);
-    endInput.className = 'inline-edit-datepicker-input';
-    endWrap.style.display = rangeCheckbox.checked ? '' : 'none';
-    endWrap.appendChild(endLabel);
-    endWrap.appendChild(endInput);
-
-    // 同步禁用状态
-    rangeCheckbox.addEventListener('change', () => {
-        endWrap.style.display = rangeCheckbox.checked ? '' : 'none';
+    const weekdayRow = document.createElement('div');
+    weekdayRow.className = 'inline-edit-datepicker-weekdays';
+    weekdayLabels().forEach(label => {
+        const cell = document.createElement('span');
+        cell.textContent = label;
+        weekdayRow.append(cell);
     });
 
-    datePicker.appendChild(startWrap);
-    datePicker.appendChild(rangeWrap);
-    datePicker.appendChild(endWrap);
+    const grid = document.createElement('div');
+    grid.className = 'inline-edit-datepicker-grid';
 
-    const saveButton = createIconButton(ICONS.check, t('common.save'), 'inline-edit-action inline-edit-action--primary');
-    appendHeaderAction(header, saveButton);
-
-    document.body.appendChild(datePicker);
-
-    // 定位日期选择器
-    positionDropdown(datePicker, element);
-
-    // 聚焦开始时间
-    setTimeout(() => {
-        startInput.focus();
-    }, 10);
-
-    // 保存函数
-    const save = async () => {
-        try {
-            const startTs = startInput.value ? new Date(startInput.value).getTime() : null;
-            // 勾选了结束时间但留空时视为未启用，避免把结束时间写成 0（1970 年）
-            const hasEnd = rangeCheckbox.checked && Boolean(endInput.value);
-            const endTs = hasEnd ? new Date(endInput.value).getTime() : null;
-
-            const value = convertToAVValue('date', { content: startTs, hasEndDate: hasEnd, content2: endTs, isNotTime: false });
-            await attributeViewRepository.setValue(avID, options.keyID, itemID, value);
-
-            closeDropdown(datePicker);
-            notify(t('common.saveSuccess'), 2000, 'info');
-
-            if (onSave) {
-                onSave({ content: startTs, hasEndDate: hasEnd, content2: endTs });
+    const renderCalendar = (): void => {
+        monthLabel.textContent = new Date(viewYear, viewMonth, 1)
+            .toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
+        grid.replaceChildren();
+        const active = target === 'start' ? start : end;
+        const today = new Date();
+        // 周一开头：getDay() 周日为 0，折算成 6；周一为 1，折算成 0
+        const leading = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
+        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        const startTs = new Date(start.year, start.month, start.day).getTime();
+        const endTs = new Date(end.year, end.month, end.day).getTime();
+        const cells = Math.ceil((leading + daysInMonth) / 7) * 7;
+        for (let index = 0; index < cells; index++) {
+            const day = index - leading + 1;
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = 'inline-edit-datepicker-day';
+            if (day < 1 || day > daysInMonth) {
+                cell.classList.add('inline-edit-datepicker-day--blank');
+                cell.disabled = true;
+                grid.append(cell);
+                continue;
             }
-        } catch (error) {
+            cell.textContent = String(day);
+            if (today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === day) {
+                cell.classList.add('inline-edit-datepicker-day--today');
+            }
+            if (active.year === viewYear && active.month === viewMonth && active.day === day) {
+                cell.classList.add('inline-edit-datepicker-day--selected');
+            } else if (hasEnd) {
+                // 起止之间的日期淡显，方便确认时间段跨度
+                const cellTs = new Date(viewYear, viewMonth, day).getTime();
+                if (cellTs > Math.min(startTs, endTs) && cellTs < Math.max(startTs, endTs)) {
+                    cell.classList.add('inline-edit-datepicker-day--range');
+                }
+            }
+            cell.addEventListener('click', () => {
+                active.year = viewYear;
+                active.month = viewMonth;
+                active.day = day;
+                renderCalendar();
+            });
+            grid.append(cell);
+        }
+    };
+
+    // ---- 时 / 分下拉 ----
+    const timeRows = document.createElement('div');
+    timeRows.className = 'inline-edit-datepicker-times';
+
+    /**
+     * 自绘的时/分下拉：原生 select 的弹出列表由浏览器渲染，无法限高，
+     * 60 个分钟项会顶满半屏。这里用按钮 + 面板内绝对定位的滚动列表复刻，
+     * max-height 收敛在 150px 左右。
+     */
+    const createTimeSelect = (values: number[], selected: number, title: string, onPick: (value: number) => void): HTMLElement => {
+        const wrap = document.createElement('div');
+        wrap.className = 'inline-edit-time-picker';
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'inline-edit-time-picker__button';
+        button.title = title;
+        button.setAttribute('aria-label', title);
+        button.textContent = String(selected).padStart(2, '0');
+
+        const list = document.createElement('div');
+        list.className = 'inline-edit-time-picker__list';
+        list.setAttribute('role', 'listbox');
+
+        const options = values.map(value => {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'inline-edit-time-picker__option';
+            option.setAttribute('role', 'option');
+            option.textContent = String(value).padStart(2, '0');
+            option.addEventListener('click', event => {
+                event.stopPropagation();
+                onPick(value);
+                button.textContent = option.textContent;
+                closeList();
+            });
+            list.append(option);
+            return { value, option };
+        });
+
+        const closeList = (): void => {
+            list.classList.remove('inline-edit-time-picker__list--open');
+            button.classList.remove('inline-edit-time-picker__button--open');
+        };
+        button.addEventListener('click', event => {
+            event.stopPropagation();
+            // 打开前先关掉同面板里的其他时间下拉，避免叠层
+            timeRows.querySelectorAll('.inline-edit-time-picker__list--open').forEach(open => open.classList.remove('inline-edit-time-picker__list--open'));
+            timeRows.querySelectorAll('.inline-edit-time-picker__button--open').forEach(open => open.classList.remove('inline-edit-time-picker__button--open'));
+            const willOpen = !list.classList.contains('inline-edit-time-picker__list--open');
+            list.classList.toggle('inline-edit-time-picker__list--open', willOpen);
+            button.classList.toggle('inline-edit-time-picker__button--open', willOpen);
+            if (willOpen) {
+                const current = options.find(option => option.value === selected);
+                current?.option.scrollIntoView({ block: 'center' });
+            }
+        });
+
+        wrap.append(button, list);
+        return wrap;
+    };
+
+    const renderTimes = (): void => {
+        timeRows.replaceChildren();
+        if (!includeTime) return;
+        const appendRow = (labelText: string, parts: DateTimeParts): void => {
+            const row = document.createElement('div');
+            row.className = 'inline-edit-datepicker-time';
+            const label = document.createElement('span');
+            label.className = 'inline-edit-datepicker-label';
+            label.textContent = labelText;
+            row.append(
+                label,
+                createTimeSelect([...Array(24).keys()], parts.hours, t('inlineEdit.hour'), value => { parts.hours = value; }),
+                createTimeSelect([...Array(60).keys()], parts.minutes, t('inlineEdit.minute'), value => { parts.minutes = value; })
+            );
+            timeRows.append(row);
+        };
+        appendRow(t('inlineEdit.start'), start);
+        if (hasEnd) appendRow(t('inlineEdit.end'), end);
+    };
+
+    // ---- 开关 ----
+    const createToggle = (labelText: string, checked: boolean, onChange: (next: boolean) => void): { row: HTMLElement; checkbox: HTMLInputElement } => {
+        const row = document.createElement('div');
+        row.className = 'inline-edit-datepicker-row inline-edit-datepicker-row--single';
+        const label = document.createElement('label');
+        label.className = 'inline-edit-datepicker-label inline-edit-datepicker-label--checkbox';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = checked;
+        label.append(checkbox, document.createTextNode(' ' + labelText));
+        checkbox.addEventListener('change', () => onChange(checkbox.checked));
+        row.appendChild(label);
+        return { row, checkbox };
+    };
+
+    const renderTargets = (): void => {
+        targetsRow.replaceChildren();
+        const addChip = (key: "start" | "end", labelText: string): void => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'inline-edit-datepicker-target' + (target === key ? ' inline-edit-datepicker-target--active' : '');
+            chip.textContent = labelText;
+            chip.addEventListener('click', () => {
+                target = key;
+                const parts = key === 'start' ? start : end;
+                viewYear = parts.year;
+                viewMonth = parts.month;
+                renderAll();
+            });
+            targetsRow.append(chip);
+        };
+        addChip('start', t('inlineEdit.start'));
+        if (hasEnd) addChip('end', t('inlineEdit.end'));
+    };
+
+    const endToggle = createToggle(t('inlineEdit.hasEnd'), hasStoredEnd, next => {
+        hasEnd = next;
+        if (next) {
+            // 启用结束时以开始为起点，随后再单独调整
+            Object.assign(end, start);
+        } else if (target === 'end') {
+            target = 'start';
+            viewYear = start.year;
+            viewMonth = start.month;
+        }
+        renderAll();
+    });
+    const timeToggle = createToggle(t('inlineEdit.includeTime'), includeTime, next => {
+        includeTime = next;
+        renderTimes();
+    });
+
+    // ---- 快捷预设：直接嵌入面板，作用于当前目标 ----
+    const presetsRow = document.createElement('div');
+    presetsRow.className = 'inline-edit-datepicker-presets';
+
+    const applyPreset = (key: string): void => {
+        const active = target === 'start' ? start : end;
+        const nowDate = new Date();
+
+        const hour = TIME_PRESET_HOURS[key];
+        if (hour !== undefined) {
+            // 选了时段就说明要精确到时间，顺带打开"包含具体时间"，否则时间会被截断
+            if (!includeTime) {
+                includeTime = true;
+                timeToggle.checkbox.checked = true;
+            }
+            active.hours = hour;
+            active.minutes = 0;
+            renderTimes();
+            return;
+        }
+        if (key === 'now') {
+            Object.assign(active, partsFromTimestamp(nowDate.getTime()));
+            viewYear = active.year;
+            viewMonth = active.month;
+            renderAll();
+            return;
+        }
+        const offset = DATE_PRESET_OFFSETS[key];
+        if (offset === undefined) return;
+        // 日期类只改日期，时间部分沿用当前值；跨月跨年由 Date 自动折算
+        const shifted = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() + offset);
+        active.year = shifted.getFullYear();
+        active.month = shifted.getMonth();
+        active.day = shifted.getDate();
+        viewYear = active.year;
+        viewMonth = active.month;
+        renderCalendar();
+    };
+
+    const addPresetChip = (key: string, labelText: string): void => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'b3-button b3-button--outline inline-edit-datepicker-preset';
+        chip.textContent = labelText;
+        chip.addEventListener('click', event => {
+            event.stopPropagation();
+            applyPreset(key);
+        });
+        presetsRow.append(chip);
+    };
+    DATE_PRESET_KEYS.forEach(key => addPresetChip(key, t(`inlineEdit.${key}`)));
+    TIME_PRESET_KEYS.forEach(key => addPresetChip(key, t(`inlineEdit.${key}`)));
+
+    const renderAll = (): void => {
+        renderTargets();
+        renderCalendar();
+        renderTimes();
+    };
+    renderAll();
+
+    datePicker.append(
+        navRow,
+        weekdayRow,
+        grid,
+        timeRows,
+        endToggle.row,
+        timeToggle.row,
+        presetsRow
+    );
+
+    const buildValue = () => {
+        const startTs = partsToTimestamp(start);
+        const endTs = hasEnd ? partsToTimestamp(end) : 0;
+        return {
+            value: convertToAVValue('date', {
+                content: startTs,
+                isNotEmpty: true,
+                content2: endTs,
+                isNotEmpty2: hasEnd,
+                hasEndDate: hasEnd,
+                isNotTime: !includeTime
+            }),
+            startTs,
+            endTs,
+            hasEndDate: hasEnd
+        };
+    };
+
+    const write = async (payload: ReturnType<typeof buildValue>): Promise<void> => {
+        await attributeViewRepository.setValue(avID, options.keyID, itemID, payload.value);
+        closeDropdown(datePicker);
+        notify(t('common.saveSuccess'), 2000, 'info');
+        onSave?.({
+            content: payload.startTs ?? 0,
+            hasEndDate: payload.hasEndDate,
+            content2: payload.endTs ?? 0,
+            isNotTime: !includeTime
+        });
+    };
+
+    const save = (): void => {
+        void write(buildValue()).catch((error: unknown) => {
             const message = toErrorMessage(error);
             console.error(t('common.saveFailed', { message }), error);
             notify(t('common.saveFailed', { message }), 5000, 'error');
-        }
+        });
     };
 
-    // 按钮事件
-    saveButton.addEventListener('click', (e) => {
-        e.stopPropagation();
+    const clear = (): void => {
+        void write({
+            value: convertToAVValue('date', {
+                content: 0, isNotEmpty: false, content2: 0, isNotEmpty2: false, hasEndDate: false, isNotTime: !includeTime
+            }),
+            startTs: null,
+            endTs: null,
+            hasEndDate: false
+        }).catch((error: unknown) => {
+            const message = toErrorMessage(error);
+            console.error(t('common.saveFailed', { message }), error);
+            notify(t('common.saveFailed', { message }), 5000, 'error');
+        });
+    };
+
+    const saveButton = createIconButton(ICONS.check, t('common.save'), 'inline-edit-action inline-edit-action--primary');
+    saveButton.addEventListener('click', event => {
+        event.stopPropagation();
+        save();
+    });
+    const clearButton = createIconButton(ICONS.clear, t('inlineEdit.clearDate'), 'inline-edit-action');
+    clearButton.addEventListener('click', event => {
+        event.stopPropagation();
+        clear();
+    });
+    appendHeaderAction(header, clearButton);
+    appendHeaderAction(header, saveButton);
+
+    document.body.appendChild(datePicker);
+    positionDropdown(datePicker, element);
+
+    // 面板内点击其他区域（日历、开关等）时收起已展开的时/分下拉
+    datePicker.addEventListener('click', () => {
+        timeRows.querySelectorAll('.inline-edit-time-picker__list--open').forEach(open => open.classList.remove('inline-edit-time-picker__list--open'));
+        timeRows.querySelectorAll('.inline-edit-time-picker__button--open').forEach(open => open.classList.remove('inline-edit-time-picker__button--open'));
+    });
+
+    // Enter 保存：日历格/下拉等控件自身的 Enter 走默认行为，不在此拦截
+    datePicker.addEventListener('keydown', (event: KeyboardEvent) => {
+        if (event.key !== 'Enter') return;
+        const source = event.target as HTMLElement | null;
+        if (source?.closest('button, select, input')) return;
+        event.preventDefault();
         save();
     });
 
-    // 键盘事件
-    [startInput, endInput].forEach(input => {
-        input.addEventListener('keydown', (e: KeyboardEvent) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                save();
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                closeDropdown(datePicker);
-                if (onCancel) onCancel();
-            }
-        });
-    });
-
-    // 点击外部关闭 + Esc 关闭（输入框内已有 Esc 处理，此处覆盖焦点在按钮上的场景）
-    const close = () => {
-        closeDropdown(datePicker);
-        if (onCancel) onCancel();
-    };
-    const handleClickOutside = (e: MouseEvent) => {
-        const target = e.target as HTMLElement;
-        if (!datePicker.contains(target) && !element.contains(target)) {
-            close();
-        }
+    // 点击外部关闭 + Esc 关闭
+    const handleClickOutside = (event: MouseEvent) => {
+        const target = event.target as Node;
+        if (datePicker.contains(target) || element.contains(target)) return;
+        close();
     };
 
     setOpenPanelCleanup(combineCleanup(

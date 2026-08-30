@@ -174,9 +174,6 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
     let clearButton: HTMLButtonElement | undefined;
     if (!multi) {
         clearButton = createIconButton(ICONS.clear, t("common.clear"), "inline-edit-action");
-        // createIconButton 同时设置了 title 与 aria-label（按钮带 ariaLabel 类，
-        // 思源会用 aria-label 渲染悬浮提示），去掉原生 title 避免出现两条重复提示
-        clearButton.removeAttribute("title");
         clearButton.disabled = selected.size === 0;
         clearButton.addEventListener("click", event => {
             event.stopPropagation();

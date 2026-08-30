@@ -466,6 +466,204 @@
     grid-template-columns: 1fr;
 }
 
+// 自绘日期面板：目标切换（在头部）、月历、时/分选择、快捷预设
+.inline-edit-datepicker-targets {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.inline-edit-datepicker-target {
+    min-height: 22px;
+    padding: 0 10px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.inline-edit-datepicker-target--active {
+    border-color: var(--b3-theme-primary);
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+    font-weight: 600;
+}
+
+.inline-edit-datepicker-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px 2px;
+}
+
+.inline-edit-datepicker-nav-button {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+    font-size: 14px;
+    line-height: 22px;
+    cursor: pointer;
+}
+
+.inline-edit-datepicker-nav-button:hover {
+    background: var(--b3-list-hover);
+}
+
+.inline-edit-datepicker-month {
+    color: var(--b3-theme-on-surface);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.inline-edit-datepicker-weekdays,
+.inline-edit-datepicker-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    padding: 0 8px;
+}
+
+.inline-edit-datepicker-weekdays span {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+}
+
+.inline-edit-datepicker-day {
+    min-height: 22px;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+    font-size: 11px;
+    line-height: 22px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.inline-edit-datepicker-day:hover {
+    background: var(--b3-list-hover);
+}
+
+.inline-edit-datepicker-day--blank {
+    visibility: hidden;
+    cursor: default;
+}
+
+.inline-edit-datepicker-day--today {
+    color: var(--b3-theme-primary);
+    font-weight: 600;
+}
+
+.inline-edit-datepicker-day--selected {
+    background: var(--b3-theme-primary);
+    color: var(--b3-theme-on-surface-light);
+    font-weight: 600;
+}
+
+.inline-edit-datepicker-day--range {
+    background: var(--b3-theme-primary-lightest);
+    color: var(--b3-theme-primary);
+}
+
+.inline-edit-datepicker-times {
+    display: grid;
+    gap: 3px;
+    padding: 5px 10px 0;
+}
+
+.inline-edit-datepicker-time {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr;
+    align-items: center;
+    gap: 6px;
+}
+
+// 自绘时/分下拉：原生 select 弹层无法限高，改为按钮 + 面板内浮层
+.inline-edit-time-picker {
+    position: relative;
+    min-width: 0;
+}
+
+.inline-edit-time-picker__button {
+    width: 100%;
+    min-height: 24px;
+    padding: 0 6px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    background: var(--b3-theme-background, transparent);
+    color: var(--b3-theme-on-surface);
+    font-size: 12px;
+    line-height: 22px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.inline-edit-time-picker__button--open {
+    border-color: var(--b3-theme-primary);
+    box-shadow: 0 0 0 .6px var(--b3-theme-primary-lighter);
+}
+
+.inline-edit-time-picker__list {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    // 限高是这套自绘下拉存在的意义：60 个分钟项不再顶满半屏
+    max-height: 150px;
+    display: none;
+    flex-direction: column;
+    gap: 1px;
+    padding: 3px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+    background: var(--b3-theme-surface);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, .12);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 2;
+}
+
+.inline-edit-time-picker__list--open {
+    display: flex;
+}
+
+.inline-edit-time-picker__option {
+    min-height: 20px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--b3-theme-on-surface);
+    font-size: 11px;
+    line-height: 20px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.inline-edit-time-picker__option:hover {
+    background: var(--b3-list-hover);
+}
+
+.inline-edit-datepicker-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 6px 10px 8px;
+}
+
+.inline-edit-datepicker-preset {
+    min-height: 20px;
+    padding: 0 7px;
+    font-size: 11px;
+}
+
 .inline-edit-datepicker-label--checkbox {
     display: flex;
     align-items: center;

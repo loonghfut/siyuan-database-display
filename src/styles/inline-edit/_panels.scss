@@ -378,7 +378,7 @@ span[style*="outline: 2px solid"] {
 .inline-edit-datepicker {
     width: fit-content;
     min-width: 0;
-    max-width: min(320px, calc(100vw - 16px));
+    max-width: min(360px, calc(100vw - 16px));
     overflow: hidden;
     border: 1px solid var(--b3-theme-surface-lighter, var(--b3-border-color));
     border-radius: var(--b3-border-radius-b, 8px);
@@ -400,7 +400,10 @@ span[style*="outline: 2px solid"] {
 }
 
 .inline-edit-datepicker {
-    width: min(260px, calc(100vw - 16px));
+    width: min(290px, calc(100vw - 16px));
+    max-width: min(320px, calc(100vw - 16px));
+    // 面板内的时/分下拉用绝对定位向下展开，不能裁剪溢出内容
+    overflow: visible;
 }
 
 .inline-edit-relation {
@@ -433,6 +436,14 @@ span[style*="outline: 2px solid"] {
     letter-spacing: 0;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+// 头部中列：标题 + 可选插槽（日期面板的 开始/结束 切换），两者同行排布
+.inline-edit-panel__header-center {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
 }
 
 .inline-edit-panel__field-icon,

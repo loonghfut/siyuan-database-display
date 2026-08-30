@@ -425,7 +425,7 @@ export class AttributeRenderer {
         element.setAttribute("aria-label", this.chipLabel(item, plainText, true));
         this.applyColors(element, item, context.config);
         if (element instanceof HTMLButtonElement) {
-            element.title = t("common.viewSourceValues");
+            // 不设 title：截断时元素会带 ariaLabel 类渲染完整值提示，再设 title 会重复
             element.addEventListener("click", event => {
                 event.stopPropagation();
                 context.onShowRollupSources(item, element);
@@ -450,7 +450,7 @@ export class AttributeRenderer {
         element.setAttribute("aria-label", this.chipLabel(item, plainText, includeFieldName));
         this.applyColors(element, item, context.config);
         if (element instanceof HTMLButtonElement && item.navigation) {
-            element.title = t("common.openFile");
+            // 不设 title：截断时元素会带 ariaLabel 类渲染完整值提示，再设 title 会重复
             element.addEventListener("click", event => {
                 event.stopPropagation();
                 context.onNavigate(item.navigation!, event);
@@ -470,7 +470,7 @@ export class AttributeRenderer {
         preview.type = "button";
         preview.className = "db-display__asset-thumbnail ariaLabel";
         const label = assetLabel(asset);
-        preview.title = t("common.previewImage");
+        // 只保留 aria-label：元素带 ariaLabel 类，再设 title 会多出一条浏览器原生提示
         preview.setAttribute("aria-label", label || t("common.previewImage"));
         const name = label ? document.createElement("span") : undefined;
         if (name) {

@@ -181,7 +181,8 @@ export interface DisplayItem {
 export type AttributeViewWriteValue =
     | { text: { content: string } }
     | { number: { content: number; isNotEmpty?: boolean } }
-    | { date: { content: number; isNotTime?: boolean; hasEndDate?: boolean; content2?: number } }
+    // isNotEmpty / isNotEmpty2 决定内核是否保留对应的时间：缺失即视为空值（kernel/model/attribute_view.go:7831）
+    | { date: { content: number; isNotEmpty?: boolean; isNotTime?: boolean; hasEndDate?: boolean; content2?: number; isNotEmpty2?: boolean } }
     | { mSelect: Array<{ content: string; color?: string }> }
     | { checkbox: { checked: boolean } }
     | { url: { content: string } }
