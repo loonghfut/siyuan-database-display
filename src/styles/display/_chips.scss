@@ -125,7 +125,7 @@
 
 /* 列表模式下图标盒占满首行行高，flex-start 顶部对齐即等于与文字行居中 */
 .my-protyle-attr--av--list .db-display__chip[data-field-type="checkbox"] .db-display__value {
-    min-height: 1.35em;
+    min-height: calc(1em * var(--db-attr-list-line-height, 1.35));
 }
 
 /* 复选框字段·文字样式：彩色徽章区分勾选状态 */

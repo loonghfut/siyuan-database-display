@@ -20,10 +20,10 @@
     line-height: 16px;
 }
 
-/* 列表模式字体大小由设置写入变量；行内模式继续使用默认字体。 */
+/* 列表模式字体大小与行高由设置写入变量；行内模式继续使用默认字体。 */
 .my-protyle-attr--av--list {
     font-size: var(--db-attr-list-font-size, 12px);
-    line-height: 1.35;
+    line-height: var(--db-attr-list-line-height, 1.35);
 }
 
 /* 列表模式：属性 DOM 仍保留在 .protyle-attr 内，不移动节点。
@@ -84,7 +84,8 @@
     width: 100%;
     max-width: 100% !important;
     grid-template-columns: minmax(0, 1fr);
-    gap: 2px 12px;
+    /* 行间距由设置写入变量；列间距保持 12px 以分隔多列 */
+    gap: var(--db-attr-list-row-gap, 2px) 12px;
     align-items: start;
 }
 
@@ -167,18 +168,18 @@
     gap: 2px;
 }
 
-/* 列表模式：图标与编辑按钮的盒高改为与首行行高（1.35em）一致的相对单位。
+/* 列表模式：图标与编辑按钮的盒高改为与首行行高（默认 1.35em）一致的相对单位。
    列表内的行内项目为支持多行值换行而使用 align-items: flex-start，
    固定像素高度的图标顶部对齐后中心会高于文字中心；盒高等于行高后，
-   顶部对齐即等于与首行文字居中，且随列表字号缩放。 */
+   顶部对齐即等于与首行文字居中，且随列表字号与行高设置缩放。 */
 .my-protyle-attr--av--list .db-display__block-icon {
     width: 1.2em;
-    height: 1.35em;
+    height: calc(1em * var(--db-attr-list-line-height, 1.35));
 }
 
 .my-protyle-attr--av--list .db-display__block-icon--emoji {
     font-size: 1em;
-    line-height: 1.35em;
+    line-height: var(--db-attr-list-line-height, 1.35);
 }
 
 .my-protyle-attr--av--list .db-display__block-icon--default svg {
@@ -187,8 +188,8 @@
 }
 
 .my-protyle-attr--av--list .db-display__relation-edit {
-    width: 1.35em;
-    height: 1.35em;
+    width: calc(1em * var(--db-attr-list-line-height, 1.35));
+    height: calc(1em * var(--db-attr-list-line-height, 1.35));
 }
 
 .my-protyle-attr--av--list .db-display__relation-edit svg {
@@ -201,7 +202,7 @@
 .my-protyle-attr--av--list .db-display__relation-group,
 .my-protyle-attr--av--list .db-display__asset-group {
     font-size: inherit;
-    line-height: 1.35;
+    line-height: var(--db-attr-list-line-height, 1.35);
 }
 
 .my-protyle-attr--av--list .db-display__chip,
@@ -221,7 +222,7 @@
     text-overflow: clip;
     overflow-wrap: anywhere;
     word-break: break-word;
-    line-height: 1.35;
+    line-height: var(--db-attr-list-line-height, 1.35);
 }
 
 /* 列表模式使用网格剩余空间；覆盖行内模式为短 chip 设置的 220px 上限，
@@ -240,7 +241,7 @@
 
 .my-protyle-attr--av--list .db-display__option-chip {
     font-size: inherit;
-    line-height: 1.35;
+    line-height: var(--db-attr-list-line-height, 1.35);
     white-space: nowrap;
     /* 行内模式选项 chip 自带 1px 上下外边距，会把值区行盒撑高 2px；列表模式 chip
        顶部对齐（align-items: flex-start）下字段名因此整体偏高 1px。清零外边距，
@@ -309,10 +310,10 @@
 .my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__chip {
     width: fit-content;
     padding: 0.12em 0.6em;
-    /* 可换行元素不用 999px：多行时半圆端点会让首末行文字落到圆弧外的未绘制区
+    /* 可换行元素默认不用 999px：多行时半圆端点会让首末行文字落到圆弧外的未绘制区
        （表现为角落缺底色）。0.8em 在单行时恰为行盒+内边距总高的一半，仍是
-       完整胶囊端点；多行退化为圆角矩形 */
-    border-radius: 0.8em;
+       完整胶囊端点；多行退化为圆角矩形。设置项可覆盖为固定像素或全圆角 */
+    border-radius: var(--db-attr-list-radius, 0.8em);
     /* 基础 chip 规则为行内模式的渐变底写了 transparent !important，胶囊需同级反压 */
     background-color: var(--db-chip-background, color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent)) !important;
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
@@ -331,22 +332,22 @@
 .my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__relation-group > .db-display__field-name .db-display__field-name-label,
 .my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__asset-group > .db-display__field-name .db-display__field-name-label {
     padding: 0.12em 0.6em;
-    border-radius: 999px;
+    border-radius: var(--db-attr-list-radius, 999px);
     background-color: var(--db-chip-background, color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent));
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
 }
 
 .my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__group-values > .db-display__chip {
     padding: 0.12em 0.6em;
-    /* 值可能换行，同上用 0.8em 半径 */
-    border-radius: 0.8em;
+    /* 值可能换行，默认同上用 0.8em 半径 */
+    border-radius: var(--db-attr-list-radius, 0.8em);
     /* 同上：反压基础 chip 的 transparent !important */
     background-color: var(--db-chip-background, transparent) !important;
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
 }
 
 .my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__option-chip {
-    border-radius: 999px;
+    border-radius: var(--db-attr-list-radius, 999px);
 }
 
 /* 彩色强调条样式：每个字段行左侧一枚 3px 圆角竖条，颜色取该字段的行内配色
@@ -359,4 +360,17 @@
     border-top-left-radius: 3px;
     border-bottom-left-radius: 3px;
     padding-left: 8px;
+}
+
+/* ===== 字段值行数上限（可选，由渲染器按 listValueLines 追加 --clamp 类） ===== */
+
+/* 超过上限的行用省略号截断。多选、复选框与模板字段的值由各自的 flex 布局
+   排布（选项色块、勾选图标、富文本），改用 -webkit-box 会破坏其对齐，因此排除。 */
+.my-protyle-attr--av--list.my-protyle-attr--av--clamp
+    .db-display__chip:not([data-field-type="mSelect"]):not([data-field-type="checkbox"]):not([data-field-type="template"])
+    .db-display__value {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--db-attr-list-value-lines, 3);
+    overflow: hidden;
 }

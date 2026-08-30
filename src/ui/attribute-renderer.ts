@@ -1,4 +1,4 @@
-import { DisplayConfig, isSafeColor } from "@/config/display-config";
+import { CARD_PADDINGS, CARD_RADII, DisplayConfig, isSafeColor, LIST_ITEM_RADII, LIST_LINE_HEIGHTS, LIST_ROW_GAPS, LIST_VALUE_LINES } from "@/config/display-config";
 import { AssetReference, DisplayItem, DisplayNavigationTarget, DisplaySegment, isInlineEditableField } from "@/core/types";
 import { getAVColorStyle, mountAVColorVars } from "@/domain/option-color";
 import { t } from "@/i18n";
@@ -34,6 +34,8 @@ export class AttributeRenderer {
     private readonly itemSignatures = new WeakMap<DisplayItem[], string>();
     private readonly configSignatures = new WeakMap<DisplayConfig, string>();
     private readonly listMetrics = new WeakMap<HTMLElement, { height: number; fieldNameWidth: number }>();
+    /** 列表容器 → 是否把字段名统一为最长字段名宽度（关闭对齐时跳过列宽测量） */
+    private readonly listAlignFieldNames = new WeakMap<HTMLElement, boolean>();
     // 列表模式：列表高度决定块边缘预留空间，尺寸变化（字段增删、换行重排）需同步。
     // 列表位置由 CSS 锚定在块边缘，不依赖块高度，无须观察宿主块。
     private readonly listSpaceObserver = new ResizeObserver(entries => {
@@ -56,6 +58,7 @@ export class AttributeRenderer {
         const attributeContainer = [...parent.children].find(child => child.classList.contains("protyle-attr")) as HTMLElement | undefined;
         if (!attributeContainer) return;
         parent.classList.toggle("db-display--card", context.config.cardEnabled);
+        this.applyCardStyleVars(parent, context.config);
         // 清理旧版本留下的宿主状态；之后仅操作 .protyle-attr 内的展示节点。
         parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below");
         attributeContainer.classList.remove("db-display--has-list");
@@ -110,14 +113,22 @@ export class AttributeRenderer {
             : context.config.listItemStyle === "accent"
                 ? " my-protyle-attr--av--accent"
                 : "";
+        // 值行数上限：仅在限制生效时追加类，由 CSS 用 line-clamp 截断
+        const clampClass = useList && context.config.listValueLines !== "unlimited"
+            ? " my-protyle-attr--av--clamp"
+            : "";
         const containerClass = this.getContainerClass(parent);
         container.className = useList
-            ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass} ${listColumnsClass}${listStyleClass}${itemStyleClass}${containerClass}`
+            ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass} ${listColumnsClass}${listStyleClass}${itemStyleClass}${clampClass}${containerClass}`
             : "my-protyle-attr--av";
         if (useList) {
             container.style.setProperty("--db-attr-list-font-size", `${context.config.listFontSize}px`);
+            this.applyListStyleVars(container, context.config);
+            this.listAlignFieldNames.set(container, context.config.alignFieldNames);
         } else {
             container.style.removeProperty("--db-attr-list-font-size");
+            this.clearListStyleVars(container);
+            this.listAlignFieldNames.delete(container);
         }
         // 容器随旧块被思源替换/重建时，据此定位所属块以支持一帧内快速恢复
         container.dataset.blockId = context.blockId;
@@ -139,6 +150,8 @@ export class AttributeRenderer {
         parent.style.removeProperty("--db-attr-list-space");
         // 旧版本曾写入块高度变量与状态 class，一并清理
         parent.style.removeProperty("--db-attr-block-height");
+        parent.style.removeProperty("--db-card-radius");
+        parent.style.removeProperty("--db-card-gap");
         parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below", "db-display--card");
     }
 
@@ -168,13 +181,61 @@ export class AttributeRenderer {
             this.listMetrics.set(container, { height, fieldNameWidth });
             this.applyListSpace(container, height);
         } else {
-            if (metrics.fieldNameWidth > 0) {
+            if (metrics.fieldNameWidth > 0 && this.listAlignFieldNames.get(container) !== false) {
                 container.style.setProperty("--db-attr-field-name-width", `${Math.ceil(metrics.fieldNameWidth)}px`);
             } else {
                 container.style.removeProperty("--db-attr-field-name-width");
             }
             this.applyListSpace(container, metrics.height);
         }
+    }
+
+    /**
+     * 卡片效果的可选样式：圆角与内边距。写入宿主块，供 styles/cards 的规则消费；
+     * 未开启卡片时清除，避免残留影响后续重新开启。
+     */
+    private applyCardStyleVars(block: HTMLElement, config: DisplayConfig): void {
+        if (!config.cardEnabled) {
+            this.setStyleVar(block, "--db-card-radius", null);
+            this.setStyleVar(block, "--db-card-gap", null);
+            return;
+        }
+        this.setStyleVar(block, "--db-card-radius", CARD_RADII[config.cardRadius]);
+        // 内边距同时决定属性列表与卡片边缘的间距（--db-card-gap），始终显式写入
+        this.setStyleVar(block, "--db-card-gap", `${CARD_PADDINGS[config.cardPadding]}px`);
+    }
+
+    /**
+     * 列表模式的可选样式：行高、行间距、值行数上限与胶囊圆角。
+     * 全部写在容器上，随继承作用于列表内所有字段。
+     */
+    private applyListStyleVars(container: HTMLElement, config: DisplayConfig): void {
+        this.setStyleVar(container, "--db-attr-list-line-height", String(LIST_LINE_HEIGHTS[config.listLineHeight]));
+        this.setStyleVar(container, "--db-attr-list-row-gap", `${LIST_ROW_GAPS[config.listRowGap]}px`);
+        const lines = LIST_VALUE_LINES[config.listValueLines];
+        this.setStyleVar(container, "--db-attr-list-value-lines", lines > 0 ? String(lines) : null);
+        this.setStyleVar(container, "--db-attr-list-radius", LIST_ITEM_RADII[config.listItemRadius]);
+    }
+
+    private clearListStyleVars(container: HTMLElement): void {
+        this.setStyleVar(container, "--db-attr-list-line-height", null);
+        this.setStyleVar(container, "--db-attr-list-row-gap", null);
+        this.setStyleVar(container, "--db-attr-list-value-lines", null);
+        this.setStyleVar(container, "--db-attr-list-radius", null);
+    }
+
+    /**
+     * 写入自定义属性。渲染会在每次思源事务中对每个块调用，值未变化时跳过写入，
+     * 避免长文档里产生上万次无意义的内联样式变更与样式重算。
+     * value 为 null/undefined/空串时移除该属性（回落样式表内置值）。
+     */
+    private setStyleVar(element: HTMLElement, name: string, value: string | null | undefined): void {
+        const current = element.style.getPropertyValue(name);
+        if (!value) {
+            if (current) element.style.removeProperty(name);
+            return;
+        }
+        if (current !== value) element.style.setProperty(name, value);
     }
 
     /**
@@ -223,6 +284,11 @@ export class AttributeRenderer {
 
     /** 将同一列表中的字段名统一为最长标签宽度，使所有字段值从同一列开始显示。 */
     private syncListFieldNameWidth(container: HTMLElement): number {
+        // 关闭对齐时不写列宽变量：字段名回落为自身宽度，紧跟其后显示值
+        if (this.listAlignFieldNames.get(container) === false) {
+            container.style.removeProperty("--db-attr-field-name-width");
+            return 0;
+        }
         const widths = [...container.querySelectorAll<HTMLElement>(".db-display__field-name-label")]
             .map(name => Math.max(name.offsetWidth, name.scrollWidth));
         const width = Math.max(0, ...widths);
@@ -702,7 +768,14 @@ export class AttributeRenderer {
             listMultiColumn: config.listMultiColumn,
             listLayoutStyle: config.listLayoutStyle,
             listItemStyle: config.listItemStyle,
+            listLineHeight: config.listLineHeight,
+            listRowGap: config.listRowGap,
+            listValueLines: config.listValueLines,
+            listItemRadius: config.listItemRadius,
+            alignFieldNames: config.alignFieldNames,
             cardEnabled: config.cardEnabled,
+            cardRadius: config.cardRadius,
+            cardPadding: config.cardPadding,
             editTrigger: config.editTrigger,
             layout: config.layout,
             colors: config.fieldColors,
