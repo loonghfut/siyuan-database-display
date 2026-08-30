@@ -6,13 +6,22 @@ import {
     parseFieldRules,
     serializeFieldRules
 } from "@/config/field-rules";
+import { AttributeViewField } from "@/core/types";
 import { attributeViewRepository } from "@/data/attribute-view-repository";
 import { t } from "@/i18n";
 import { openDatabasePicker } from "@/ui/database-picker";
+import { openFieldPicker } from "@/ui/field-picker";
 import { createPanel, createTextInput } from "../components/controls";
 import { AddPanel, SettingsPanelText } from "../types";
 
 type FieldRuleText = SettingsPanelText["fieldRules"];
+
+/** 按数据库配置时的字段来源：拉取该数据库的字段供「添加」时直接挑选。 */
+interface FieldSource {
+    load: () => Promise<AttributeViewField[]>;
+    text: FieldRuleText;
+    labelType: (type: string) => string;
+}
 
 interface RuleSection {
     rules: string[];
@@ -49,7 +58,12 @@ function renderSection(section: RuleSection, removeLabel: string, onChanged: () 
 }
 
 /** 一组「隐藏字段 / 强制显示」输入区：全局规则与按数据库的规则共用同一套渲染。 */
-function createRuleGroup(state: FieldRuleSet, text: FieldRuleText, onChanged: () => void): HTMLElement {
+function createRuleGroup(
+    state: FieldRuleSet,
+    text: FieldRuleText,
+    onChanged: () => void,
+    source?: FieldSource
+): HTMLElement {
     const group = document.createElement("div");
     group.className = "db-settings__rule-group";
 
@@ -65,7 +79,30 @@ function createRuleGroup(state: FieldRuleSet, text: FieldRuleText, onChanged: ()
         add.className = "b3-button b3-button--outline db-settings__add-rule";
         add.textContent = `+ ${addLabel}`;
         const data: RuleSection = { rules, list, placeholder };
-        add.addEventListener("click", () => {
+        add.addEventListener("click", event => {
+            // 按数据库配置时已知字段范围，直接列出供挑选；全局规则没有字段上下文，仍用空输入框
+            if (source) {
+                openFieldPicker({
+                    target: add,
+                    event,
+                    text: {
+                        loading: source.text.fieldPickerLoading,
+                        noResult: source.text.fieldPickerNoResult,
+                        loadFailed: source.text.fieldPickerFailed,
+                        allExcluded: source.text.fieldPickerAllAdded
+                    },
+                    load: source.load,
+                    exclude: rules,
+                    labelType: source.labelType,
+                    onPick: pick => {
+                        if (rules.includes(pick.name)) return;
+                        rules.push(pick.name);
+                        renderSection(data, text.removeRule, onChanged);
+                        onChanged();
+                    }
+                });
+                return;
+            }
             rules.push("");
             renderSection(data, text.removeRule, onChanged);
             onChanged();
@@ -137,7 +174,12 @@ export function addFieldRulesPanel(addPanel: AddPanel, text: SettingsPanelText):
                 save();
             });
             head.append(name, remove);
-            block.append(head, createRuleGroup(database, panelText, save));
+            const source: FieldSource = {
+                load: () => attributeViewRepository.getFields(database.avID),
+                text: panelText,
+                labelType: type => (text.fieldTypes as Record<string, string>)[type] || ""
+            };
+            block.append(head, createRuleGroup(database, panelText, save, source));
             return block;
         };
 

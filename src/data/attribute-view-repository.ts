@@ -1,5 +1,11 @@
 import { Constants, fetchSyncPost, IWebSocketData } from "siyuan";
-import { AttributeViewSearchItem, AttributeViewTable, AttributeViewWriteValue, RelationCandidatesPage } from "@/core/types";
+import {
+    AttributeViewField,
+    AttributeViewSearchItem,
+    AttributeViewTable,
+    AttributeViewWriteValue,
+    RelationCandidatesPage
+} from "@/core/types";
 
 interface CacheEntry<T> {
     value: T;
@@ -45,6 +51,16 @@ export class AttributeViewRepository {
             () => this.post<AttributeViewTable[]>("getAttributeViewKeys", { id: blockId }));
         this.indexBlockKeys(blockId, tables);
         return tables;
+    }
+
+    /**
+     * 数据库的字段列表：按 avID 直接查询，不依赖任何使用该库的块。
+     * 供设置面板「按数据库」列出现有字段，避免手工输入字段名。
+     */
+    async getFields(avID: string): Promise<AttributeViewField[]> {
+        if (!avID) return [];
+        return this.getCached(`fields:${avID}`, KEYS_TTL_MS, false,
+            () => this.post<AttributeViewField[]>("getAttributeViewKeysByAvID", { avID }));
     }
 
     async getItemId(avID: string, blockID: string): Promise<string | undefined> {
@@ -175,6 +191,9 @@ export class AttributeViewRepository {
             this.dropCacheKey(`keys:${blockId}`);
         }
         this.blocksByAttributeView.delete(avID);
+        // 增删列、改列名都会让「按数据库」面板里的字段列表失效
+        this.dropPending(`fields:${avID}`);
+        this.dropCacheKey(`fields:${avID}`);
         for (const key of [...this.cache.keys(), ...this.pending.keys()]) {
             if (key.startsWith(`item:${avID}:`)) {
                 this.dropCacheKey(key);

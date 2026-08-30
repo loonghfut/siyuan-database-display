@@ -17,3 +17,18 @@
 .b3-menu--fullscreen .db-display__picker {
     width: auto;
 }
+
+// 弹出层：字段选择（设置面板「按数据库」添加隐藏/强制显示字段时使用）
+.db-display__field-picker-list {
+    box-sizing: border-box;
+    width: min(260px, calc(100vw - 16px));
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+.b3-menu--sheet .db-display__field-picker-list,
+.b3-menu--fullscreen .db-display__field-picker-list {
+    width: auto;
+}

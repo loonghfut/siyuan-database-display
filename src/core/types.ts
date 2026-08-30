@@ -10,6 +10,14 @@ export function isInlineEditableField(type: FieldType): boolean {
     return !READ_ONLY_FIELD_TYPES.includes(type);
 }
 
+/** /api/av/getAttributeViewKeysByAvID 返回的字段条目（av.Key 的子集）。 */
+export interface AttributeViewField {
+    id: string;
+    name: string;
+    type?: string;
+    icon?: string;
+}
+
 export interface AttributeViewKey {
     id: string;
     name: string;
