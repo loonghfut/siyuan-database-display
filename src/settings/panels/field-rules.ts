@@ -1,14 +1,18 @@
-import { createPanel, createTextInput, parseObject } from "../components/controls";
+import {
+    DatabaseFieldRules,
+    EMPTY_FIELD_RULES,
+    FieldRuleSet,
+    SETTING_KEY_FIELD_RULES,
+    parseFieldRules,
+    serializeFieldRules
+} from "@/config/field-rules";
+import { attributeViewRepository } from "@/data/attribute-view-repository";
+import { t } from "@/i18n";
+import { openDatabasePicker } from "@/ui/database-picker";
+import { createPanel, createTextInput } from "../components/controls";
 import { AddPanel, SettingsPanelText } from "../types";
 
-interface FieldRuleState {
-    hidden: string;
-    force: string;
-}
-
-function parseList(value: string): string[] {
-    return value.split(",").map(s => s.trim()).filter(Boolean);
-}
+type FieldRuleText = SettingsPanelText["fieldRules"];
 
 interface RuleSection {
     rules: string[];
@@ -44,64 +48,140 @@ function renderSection(section: RuleSection, removeLabel: string, onChanged: () 
     }));
 }
 
+/** 一组「隐藏字段 / 强制显示」输入区：全局规则与按数据库的规则共用同一套渲染。 */
+function createRuleGroup(state: FieldRuleSet, text: FieldRuleText, onChanged: () => void): HTMLElement {
+    const group = document.createElement("div");
+    group.className = "db-settings__rule-group";
+
+    const appendRules = (title: string, rules: string[], placeholder: string, addLabel: string): void => {
+        const section = document.createElement("div");
+        section.className = "db-settings__value-rules";
+        const heading = document.createElement("strong");
+        heading.textContent = title;
+        const list = document.createElement("div");
+        list.className = "db-settings__value-rules-list";
+        const add = document.createElement("button");
+        add.type = "button";
+        add.className = "b3-button b3-button--outline db-settings__add-rule";
+        add.textContent = `+ ${addLabel}`;
+        const data: RuleSection = { rules, list, placeholder };
+        add.addEventListener("click", () => {
+            rules.push("");
+            renderSection(data, text.removeRule, onChanged);
+            onChanged();
+            const inputs = list.querySelectorAll<HTMLInputElement>(".b3-text-field");
+            inputs[inputs.length - 1]?.focus();
+        });
+        renderSection(data, text.removeRule, onChanged);
+        section.append(heading, list, add);
+        group.append(section);
+    };
+
+    appendRules(text.hidden, state.hidden, text.hiddenPlaceholder, text.addHidden);
+    appendRules(text.force, state.force, text.forcePlaceholder, text.addForce);
+    return group;
+}
+
+/**
+ * 「字段例外」面板：全局规则 + 按数据库的规则。
+ * 按数据库的规则与全局规则取并集，只影响所选数据库。
+ */
 export function addFieldRulesPanel(addPanel: AddPanel, text: SettingsPanelText): void {
-    addPanel("field-rules", JSON.stringify({ hidden: "", force: "" }), text.fieldRules.title, text.fieldRules.description, (value, commit) => {
-        const state = parseObject<FieldRuleState>(value, { hidden: "", force: "" });
+    const panelText = text.fieldRules;
+    addPanel(SETTING_KEY_FIELD_RULES, EMPTY_FIELD_RULES, panelText.title, panelText.description, (value, commit) => {
+        const state = parseFieldRules(value);
         const panel = createPanel("db-settings--rules");
 
-        let hiddenRules = parseList(state.hidden);
-        let forceRules = parseList(state.force);
-
-        const save = () => {
-            const nextValue = JSON.stringify({ hidden: hiddenRules.join(", "), force: forceRules.join(", ") });
+        const save = (): void => {
+            const nextValue = serializeFieldRules(state);
             panel.dataset.value = nextValue;
             commit(nextValue);
         };
 
-        const hiddenSection = document.createElement("section");
-        hiddenSection.className = "db-settings__value-rules";
-        const hiddenTitle = document.createElement("strong");
-        hiddenTitle.textContent = text.fieldRules.hidden;
-        const hiddenList = document.createElement("div");
-        hiddenList.className = "db-settings__value-rules-list";
-        const addHidden = document.createElement("button");
-        addHidden.type = "button";
-        addHidden.className = "b3-button b3-button--outline db-settings__add-rule";
-        addHidden.textContent = `+ ${text.fieldRules.addHidden}`;
-        const hiddenSectionData: RuleSection = { rules: hiddenRules, list: hiddenList, placeholder: text.fieldRules.hiddenPlaceholder };
-        addHidden.addEventListener("click", () => {
-            hiddenRules.push("");
-            renderSection(hiddenSectionData, text.fieldRules.removeRule, save);
-            save();
-            const inputs = hiddenList.querySelectorAll<HTMLInputElement>(".b3-text-field");
-            inputs[inputs.length - 1]?.focus();
-        });
-        renderSection(hiddenSectionData, text.fieldRules.removeRule, save);
-        hiddenSection.append(hiddenTitle, hiddenList, addHidden);
+        const globalSection = document.createElement("section");
+        globalSection.className = "db-settings__value-rules";
+        const globalTitle = document.createElement("strong");
+        globalTitle.textContent = panelText.global;
+        globalSection.append(globalTitle, createRuleGroup(state.global, panelText, save));
 
-        const forceSection = document.createElement("section");
-        forceSection.className = "db-settings__value-rules";
-        const forceTitle = document.createElement("strong");
-        forceTitle.textContent = text.fieldRules.force;
-        const forceList = document.createElement("div");
-        forceList.className = "db-settings__value-rules-list";
-        const addForce = document.createElement("button");
-        addForce.type = "button";
-        addForce.className = "b3-button b3-button--outline db-settings__add-rule";
-        addForce.textContent = `+ ${text.fieldRules.addForce}`;
-        const forceSectionData: RuleSection = { rules: forceRules, list: forceList, placeholder: text.fieldRules.forcePlaceholder };
-        addForce.addEventListener("click", () => {
-            forceRules.push("");
-            renderSection(forceSectionData, text.fieldRules.removeRule, save);
-            save();
-            const inputs = forceList.querySelectorAll<HTMLInputElement>(".b3-text-field");
-            inputs[inputs.length - 1]?.focus();
-        });
-        renderSection(forceSectionData, text.fieldRules.removeRule, save);
-        forceSection.append(forceTitle, forceList, addForce);
+        const databaseSection = document.createElement("section");
+        databaseSection.className = "db-settings__value-rules";
+        const databaseTitle = document.createElement("strong");
+        databaseTitle.textContent = panelText.perDatabase;
+        const databaseHint = document.createElement("p");
+        databaseHint.className = "db-settings__hint";
+        databaseHint.textContent = panelText.perDatabaseHint;
+        const databaseList = document.createElement("div");
+        databaseList.className = "db-settings__database-rules";
+        const addDatabase = document.createElement("button");
+        addDatabase.type = "button";
+        addDatabase.className = "b3-button b3-button--outline db-settings__add-rule";
+        addDatabase.textContent = `+ ${panelText.addDatabase}`;
 
+        const createDatabaseRule = (database: DatabaseFieldRules): HTMLElement => {
+            const block = document.createElement("div");
+            block.className = "db-settings__database-rule";
+            const head = document.createElement("div");
+            head.className = "db-settings__database-rule-head";
+            const name = document.createElement("span");
+            name.className = "db-settings__pinned-name";
+            name.textContent = database.name || panelText.unnamed;
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "db-settings__remove-rule";
+            remove.title = panelText.removeDatabase;
+            remove.setAttribute("aria-label", panelText.removeDatabase);
+            remove.addEventListener("click", () => {
+                state.databases = state.databases.filter(item => item !== database);
+                renderDatabases();
+                save();
+            });
+            head.append(name, remove);
+            block.append(head, createRuleGroup(database, panelText, save));
+            return block;
+        };
+
+        const renderDatabases = (): void => {
+            databaseList.replaceChildren();
+            if (state.databases.length === 0) {
+                const empty = document.createElement("div");
+                empty.className = "b3-label__text";
+                empty.textContent = panelText.empty;
+                databaseList.append(empty);
+                return;
+            }
+            state.databases.forEach(database => databaseList.append(createDatabaseRule(database)));
+        };
+
+        addDatabase.addEventListener("click", event => {
+            openDatabasePicker({
+                target: addDatabase,
+                event,
+                pinned: [],
+                // 已配置的数据库不再列出，避免同一数据库重复添加
+                exclude: state.databases.map(database => database.avID),
+                text: {
+                    placeholder: t("slash.pickerPlaceholder"),
+                    searchAll: t("slash.searchAll"),
+                    noResult: t("slash.noResult"),
+                    allExcluded: t("slash.allAdded"),
+                    loading: t("slash.loading"),
+                    searchFailed: t("slash.searchFailed")
+                },
+                search: keyword => attributeViewRepository.searchAttributeView(keyword),
+                onPick: (pick): void => {
+                    if (state.databases.some(item => item.avID === pick.avID)) return;
+                    state.databases.push({ avID: pick.avID, name: pick.name, hidden: [], force: [] });
+                    renderDatabases();
+                    save();
+                }
+            });
+        });
+
+        renderDatabases();
+        databaseSection.append(databaseTitle, databaseHint, databaseList, addDatabase);
         panel.addEventListener("change", save);
-        panel.append(hiddenSection, forceSection);
+        panel.append(globalSection, databaseSection);
         return panel;
     });
 }

@@ -16,6 +16,7 @@ import {
     SelectOption
 } from "@/core/types";
 import { DisplayConfig } from "@/config/display-config";
+import { resolveFieldRules } from "@/config/field-rules";
 import { t } from "@/i18n";
 
 function formatDate(value: number, format: DateFormat, includeTime: boolean, isNotTime = false): string {
@@ -262,9 +263,11 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
     // 每个字段都要判多次类型归属，转成 Set 免去重复的线性扫描
     const showTypes = new Set(types || []);
     for (const table of tables || []) {
+        // 隐藏/强制显示按数据库解析：一个块可能同时属于多个数据库，各表各取一套规则
+        const rules = resolveFieldRules(config.globalFieldRules, config.databaseFieldRules, table.avID);
         for (const keyValue of table.keyValues || []) {
             const key = keyValue.key;
-            if (!key || config.hiddenFields.has(key.name)) continue;
+            if (!key || rules.hidden.has(key.name)) continue;
 
             if (isSelectKey(key.type)) {
                 if (!showTypes.has("mSelect")) continue;
@@ -303,7 +306,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                         selectOptions: key.options,
                         segments
                     });
-                } else if (config.forceShowFields.has(key.name)) {
+                } else if (rules.force.has(key.name)) {
                     result.push({ type: "mSelect", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: [], selectOptions: key.options });
                 }
                 continue;
@@ -327,7 +330,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                             icon: entry.icon
                         });
                     });
-                } else if (config.forceShowFields.has(key.name) && showTypes.has("relation")) {
+                } else if (rules.force.has(key.name) && showTypes.has("relation")) {
                     result.push({
                         type: "relation",
                         text: key.name,
@@ -365,7 +368,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                         }
                     }
                 }
-                if (!shown && config.forceShowFields.has(key.name) && showTypes.has("mAsset")) {
+                if (!shown && rules.force.has(key.name) && showTypes.has("mAsset")) {
                     result.push({ type: "mAsset", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null });
                 }
                 continue;
@@ -383,7 +386,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                         keyType: key.type,
                         rawValue: value
                     });
-                } else if (config.forceShowFields.has(key.name) && showTypes.has("lineNumber")) {
+                } else if (rules.force.has(key.name) && showTypes.has("lineNumber")) {
                     result.push({ type: "lineNumber", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null });
                 }
                 continue;
@@ -399,7 +402,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                     }
                 }
             }
-            if (!shown && config.forceShowFields.has(key.name)) {
+            if (!shown && rules.force.has(key.name)) {
                 const type = displayType(key.type, showTypes);
                 if (type) result.push({ type, text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null, template: key.template, selectOptions: key.options, relation: key.relation });
             }

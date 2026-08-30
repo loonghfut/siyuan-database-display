@@ -288,6 +288,31 @@
     grid-template-columns: 1fr 26px;
 }
 
+.db-settings__rule-group {
+    display: grid;
+    gap: 8px;
+}
+
+.db-settings__database-rules {
+    display: grid;
+    gap: 8px;
+}
+
+.db-settings__database-rule {
+    display: grid;
+    gap: 6px;
+    padding: 7px 9px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 4px;
+}
+
+.db-settings__database-rule-head {
+    display: grid;
+    grid-template-columns: 1fr 26px;
+    align-items: center;
+    gap: 6px;
+}
+
 .db-settings__pinned-name {
     min-width: 0;
     overflow: hidden;

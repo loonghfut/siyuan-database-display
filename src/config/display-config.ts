@@ -1,4 +1,5 @@
 import { CheckboxStyle, DateFormat, FIELD_TYPES, FieldType } from "@/core/types";
+import { parseFieldRules, ResolvedFieldRules } from "./field-rules";
 
 export interface ColorRule {
     color?: string;
@@ -40,8 +41,10 @@ export const CARD_PADDINGS: Record<CardPadding, number> = { tight: 4, normal: 8,
 export interface DisplayConfig {
     documentFields: FieldType[];
     blockFields: FieldType[];
-    hiddenFields: Set<string>;
-    forceShowFields: Set<string>;
+    /** 全局字段例外：对所有数据库生效 */
+    globalFieldRules: ResolvedFieldRules;
+    /** 按属性视图 ID 追加的字段例外，与全局规则取并集 */
+    databaseFieldRules: ReadonlyMap<string, ResolvedFieldRules>;
     dateFormat: DateFormat;
     includeTime: boolean;
     checkboxStyle: CheckboxStyle;
@@ -148,7 +151,7 @@ function sanitizeValueColors(value: unknown): Record<string, string | ColorRule>
 
 export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig {
     const fieldSettings = parseJsonObject<{ document?: string; block?: string }>(get("display-fields"), {});
-    const fieldRules = parseJsonObject<{ hidden?: string; force?: string }>(get("field-rules"), {});
+    const fieldRules = parseFieldRules(get("field-rules"));
     const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; listItemStyle: ListItemStyle; listLineHeight: ListLineHeight; listRowGap: ListRowGap; listValueLines: ListValueLines; listItemRadius: ListItemRadius; alignFieldNames: boolean; cardEnabled: boolean; cardRadius: CardRadius; cardPadding: CardPadding; editTrigger: EditTrigger; layout: DisplayLayout }>>(get("display-format"), {});
     const appearance = parseJsonObject<AppearanceTheme & { light?: AppearanceTheme; dark?: AppearanceTheme }>(get("display-appearance"), {});
     const themeMode = typeof document !== "undefined" && document.documentElement.dataset.themeMode === "dark" ? "dark" : "light";
@@ -165,8 +168,14 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
     return {
         documentFields: parseFieldTypesOrDefault(fieldSettings.document ?? get("dis-show"), [...FIELD_TYPES]),
         blockFields: parseFieldTypesOrDefault(fieldSettings.block ?? get("dis-show-block"), ["mSelect", "text", "relation"]),
-        hiddenFields: new Set(parseCsv(fieldRules.hidden ?? get("hidden-fields"))),
-        forceShowFields: new Set(parseCsv(fieldRules.force ?? get("force-show-fields")).filter(name => name !== "*")),
+        globalFieldRules: {
+            hidden: new Set([...fieldRules.global.hidden, ...parseCsv(get("hidden-fields"))]),
+            force: new Set([...fieldRules.global.force, ...parseCsv(get("force-show-fields")).filter(name => name !== "*")])
+        },
+        databaseFieldRules: new Map(fieldRules.databases.map(database => [database.avID, {
+            hidden: new Set(database.hidden),
+            force: new Set(database.force)
+        }])),
         dateFormat: ["YYYY-MM-DD", "YYYY/MM/DD", "MM/DD/YYYY", "DD/MM/YYYY", "full", "relative"].includes(String(dateFormat)) ? dateFormat as DateFormat : "YYYY-MM-DD",
         includeTime: formatSettings.includeTime ?? Boolean(get("include-time")),
         // 旧的 emoji/symbol 样式已移除，读取时统一迁移为 icon

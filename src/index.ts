@@ -1,6 +1,7 @@
 import { openTab, Plugin } from "siyuan";
 import "@/index.scss";
-import { parseCsv, parseJsonObject, readDisplayConfig } from "@/config/display-config";
+import { parseCsv, readDisplayConfig } from "@/config/display-config";
+import { SETTING_KEY_FIELD_RULES, parseFieldRules, serializeFieldRules } from "@/config/field-rules";
 import { getAVCustomColors, loadAVPalette } from "@/domain/option-color";
 import { DisplayController } from "@/services/display-controller";
 import { parseAttributeViewUpdateSignal } from "@/services/attribute-view-update-signal";
@@ -106,14 +107,15 @@ export default class DatabaseDisplay extends Plugin {
     }
 
     /**
-     * 右键菜单"隐藏此字段"：合并新旧隐藏规则后写回设置。
+     * 右键菜单"隐藏此字段"：写入全局隐藏规则，对所有数据库生效。
+     * 只想隐藏某个数据库的字段时，在设置面板的「按数据库」里单独配置。
      */
     private hideField(fieldName: string): void {
         if (!fieldName) return;
-        const fieldRules = parseJsonObject<{ hidden?: string; force?: string }>(this.settings.get("field-rules"), {});
-        const hidden = new Set([...parseCsv(fieldRules.hidden), ...parseCsv(this.settings.get("hidden-fields")), fieldName]);
-        fieldRules.hidden = [...hidden].join(",");
-        void this.settings.setAndSave("field-rules", JSON.stringify(fieldRules)).then(() => {
+        const rules = parseFieldRules(this.settings.get(SETTING_KEY_FIELD_RULES));
+        const hidden = new Set([...rules.global.hidden, ...parseCsv(this.settings.get("hidden-fields")), fieldName]);
+        rules.global.hidden = [...hidden];
+        void this.settings.setAndSave(SETTING_KEY_FIELD_RULES, serializeFieldRules(rules)).then(() => {
             notify(t("common.fieldHidden", { name: fieldName }), 3000, "info");
             this.controller?.scheduleRefresh(true);
         });
