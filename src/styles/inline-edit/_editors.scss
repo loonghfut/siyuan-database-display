@@ -552,9 +552,9 @@
     background: var(--b3-list-hover);
 }
 
-.inline-edit-datepicker-day--blank {
-    visibility: hidden;
-    cursor: default;
+.inline-edit-datepicker-day--outside {
+    color: var(--b3-theme-on-surface-light, var(--b3-theme-on-surface));
+    opacity: 0.55;
 }
 
 .inline-edit-datepicker-day--today {
@@ -594,6 +594,7 @@
 
 .inline-edit-time-picker__button {
     width: 100%;
+    box-sizing: border-box;
     min-height: 24px;
     padding: 0 6px;
     border: 1px solid var(--b3-border-color);
@@ -615,6 +616,9 @@
     position: absolute;
     top: calc(100% + 2px);
     left: 0;
+    // 与按钮同宽（容器本身即按钮宽度）
+    width: 100%;
+    box-sizing: border-box;
     // 限高是这套自绘下拉存在的意义：60 个分钟项不再顶满半屏
     max-height: 150px;
     display: none;

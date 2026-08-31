@@ -416,38 +416,43 @@ function handleDateEdit(options: InlineEditOptions) {
         const today = new Date();
         // 周一开头：getDay() 周日为 0，折算成 6；周一为 1，折算成 0
         const leading = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
-        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
         const startTs = new Date(start.year, start.month, start.day).getTime();
         const endTs = new Date(end.year, end.month, end.day).getTime();
-        const cells = Math.ceil((leading + daysInMonth) / 7) * 7;
-        for (let index = 0; index < cells; index++) {
-            const day = index - leading + 1;
+        // 固定 6 行 42 格，首尾由上月/下月日期补齐，与常规日期选择面板一致；
+        // Date 构造自动归一化溢出的日号（如 -1 → 上月倒数第二天）
+        for (let index = 0; index < 42; index++) {
+            const cellDate = new Date(viewYear, viewMonth, index - leading + 1);
+            const cellYear = cellDate.getFullYear();
+            const cellMonth = cellDate.getMonth();
+            const day = cellDate.getDate();
             const cell = document.createElement('button');
             cell.type = 'button';
             cell.className = 'inline-edit-datepicker-day';
-            if (day < 1 || day > daysInMonth) {
-                cell.classList.add('inline-edit-datepicker-day--blank');
-                cell.disabled = true;
-                grid.append(cell);
-                continue;
+            if (cellMonth !== viewMonth) {
+                cell.classList.add('inline-edit-datepicker-day--outside');
             }
             cell.textContent = String(day);
-            if (today.getFullYear() === viewYear && today.getMonth() === viewMonth && today.getDate() === day) {
+            if (today.getFullYear() === cellYear && today.getMonth() === cellMonth && today.getDate() === day) {
                 cell.classList.add('inline-edit-datepicker-day--today');
             }
-            if (active.year === viewYear && active.month === viewMonth && active.day === day) {
+            if (active.year === cellYear && active.month === cellMonth && active.day === day) {
                 cell.classList.add('inline-edit-datepicker-day--selected');
             } else if (hasEnd) {
-                // 起止之间的日期淡显，方便确认时间段跨度
-                const cellTs = new Date(viewYear, viewMonth, day).getTime();
+                // 起止之间的日期淡显，方便确认时间段跨度（含跨月的补齐格）
+                const cellTs = cellDate.getTime();
                 if (cellTs > Math.min(startTs, endTs) && cellTs < Math.max(startTs, endTs)) {
                     cell.classList.add('inline-edit-datepicker-day--range');
                 }
             }
             cell.addEventListener('click', () => {
-                active.year = viewYear;
-                active.month = viewMonth;
+                active.year = cellYear;
+                active.month = cellMonth;
                 active.day = day;
+                // 点选上/下月日期时顺带翻页到对应月份，与常规日期选择面板一致
+                if (cellMonth !== viewMonth) {
+                    viewYear = cellYear;
+                    viewMonth = cellMonth;
+                }
                 renderCalendar();
             });
             grid.append(cell);
@@ -467,12 +472,15 @@ function handleDateEdit(options: InlineEditOptions) {
         const wrap = document.createElement('div');
         wrap.className = 'inline-edit-time-picker';
 
+        const pad = (value: number): string => String(value).padStart(2, '0');
+        let current = selected;
+
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'inline-edit-time-picker__button';
         button.title = title;
         button.setAttribute('aria-label', title);
-        button.textContent = String(selected).padStart(2, '0');
+        button.textContent = pad(current);
 
         const list = document.createElement('div');
         list.className = 'inline-edit-time-picker__list';
@@ -483,11 +491,12 @@ function handleDateEdit(options: InlineEditOptions) {
             option.type = 'button';
             option.className = 'inline-edit-time-picker__option';
             option.setAttribute('role', 'option');
-            option.textContent = String(value).padStart(2, '0');
+            option.textContent = pad(value);
             option.addEventListener('click', event => {
                 event.stopPropagation();
+                current = value;
                 onPick(value);
-                button.textContent = option.textContent;
+                button.textContent = pad(value);
                 closeList();
             });
             list.append(option);
@@ -507,8 +516,8 @@ function handleDateEdit(options: InlineEditOptions) {
             list.classList.toggle('inline-edit-time-picker__list--open', willOpen);
             button.classList.toggle('inline-edit-time-picker__button--open', willOpen);
             if (willOpen) {
-                const current = options.find(option => option.value === selected);
-                current?.option.scrollIntoView({ block: 'center' });
+                const match = options.find(option => option.value === current);
+                match?.option.scrollIntoView({ block: 'center' });
             }
         });
 
