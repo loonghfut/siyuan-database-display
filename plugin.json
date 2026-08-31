@@ -2,8 +2,8 @@
   "name": "siyuan-database-display",
   "author": "steve",
   "url": "https://github.com/loonghfut/siyuan-database-display",
-  "version": "4.4.2",
-  "minAppVersion": "3.8.0",
+  "version": "5.0.0",
+  "minAppVersion": "3.8.2",
   "disabledInPublish": true,
   "backends": [
     "all"
@@ -17,7 +17,7 @@
   },
   "description": {
     "default": "Advanced database attribute display plugin with field hiding, date formatting, checkbox beautification, and customizable settings. Supports 99% of blocks!",
-    "zh-CN": "数据库属性显示插件，支持字段隐藏、日期格式化、复选框美化和可自定义设置。支持99%的块！"
+    "zh-CN": "数据库属性显示插件，把思源数据库炼化为超级标签！"
   },
   "readme": {
     "default": "README.md",
@@ -26,6 +26,8 @@
   "keywords": [
     "database",
     "display",
-    "attribute"
+    "attribute",
+    "super-tag",
+    "超级标签"
   ]
 }

@@ -6,7 +6,7 @@
 
 让块的数据库属性信息，一目了然。
 
-支持 **99% 的块**，并提供灵活的字段筛选与显示设置。
+把思源数据库炼化为超级标签。
 
 <p>
   <a href="https://github.com/loonghfut/siyuan-database-display"><img src="https://img.shields.io/badge/GitHub-loonghfut%2Fsiyuan--database--display-181717?logo=github" alt="GitHub"></a>
