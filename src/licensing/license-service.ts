@@ -1,9 +1,8 @@
+import nacl from "tweetnacl";
 import { isProFeature, ProFeature } from "./features";
 import { LicensePayload, LicenseStatus, SignedLicense } from "./types";
 
 declare const __DATABASE_DISPLAY_PRO_PUBLIC_KEY__: string;
-
-const ED25519_ALGORITHM = { name: "Ed25519" };
 
 function currentUserId(): string {
     return typeof window === "undefined" ? "" : window.siyuan?.user?.userId?.trim() || "";
@@ -18,8 +17,11 @@ function toArrayBuffer(value: string): ArrayBuffer {
     return bytes.buffer;
 }
 
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-    return toArrayBuffer(pem.replace(/-----(BEGIN|END) PUBLIC KEY-----/g, ""));
+function rawPublicKeyFromSpki(pem: string): Uint8Array {
+    const der = new Uint8Array(toArrayBuffer(pem.replace(/-----(BEGIN|END) PUBLIC KEY-----/g, "")));
+    // Ed25519 SPKI DER ends with a 0 unused-bits byte followed by the 32-byte raw key.
+    if (der.length < 33) throw new Error("invalid SPKI public key");
+    return der.slice(der.length - 32);
 }
 
 function canonicalPayload(payload: LicensePayload): ArrayBuffer {
@@ -72,21 +74,11 @@ export class LicenseService {
         if (!license) return { valid: false, reason: "missing" };
         if (!userId || license.payload.userId !== userId) return { valid: false, reason: "wrong-user" };
         if (!__DATABASE_DISPLAY_PRO_PUBLIC_KEY__.trim()) return { valid: false, reason: "unconfigured" };
-        if (!globalThis.crypto?.subtle) return { valid: false, reason: "unsupported" };
         try {
-            const publicKey = await crypto.subtle.importKey(
-                "spki",
-                pemToArrayBuffer(__DATABASE_DISPLAY_PRO_PUBLIC_KEY__),
-                ED25519_ALGORITHM,
-                false,
-                ["verify"]
-            );
-            const valid = await crypto.subtle.verify(
-                ED25519_ALGORITHM,
-                publicKey,
-                toArrayBuffer(license.signature),
-                canonicalPayload(license.payload)
-            );
+            const publicKey = rawPublicKeyFromSpki(__DATABASE_DISPLAY_PRO_PUBLIC_KEY__);
+            const message = new Uint8Array(canonicalPayload(license.payload));
+            const signature = new Uint8Array(toArrayBuffer(license.signature));
+            const valid = nacl.sign.detached.verify(message, signature, publicKey);
             return valid ? { valid: true, userId } : { valid: false, reason: "invalid" };
         } catch {
             return { valid: false, reason: "invalid" };

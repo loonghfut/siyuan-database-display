@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      tweetnacl:
+        specifier: ^1.0.3
+        version: 1.0.3
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^3.1.0
@@ -905,6 +909,9 @@ packages:
       '@swc/wasm':
         optional: true
 
+  tweetnacl@1.0.3:
+    resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
+
   typescript@5.7.2:
     resolution: {integrity: sha512-i5t66RHxDvVN40HfDd1PsEThGNnlMCMT3jMUuoh9/0TaqWevNontacunWyN02LA9/fIbEWlcHZcgTKb9QoaLfg==}
     engines: {node: '>=14.17'}
@@ -1002,8 +1009,8 @@ packages:
     resolution: {integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==}
     engines: {node: '>=6'}
 
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+  zod@4.5.4:
+    resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
 
 snapshots:
 
@@ -1693,7 +1700,7 @@ snapshots:
       '@dop251/types-goja_nodejs-buffer': 0.0.0-20260212111938-1f56ff5bcf14
       '@dop251/types-goja_nodejs-global': 0.0.0-20260212111938-1f56ff5bcf14
       '@dop251/types-goja_nodejs-url': 0.0.0-20260212111938-1f56ff5bcf14
-      zod: 4.4.3
+      zod: 4.5.4
 
   source-map-js@1.2.1: {}
 
@@ -1764,6 +1771,8 @@ snapshots:
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
 
+  tweetnacl@1.0.3: {}
+
   typescript@5.7.2: {}
 
   undici-types@6.19.8: {}
@@ -1821,4 +1830,4 @@ snapshots:
 
   yn@3.1.1: {}
 
-  zod@4.4.3: {}
+  zod@4.5.4: {}
