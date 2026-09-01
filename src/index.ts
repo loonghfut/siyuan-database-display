@@ -5,7 +5,7 @@ import { SETTING_KEY_FIELD_RULES, parseFieldRules, serializeFieldRules } from "@
 import { getAVCustomColors, loadAVPalette } from "@/domain/option-color";
 import { DisplayController } from "@/services/display-controller";
 import { parseAttributeViewUpdateSignal } from "@/services/attribute-view-update-signal";
-import { createDatabaseSlashCommands } from "@/services/slash-command";
+import { createDatabaseCommands, createDatabaseSlashCommands, isDatabaseCommandKey } from "@/services/slash-command";
 import { parsePinnedDatabases, SETTING_KEY_PINNED_DATABASES } from "@/config/pinned-databases";
 import { setI18n, t } from "@/i18n";
 import { notify, setShowNotifications } from "@/libs/notify";
@@ -51,8 +51,9 @@ export default class DatabaseDisplay extends Plugin {
         this.eventBus.on("switch-protyle", this.onSwitchProtyle);
         this.eventBus.on("loaded-protyle-dynamic", this.onLoaded);
         this.eventBus.on("loaded-protyle-static", this.onLoaded);
-        // 布局就绪前就把命令注册好，避免 onLayoutReady 之前打开 / 面板时缺项
+        // 布局就绪前就把命令注册好，避免 onLayoutReady 之前打开 / 面板或快捷键设置时缺项
         this.syncSlashCommands();
+        this.syncCommands();
     }
 
     onLayoutReady(): void {
@@ -82,6 +83,7 @@ export default class DatabaseDisplay extends Plugin {
         void this.license.refresh(this.settings.get("pro-license")).then(() => this.controller?.scheduleRefresh(true));
         this.controller?.scheduleRefresh(true);
         this.syncSlashCommands();
+        this.syncCommands();
     }
 
     /**
@@ -95,6 +97,40 @@ export default class DatabaseDisplay extends Plugin {
             databases,
             onAdded: blockID => this.controller?.scheduleRefresh(true, new Set([blockID]))
         }));
+    }
+
+    /**
+     * 按当前设置为每个常用数据库注册一条思源快捷键命令（不设默认快捷键，
+     * 用户可在「设置 → 快捷键 → 插件」中自行绑定）。
+     *
+     * addCommand 只对新增命令调用；设置里删除的数据库对应命令直接从 this.commands
+     * 移除，快捷键设置面板按 plugin.commands 渲染（config/tabs/keymapUi.ts:308），
+     * 原地更新即可生效，无需重载插件。
+     */
+    private syncCommands(): void {
+        const databases = parsePinnedDatabases(this.settings.get(SETTING_KEY_PINNED_DATABASES));
+        const commands = createDatabaseCommands({
+            databases,
+            onAdded: blockID => this.controller?.scheduleRefresh(true, new Set([blockID]))
+        });
+        const wanted = new Map(commands.map(command => [command.langKey, command]));
+        // 只清理本插件管理的数据库命令，避免将来新增其他命令时被误删
+        for (let i = this.commands.length - 1; i >= 0; i--) {
+            const langKey = this.commands[i].langKey;
+            if (isDatabaseCommandKey(langKey) && !wanted.has(langKey)) {
+                this.commands.splice(i, 1);
+            }
+        }
+        for (const [langKey, command] of wanted) {
+            const existing = this.commands.find(item => item.langKey === langKey);
+            if (existing) {
+                // 数据库可能被重命名：同步命令文案与回调，保留用户已绑定的快捷键
+                existing.langText = command.langText;
+                existing.editorCallback = command.editorCallback;
+            } else {
+                this.addCommand(command);
+            }
+        }
     }
 
     private handleWebsocketMessage(event: MessageEvent): void {

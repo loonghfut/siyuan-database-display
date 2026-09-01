@@ -1,4 +1,4 @@
-import { IProtyle, Protyle } from "siyuan";
+import { ICommand, IProtyle, Protyle } from "siyuan";
 import { PinnedDatabase } from "@/config/pinned-databases";
 import { attributeViewRepository } from "@/data/attribute-view-repository";
 import { repairDatabaseBadge } from "@/domain/block-av-badge";
@@ -22,6 +22,17 @@ export interface DatabaseSlashOptions {
     onAdded: (blockID: string) => void;
 }
 
+/** 添加目标：斜杠命令与快捷键命令共用同一份添加逻辑。 */
+interface AddTarget {
+    /** 插件公开的 Protyle 实例：斜杠命令用它回写擦除事务，快捷键命令不需要。 */
+    protyle: Protyle | undefined;
+    /** 思源内部编辑器实例：用于取光标 range。 */
+    editor: IProtyle | undefined;
+    nodeElement: HTMLElement;
+    /** 斜杠命令需要擦除 "/命令" 文本；快捷键命令没有命令文本可擦。 */
+    eraseCommand: boolean;
+}
+
 /**
  * 为常用数据库逐一注册斜杠命令：选中即把块加入对应数据库，不再二次选择。
  *
@@ -41,10 +52,49 @@ export function createDatabaseSlashCommands(options: DatabaseSlashOptions): Data
             filter: [label, database.name],
             html: itemHTML(label),
             callback: (protyle: Protyle, nodeElement: HTMLElement) => {
-                void addToPinnedDatabase(protyle, nodeElement, database, options.onAdded);
+                void addToPinnedDatabase({
+                    protyle,
+                    editor: protyle?.protyle as IProtyle | undefined,
+                    nodeElement,
+                    eraseCommand: true
+                }, database, options.onAdded);
             }
         };
     });
+}
+
+/**
+ * 为常用数据库注册思源快捷键命令，命令名即数据库名。
+ *
+ * 不设置默认快捷键（hotkey 为空），用户可在「设置 → 快捷键 → 插件」中为每个
+ * 数据库自行绑定；设置里增删数据库后由 index 同步 this.commands，无需重载插件。
+ */
+export function createDatabaseCommands(options: DatabaseSlashOptions): ICommand[] {
+    if (options.databases.length === 0) {
+        return [];
+    }
+    return options.databases.map(database => ({
+        // langKey 同时作为快捷键设置的持久化键，用 avID 保证数据库改名后仍复用用户配置
+        langKey: databaseCommandKey(database.avID),
+        langText: t("slash.addTo", { name: database.name }),
+        hotkey: "",
+        editorCallback: (protyle: IProtyle) => {
+            void addCurrentBlockToDatabase(protyle, database, options.onAdded);
+        }
+    }));
+}
+
+/** 快捷键命令 langKey 前缀，与斜杠命令 id 保持一致。 */
+export const DATABASE_COMMAND_KEY_PREFIX = "addToDatabase-";
+
+/** 判断 langKey 是否属于本插件管理的数据库命令。 */
+export function isDatabaseCommandKey(langKey: string): boolean {
+    return langKey.startsWith(DATABASE_COMMAND_KEY_PREFIX);
+}
+
+/** 快捷键命令在「设置 → 快捷键」中的键名，与斜杠命令 id 保持一致。 */
+export function databaseCommandKey(avID: string): string {
+    return `${DATABASE_COMMAND_KEY_PREFIX}${avID}`;
 }
 
 /** 尚未配置常用数据库时留一个引导项，避免用户以为命令没生效。 */
@@ -64,16 +114,39 @@ function itemHTML(label: string): string {
     return `<div class="b3-list-item__first"><svg class="b3-list-item__graphic"><use xlink:href="#iconDatabase"></use></svg><span class="b3-list-item__text">${escapeHtml(label)}</span></div>`;
 }
 
-async function addToPinnedDatabase(
-    protyle: Protyle,
-    nodeElement: HTMLElement,
+/** 快捷键命令入口：从光标处解析目标块后复用同一份添加逻辑。 */
+async function addCurrentBlockToDatabase(
+    editor: IProtyle,
     database: PinnedDatabase,
     onAdded: (blockID: string) => void
 ): Promise<void> {
-    // 回调收到的是 Protyle 实例，protyle.protyle 才是思源内部的 IProtyle
-    const editor = protyle?.protyle as IProtyle | undefined;
-    if (!nodeElement) return;
-    const targetBlock = resolveSlashTargetBlock(nodeElement);
+    const nodeElement = resolveEditorTargetBlock(editor);
+    if (!nodeElement) {
+        notify(t("common.missingBlockId"), 3000, "error");
+        return;
+    }
+    await addToPinnedDatabase({ protyle: undefined, editor, nodeElement, eraseCommand: false }, database, onAdded);
+}
+
+/**
+ * 从编辑器选区解析目标块：取光标所在块元素。
+ * 与思源内置实现一致（protyle/toolbar/InlineMemo.ts:14），用 range.startContainer
+ * 向上找带 data-node-id 的最近元素；容器块包裹逻辑交给 resolveSlashTargetBlock。
+ */
+function resolveEditorTargetBlock(editor: IProtyle): HTMLElement | undefined {
+    const startContainer = editor?.toolbar?.range?.startContainer;
+    if (!startContainer) return undefined;
+    const base = startContainer.nodeType === Node.TEXT_NODE ? startContainer.parentElement : startContainer as HTMLElement;
+    return base?.closest<HTMLElement>("[data-node-id]") ?? undefined;
+}
+
+async function addToPinnedDatabase(
+    target: AddTarget,
+    database: PinnedDatabase,
+    onAdded: (blockID: string) => void
+): Promise<void> {
+    if (!target.nodeElement) return;
+    const targetBlock = resolveSlashTargetBlock(target.nodeElement);
     const blockID = targetBlock?.dataset.nodeId;
     if (!blockID) {
         notify(t("common.missingBlockId"), 3000, "error");
@@ -81,8 +154,10 @@ async function addToPinnedDatabase(
     }
     // 等擦除事务落库后再绑定：事务里带的块 HTML 还没有 custom-avs，晚于绑定到达
     // 会覆盖掉刚写入的绑定属性。
-    const erasedBlockID = eraseCommandText(protyle, editor, nodeElement);
-    if (erasedBlockID) await waitForBlockTransaction(erasedBlockID, ["update"]);
+    if (target.eraseCommand) {
+        const erasedBlockID = eraseCommandText(target.protyle, target.editor, target.nodeElement);
+        if (erasedBlockID) await waitForBlockTransaction(erasedBlockID, ["update"]);
+    }
     try {
         await attributeViewRepository.addBlocksToDatabase({
             avID: database.avID,
@@ -114,9 +189,9 @@ async function addToPinnedDatabase(
  * HTML 替换块 DOM（protyle/wysiwyg/transaction.ts:599 updateBlock，非撤销分支
  * 不还原光标），命令执行后光标就被丢到块首。
  */
-function eraseCommandText(protyle: Protyle, editor: IProtyle | undefined, nodeElement: HTMLElement): string | undefined {
+function eraseCommandText(protyle: Protyle | undefined, editor: IProtyle | undefined, nodeElement: HTMLElement): string | undefined {
     const erased = eraseSlashCommandText(editor?.toolbar?.range, nodeElement);
     if (!erased?.changed) return undefined;
-    protyle.updateTransactionElement(nodeElement, erased.previousHTML);
+    protyle?.updateTransactionElement(nodeElement, erased.previousHTML);
     return nodeElement.dataset.nodeId;
 }
