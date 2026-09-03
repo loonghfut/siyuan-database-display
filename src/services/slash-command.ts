@@ -128,15 +128,40 @@ async function addCurrentBlockToDatabase(
 }
 
 /**
- * 从编辑器选区解析目标块：取光标所在块元素。
- * 与思源内置实现一致（protyle/toolbar/InlineMemo.ts:14），用 range.startContainer
- * 向上找带 data-node-id 的最近元素；容器块包裹逻辑交给 resolveSlashTargetBlock。
+ * 从编辑器选区起点向上解析带 data-node-id 的最近块元素
+ * （与思源 protyle/toolbar/InlineMemo.ts:14 的取法一致）。
  */
-function resolveEditorTargetBlock(editor: IProtyle): HTMLElement | undefined {
-    const startContainer = editor?.toolbar?.range?.startContainer;
+function blockFromRangeStart(startContainer: Node | undefined): HTMLElement | undefined {
     if (!startContainer) return undefined;
     const base = startContainer.nodeType === Node.TEXT_NODE ? startContainer.parentElement : startContainer as HTMLElement;
     return base?.closest<HTMLElement>("[data-node-id]") ?? undefined;
+}
+
+/**
+ * 从编辑器当前光标解析目标块：取光标所在块元素；容器块包裹逻辑交给
+ * resolveSlashTargetBlock。
+ *
+ * 不能读 editor.toolbar.range：它只是缓存，思源仅在特定流程同步它（click 处理
+ * protyle/wysiwyg/index.ts:3555、斜杠 hint/index.ts:223、粘贴、撤销、页签切换等），
+ * 纯键盘移动光标（方向键、回车）不经过任何同步点，且快捷键分发（protyle/wysiwyg/
+ * commonHotkey.ts:116）也不先刷新——直接用它只会拿到上次鼠标点击或斜杠触发的
+ * 旧位置。因此优先实时读 window.getSelection()：光标无论以何种方式移动，选区
+ * 都已随 selectionchange 更新，取到的就是当前位置。
+ *
+ * 实时选区可能残留在其他编辑器（浮窗、其他页签），解析出的块须归属本编辑器
+ * （editor.element 是含标题与正文的 .protyle 根）；不归属时退回 toolbar.range
+ * 并做同样校验。
+ */
+function resolveEditorTargetBlock(editor: IProtyle): HTMLElement | undefined {
+    const root = editor?.element;
+    if (!root) return undefined;
+    const selection = window.getSelection();
+    const fromSelection = selection && selection.rangeCount > 0
+        ? blockFromRangeStart(selection.getRangeAt(0).startContainer)
+        : undefined;
+    if (fromSelection && root.contains(fromSelection)) return fromSelection;
+    const fromCache = blockFromRangeStart(editor.toolbar?.range?.startContainer);
+    return fromCache && root.contains(fromCache) ? fromCache : undefined;
 }
 
 async function addToPinnedDatabase(
