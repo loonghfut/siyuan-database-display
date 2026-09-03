@@ -95,7 +95,7 @@ export default class DatabaseDisplay extends Plugin {
         this.protyleSlash.length = 0;
         this.protyleSlash.push(...createDatabaseSlashCommands({
             databases,
-            onAdded: blockID => this.controller?.scheduleRefresh(true, new Set([blockID]))
+            onAdded: blockID => this.controller?.scheduleRefresh(true, new Set([blockID]), { trusted: true })
         }));
     }
 
@@ -111,7 +111,7 @@ export default class DatabaseDisplay extends Plugin {
         const databases = parsePinnedDatabases(this.settings.get(SETTING_KEY_PINNED_DATABASES));
         const commands = createDatabaseCommands({
             databases,
-            onAdded: blockID => this.controller?.scheduleRefresh(true, new Set([blockID]))
+            onAdded: blockID => this.controller?.scheduleRefresh(true, new Set([blockID]), { trusted: true })
         });
         const wanted = new Map(commands.map(command => [command.langKey, command]));
         // 只清理本插件管理的数据库命令，避免将来新增其他命令时被误删

@@ -134,6 +134,8 @@ export interface AttributeViewValue {
 
 export interface AttributeViewTable {
     avID: string;
+    /** 数据库名，内核 getAttributeViewKeys（BlockAttributeViewKeys.avName）随条目返回。 */
+    avName?: string;
     keyValues: Array<{ key: AttributeViewKey; values: AttributeViewValue[] }>;
     blockIDs?: string[];
 }

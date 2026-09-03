@@ -1,12 +1,11 @@
 import { ICommand, IProtyle, Protyle } from "siyuan";
 import { PinnedDatabase } from "@/config/pinned-databases";
 import { attributeViewRepository } from "@/data/attribute-view-repository";
-import { repairDatabaseBadge } from "@/domain/block-av-badge";
+import { reconcileBlockDatabaseBinding } from "@/domain/block-av-badge";
 import { eraseSlashCommandText, resolveSlashTargetBlock } from "@/domain/slash-target";
 import { escapeHtml } from "@/libs/dom";
 import { toErrorMessage } from "@/libs/error-utils";
 import { notify } from "@/libs/notify";
-import { waitForBlockTransaction } from "@/services/block-transaction-sync";
 import { t } from "@/i18n";
 
 export interface DatabaseSlashCommand {
@@ -152,12 +151,15 @@ async function addToPinnedDatabase(
         notify(t("common.missingBlockId"), 3000, "error");
         return;
     }
-    // 等擦除事务落库后再绑定：事务里带的块 HTML 还没有 custom-avs，晚于绑定到达
-    // 会覆盖掉刚写入的绑定属性。
-    if (target.eraseCommand) {
-        const erasedBlockID = eraseCommandText(target.protyle, target.editor, target.nodeElement);
-        if (erasedBlockID) await waitForBlockTransaction(erasedBlockID, ["update"]);
-    }
+    // 擦除命令文本的 update 事务携带整块 HTML，其 IAL 会整体覆盖内核里的块属性，
+    // 且内核随 update 落库 200ms 后的属性补发（kernel/model/transaction.go:1970）
+    // 读取的是该事务的节点快照。因此必须先绑定再擦除：擦除捕获的 HTML 已带上
+    // custom-avs，事务无论何时落库都不会洗掉绑定，补发推送的也是绑定后的属性——
+    // 旧顺序（先擦后绑）里补发携带绑定前 IAL，正是角标闪烁/丢失的根源。
+    // 擦除事务的范围在回调开始时快照：绑定与等待期间用户可能继续输入或点击，
+    // editor.toolbar.range 会被新选区覆盖，届时擦除会因 range 塌陷而静默失配。
+    // Range 对象本身是活的，边界随 DOM 变动自动调整，快照引用始终框住命令文本。
+    const eraseRange = target.editor?.toolbar?.range;
     try {
         await attributeViewRepository.addBlocksToDatabase({
             avID: database.avID,
@@ -168,18 +170,40 @@ async function addToPinnedDatabase(
         // 主动刷新而非等广播：内核的 refreshAttributeView 只发给 protyle 连接
         // （kernel/model/push_reload.go:523），插件监听的主 ws 是 main 类型，收不到。
         onAdded(blockID);
-        // 等绑定产生的 updateAttrs 落地，再兜底校验角标（DOM 已是最新时直接跳过）
-        await waitForBlockTransaction(blockID, ["updateAttrs"]);
-        repairDatabaseBadge(blockID, database.avID, database.name);
+        // 等绑定标记经 updateAttrs 回放（或渲染对账）落到绑定目标块的 DOM 上，
+        // 再擦除：目标块与光标所在块相同时，擦除事务捕获的整块 HTML 才会带上
+        // custom-avs；被容器块包裹时两者不同，擦除本就不触及绑定块的属性。
+        await waitForBlockBinding(targetBlock, database.avID);
+        reconcileBlockDatabaseBinding([targetBlock], [{ avID: database.avID, name: database.name }]);
         notify(t("slash.added", { name: database.name }), 3000, "info");
     } catch (error) {
         notify(t("slash.addFailed", { message: toErrorMessage(error) }), 5000, "error");
     }
+    // 绑定失败也照常擦除：命令文本已被消费；此时块未绑定，擦除事务没有绑定可洗。
+    if (target.eraseCommand) eraseCommandText(target.protyle, target.nodeElement, eraseRange);
 }
 
 /**
- * 原生 fill() 的 plugin 分支不会删除 "/xxx"，需自行擦除并把结果回写内核，
- * 返回被改写的块 id（无改动时为 undefined）。
+ * 等待绑定标记（custom-avs 含 avID）出现在绑定目标块的元素上。
+ *
+ * 绑定的 updateAttrs 广播会回放给包括发起方在内的所有客户端
+ * （kernel/model/blockial.go:542 PushModeBroadcast），渲染对账也可能先行补写；
+ * 两者任一发生即可。超时按未就绪继续，由调用方的 reconcile 兜底。
+ */
+async function waitForBlockBinding(blockElement: HTMLElement, avID: string, timeoutMs = 1500): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const avIDs = (blockElement.getAttribute("custom-avs") || "").split(",").filter(Boolean);
+        if (avIDs.includes(avID)) return;
+        await new Promise(resolve => window.setTimeout(resolve, 50));
+    }
+}
+
+/**
+ * 原生 fill() 的 plugin 分支不会删除 "/xxx"，需自行擦除并把结果回写内核。
+ * 调用时机在数据库绑定成功之后（见 addToPinnedDatabase）：捕获的整块 HTML
+ * 已携带绑定后的 custom-avs，事务落库顺序不再影响绑定。range 由调用方在
+ * 回调开始时快照传入，避免等待期间被用户新选区覆盖。
  *
  * 回写走思源自身的本地编辑路径（Protyle#updateTransactionElement，插件公开
  * API）：本地 DOM 改好后由它比对新旧 HTML 生成 update 事务，并给块打上编辑标记，
@@ -189,9 +213,8 @@ async function addToPinnedDatabase(
  * HTML 替换块 DOM（protyle/wysiwyg/transaction.ts:599 updateBlock，非撤销分支
  * 不还原光标），命令执行后光标就被丢到块首。
  */
-function eraseCommandText(protyle: Protyle | undefined, editor: IProtyle | undefined, nodeElement: HTMLElement): string | undefined {
-    const erased = eraseSlashCommandText(editor?.toolbar?.range, nodeElement);
-    if (!erased?.changed) return undefined;
+function eraseCommandText(protyle: Protyle | undefined, nodeElement: HTMLElement, range: Range | undefined): void {
+    const erased = eraseSlashCommandText(range, nodeElement);
+    if (!erased?.changed) return;
     protyle?.updateTransactionElement(nodeElement, erased.previousHTML);
-    return nodeElement.dataset.nodeId;
 }

@@ -2,10 +2,11 @@ import { DisplayConfig } from "@/config/display-config";
 import { getCurrentDocumentId, getVisibleAttributeBlockParents, resolveDocumentId } from "@/data/block-context";
 import { attributeViewRepository, AttributeViewRepository } from "@/data/attribute-view-repository";
 import { extractDisplayItems } from "@/domain/content-extractor";
+import { reconcileBlockDatabaseBinding } from "@/domain/block-av-badge";
 import { closeInlineEdit, enableInlineEdit } from "@/inline-edit";
 import { toErrorMessage } from "@/libs/error-utils";
 import { notify } from "@/libs/notify";
-import { DisplayItem, DisplayNavigationTarget, isInlineEditableField } from "@/core/types";
+import { AttributeViewTable, DisplayItem, DisplayNavigationTarget, isInlineEditableField } from "@/core/types";
 import { AttributeRenderer, RenderContext } from "@/ui/attribute-renderer";
 import { ContentPopover } from "@/ui/content-popover";
 import { openChipMenu } from "@/ui/chip-menu";
@@ -40,6 +41,10 @@ export class DisplayController {
     private switchVersion = 0;
     private readonly visibleBlockIdsByAttributeViewId = new Map<string, Set<string>>();
     private lastRenderState = new Map<string, { items: DisplayItem[]; config: DisplayConfig; canInlineEdit: boolean }>();
+    // 受信块 ID：来自观察到的 DOM 绑定变化或插件自身的添加动作，一定是真实块 ID。
+    // ws 信号里的 id 混有行/单元格等非块 ID（现在靠可见块过滤丢弃），不能走
+    // DOM 兜底查找，因此两类来源分开登记。
+    private readonly pendingTrustedBlockIds = new Set<string>();
     private disposed = false;
 
     constructor(private readonly options: DisplayControllerOptions) {
@@ -54,7 +59,7 @@ export class DisplayController {
         this.editorObserver = new EditorObserver({
             clearInvalidContainers: (containers, invalidParents) => this.clearInvalidDisplayContainers(containers, invalidParents),
             restoreLostContainers: (lostBlockIds, newBlockElements) => this.restoreLostContainers(lostBlockIds, newBlockElements),
-            scheduleRefresh: (force, blockIds) => this.scheduleRefresh(force, blockIds),
+            scheduleRefresh: (force, blockIds, options) => this.scheduleRefresh(force, blockIds, options),
             scheduleQuietRefresh: () => this.scheduler.scheduleQuiet()
         });
         // 自动补充观察始终启用，构造完成后立即挂载
@@ -78,7 +83,8 @@ export class DisplayController {
         this.scheduleRefresh(true);
     }
 
-    scheduleRefresh(force = false, blockIds?: ReadonlySet<string>): void {
+    scheduleRefresh(force = false, blockIds?: ReadonlySet<string>, options?: { trusted?: boolean }): void {
+        if (options?.trusted && blockIds) blockIds.forEach(blockId => this.pendingTrustedBlockIds.add(blockId));
         this.scheduler.schedule(force, blockIds);
     }
 
@@ -95,12 +101,11 @@ export class DisplayController {
             // 内存渲染状态同样重建，避免在长会话中累积。
             this.visibleBlockIdsByAttributeViewId.clear();
             this.lastRenderState.clear();
-        } else {
-            targetBlockIds!.forEach(blockId => this.forgetBlockRenderState(blockId));
         }
-        const blockParents = isFullRefresh
-            ? allBlockParents
-            : new Map([...allBlockParents].filter(([blockId]) => targetBlockIds!.has(blockId)));
+        // 受信块 ID 与目标块一起收集：绑定的 DOM 标记可能刚被内核的过期属性补发
+        // 回滚（见 collectRefreshParents），不能用"当前可见绑定块"过滤掉它们。
+        const trustedBlockIds = this.takeTrustedBlockIds();
+        const blockParents = collectRefreshParents(allBlockParents, targetBlockIds, trustedBlockIds);
         const refreshDocument = isFullRefresh || targetBlockIds!.has(documentId);
         const refreshedBlockIds = new Set(blockParents.keys());
         if (refreshDocument) refreshedBlockIds.add(documentId);
@@ -163,6 +168,7 @@ export class DisplayController {
 
     dispose(): void {
         this.disposed = true;
+        this.pendingTrustedBlockIds.clear();
         this.scheduler.dispose();
         this.editorObserver.dispose();
         this.visibleBlockIdsByAttributeViewId.clear();
@@ -190,11 +196,15 @@ export class DisplayController {
         try {
             const tables = await this.repository.getKeys(blockId);
             if (!this.scheduler.isCurrent(version)) return;
-            tables.forEach(table => {
-                const blockIds = this.visibleBlockIdsByAttributeViewId.get(table.avID) || new Set<string>();
-                blockIds.add(blockId);
-                this.visibleBlockIdsByAttributeViewId.set(table.avID, blockIds);
-            });
+            this.reindexBlockAttributeViews(blockId, tables);
+            // 按内核数据对账绑定标记：内核更新块 200ms 后的过期属性补发会把
+            // custom-avs/角标回滚到绑定前，块一旦在 DOM 上丢失 custom-avs 就会被
+            // 后续刷新（按可见绑定块过滤）永久排除，必须在这里补回。
+            // 文档标题会被对账函数跳过（标题角标由思源标题组件单独维护）。
+            reconcileBlockDatabaseBinding(
+                parents,
+                tables.filter(table => table.avID).map(table => ({ avID: table.avID, name: table.avName }))
+            );
             const fields = scope === "document" ? config.documentFields : config.blockFields;
             const visibleFields = fields.filter(type =>
                 requiredFeaturesForField(type).every(feature => enabledFeatures.has(feature))
@@ -268,7 +278,28 @@ export class DisplayController {
         return repairBlockIds;
     }
 
-    /** Removes stale AV-to-block mappings before a targeted block refresh. */
+    /**
+     * 以内核返回的绑定为准重建「属性视图 → 可见块」映射。定向刷新不再预先遗忘
+     * 映射与渲染状态（restoreLostContainers 的一帧内恢复要靠渲染留底），旧映射
+     * 保留到新数据落地，期间被 ws 信号多命中一次只是多刷一轮，无害。
+     */
+    private reindexBlockAttributeViews(blockId: string, tables: AttributeViewTable[]): void {
+        const currentAvIds = new Set<string>();
+        for (const table of tables) {
+            if (!table.avID) continue;
+            currentAvIds.add(table.avID);
+            const blockIds = this.visibleBlockIdsByAttributeViewId.get(table.avID) || new Set<string>();
+            blockIds.add(blockId);
+            this.visibleBlockIdsByAttributeViewId.set(table.avID, blockIds);
+        }
+        for (const [attributeViewId, blockIds] of this.visibleBlockIdsByAttributeViewId) {
+            if (currentAvIds.has(attributeViewId)) continue;
+            if (!blockIds.delete(blockId)) continue;
+            if (blockIds.size === 0) this.visibleBlockIdsByAttributeViewId.delete(attributeViewId);
+        }
+    }
+
+    /** 块确认不再绑定任何属性视图时清理其渲染状态（restoreLostContainers 校验失败时调用）。 */
     private forgetBlockRenderState(blockId: string): void {
         this.lastRenderState.delete(blockId);
         for (const [attributeViewId, blockIds] of this.visibleBlockIdsByAttributeViewId) {
@@ -378,4 +409,39 @@ export class DisplayController {
         };
         await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
     }
+
+    /** 取走累计的受信块 ID（观察到的绑定变化、插件自身的添加动作）。 */
+    private takeTrustedBlockIds(): Set<string> {
+        if (this.pendingTrustedBlockIds.size === 0) return new Set();
+        const trusted = new Set(this.pendingTrustedBlockIds);
+        this.pendingTrustedBlockIds.clear();
+        return trusted;
+    }
+}
+
+/**
+ * 收集本轮刷新要渲染的块元素。常规目标按"当前可见绑定块"过滤——ws 信号里的
+ * id 混有行/单元格等非块 ID，这一步同时充当相关性过滤，多余 ID 自然丢弃。
+ *
+ * 受信块 ID 例外：它们一定来自真实块元素（观察器读的 data-node-id、插件添加
+ * 动作的目标块），且其 custom-avs 可能刚被内核的过期属性补发回滚——按可见
+ * 绑定块过滤会把唯一需要恢复的块排除掉。对这些 ID 用 data-node-id 直接定位，
+ * 渲染时再按内核数据补写绑定标记（render 里的对账）。
+ */
+function collectRefreshParents(
+    allBlockParents: Map<string, HTMLElement[]>,
+    targetBlockIds: ReadonlySet<string> | undefined,
+    trustedBlockIds: ReadonlySet<string>
+): Map<string, HTMLElement[]> {
+    const parents = new Map<string, HTMLElement[]>();
+    for (const [blockId, known] of allBlockParents) {
+        if (targetBlockIds !== undefined && !targetBlockIds.has(blockId)) continue;
+        parents.set(blockId, known);
+    }
+    for (const blockId of trustedBlockIds) {
+        if (parents.has(blockId)) continue;
+        const elements = [...document.querySelectorAll<HTMLElement>(`[data-node-id="${CSS.escape(blockId)}"]`)];
+        if (elements.length > 0) parents.set(blockId, elements);
+    }
+    return parents;
 }

@@ -126,7 +126,9 @@ export interface EditorObserverOptions {
     clearInvalidContainers(containers: Iterable<HTMLElement>, invalidParents?: Map<HTMLElement, boolean>): Set<string>;
     /** 容器随旧 DOM 消失后，用最近一次渲染的数据同步恢复到新块。 */
     restoreLostContainers(lostBlockIds: Set<string>, newBlockElements: Map<string, HTMLElement[]>): void;
-    scheduleRefresh(force?: boolean, blockIds?: ReadonlySet<string>): void;
+    /** options.trusted 表示 blockIds 读自真实块元素的 data-node-id，刷新侧可对
+     * 其做 DOM 兜底定位（见 display-controller 的 collectRefreshParents）。 */
+    scheduleRefresh(force?: boolean, blockIds?: ReadonlySet<string>, options?: { trusted?: boolean }): void;
     scheduleQuietRefresh(): void;
 }
 
@@ -189,9 +191,10 @@ export class EditorObserver {
                 this.options.scheduleRefresh(false);
             }
             // 绑定变化与上面的 DOM 重建相互独立，必须单独处理：
-            // 新绑定的块此前没有容器，不会走进任何一条分支。
+            // 新绑定的块此前没有容器，不会走进任何一条分支。blockIds 读自
+            // 真实块元素，标记 trusted 供刷新侧做 DOM 兜底定位。
             if (reboundBlockIds.size > 0) {
-                this.options.scheduleRefresh(true, reboundBlockIds);
+                this.options.scheduleRefresh(true, reboundBlockIds, { trusted: true });
             }
         };
         const observeProtyle = (root: HTMLElement): void => {
