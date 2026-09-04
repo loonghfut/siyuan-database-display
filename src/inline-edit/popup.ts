@@ -30,8 +30,29 @@ let openPanelCleanup: (() => void) | null = null;
 let palette: HTMLElement | null = null;
 let paletteCleanup: (() => void) | null = null;
 
-export function setOpenPanel(panel: HTMLElement | null): void {
+/**
+ * 把承载锚点的思源浮窗（.block__popover）的 oid/level 转移到浮窗之外的编辑面板上。
+ *
+ * 面板 append 到 body 后脱离了浮窗 DOM，鼠标移到面板上会触发思源 hidePopover 把浮窗销毁，
+ * 表现为「在浮窗里点属性编辑，浮窗就消失了」。思源为「浮窗外的元素需保留浮窗」提供了
+ * data-popover-oid / data-popover-level 通道（block/popover.ts 的 keepPopoverForDialog，官方
+ * emoji、背景设置对话框即用此法）：鼠标落在带这两个属性的元素上时，同 oid 且层级不高于声明值
+ * 的浮窗会被保留。面板关闭移除后属性随之消失，浮窗恢复正常的悬停隐藏逻辑。锚点不在浮窗内
+ * （正文直接编辑）时 closest 返回 null，不做任何事。
+ */
+function retainPopoverFor(panel: HTMLElement, anchor: HTMLElement | null | undefined): void {
+    const popover = anchor?.closest<HTMLElement>(".block__popover");
+    const oid = popover?.dataset.oid;
+    const level = popover?.dataset.level;
+    if (oid && level) {
+        panel.dataset.popoverOid = oid;
+        panel.dataset.popoverLevel = level;
+    }
+}
+
+export function setOpenPanel(panel: HTMLElement | null, anchor?: HTMLElement): void {
     openPanel = panel;
+    if (panel) retainPopoverFor(panel, anchor);
 }
 
 export function setOpenPanelCleanup(cleanup: (() => void) | null): void {
@@ -123,6 +144,14 @@ export function openOptionColorPalette(options: {
     paletteElement.className = 'inline-edit-palette';
     paletteElement.setAttribute('role', 'dialog');
     paletteElement.setAttribute('aria-label', t('inlineEdit.optionColor'));
+    // 调色板由主面板内的色块弹出，同样位于浮窗之外；继承主面板记录的浮窗 oid/level，
+    // 使鼠标移到调色板上时承载浮窗不被 hidePopover 销毁。
+    const hostOid = openPanel?.dataset.popoverOid;
+    const hostLevel = openPanel?.dataset.popoverLevel;
+    if (hostOid && hostLevel) {
+        paletteElement.dataset.popoverOid = hostOid;
+        paletteElement.dataset.popoverLevel = hostLevel;
+    }
     // 自定义色通过 CSS 变量解析，需在渲染色块前注入
     mountAVColorVars();
     getAVPaletteEntries().forEach((entry, position) => {

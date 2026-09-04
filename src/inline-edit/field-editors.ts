@@ -152,7 +152,7 @@ function handleRelationEdit(options: InlineEditOptions): void {
         }
     });
     if (!editor) return;
-    setOpenPanel(editor.panel);
+    setOpenPanel(editor.panel, options.element);
     setOpenPanelCleanup(editor.cleanup);
 }
 
@@ -168,7 +168,7 @@ function handleAssetEdit(options: InlineEditOptions): void {
     const popup = document.createElement('div');
     popup.className = 'inline-edit-popup inline-edit-asset';
     prepareEditorPanel(popup, keyName);
-    setOpenPanel(popup);
+    setOpenPanel(popup, element);
 
     const header = createPanelHeader(keyName, () => {
         closePopup();
@@ -360,7 +360,7 @@ function handleDateEdit(options: InlineEditOptions) {
     const datePicker = document.createElement('div');
     datePicker.className = 'inline-edit-datepicker';
     prepareEditorPanel(datePicker, options.keyName);
-    setOpenPanel(datePicker);
+    setOpenPanel(datePicker, element);
 
     const close = () => {
         closeDropdown(datePicker);
@@ -774,7 +774,7 @@ function handlePopupEdit(options: InlineEditOptions) {
     const popup = document.createElement('div');
     popup.className = 'inline-edit-popup';
     prepareEditorPanel(popup, keyName);
-    setOpenPanel(popup);
+    setOpenPanel(popup, element);
 
     // 创建弹窗内容
     const popupContent = document.createElement('div');

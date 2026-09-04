@@ -115,7 +115,7 @@ export async function openSelectEditor(options: SelectEditorOptions): Promise<vo
     const dropdown = document.createElement("div");
     dropdown.className = "inline-edit-dropdown" + (multi ? " inline-edit-dropdown--multi" : "");
     prepareEditorPanel(dropdown, keyName);
-    setOpenPanel(dropdown);
+    setOpenPanel(dropdown, element);
 
     const close = () => {
         window.clearTimeout(filterTimer);
