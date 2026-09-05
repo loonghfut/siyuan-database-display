@@ -1,7 +1,16 @@
-
 # SiYuan Database Display Plugin
 
 Display database attribute values of blocks, supporting 99% of blocks!
+
+## 🖼️ Preview
+
+### Multi-scenario Block Attribute Display
+
+Database attribute display in document blocks, list blocks, super blocks, backlink panel and more:
+
+<p align="center">
+  <img src="./preview-blocks.png" alt="Multi-scenario block attribute display" width="760">
+</p>
 
 ## ✨ Features
 

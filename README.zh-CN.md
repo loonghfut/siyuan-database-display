@@ -26,6 +26,14 @@
   <img src="./preview.png" alt="数据库数据展示效果预览" width="760">
 </p>
 
+### 多场景块属性展示
+
+文档块、列表块、超级块、反向链接面板等场景下的数据库属性展示效果：
+
+<p align="center">
+  <img src="./preview-blocks.png" alt="多场景块属性展示效果" width="760">
+</p>
+
 ## 🔓 开源与 Pro
 
 插件的核心展示能力及现有显示设置保持开源。项目通过云端 GitHub Actions 构建，构建过程透明，降低恶意代码注入风险。
