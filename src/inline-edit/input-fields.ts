@@ -1,6 +1,6 @@
 // 输入元素创建与值转换：把 DOM 输入转换成可写回内核的数据库（AV）值。
 
-import { AttributeViewWriteValue } from "../core/types";
+import { AttributeViewTextValue, AttributeViewWriteValue } from "../core/types";
 
 /**
  * 创建文本输入框
@@ -109,10 +109,26 @@ function toSelectEntry(value: unknown): { content: string; color: string } {
     return { content: String(value ?? ''), color: '' };
 }
 
+/**
+ * 文本写入值。文本字段的正常编辑路径走 rich-text-editor（永远显式携带 rich），
+ * 这里只兜住其余调用方：传 { content, rich } 时原样透传，避免静默丢掉富文本；
+ * 传裸字符串时不带 rich 键，与原生 createAVPlainTextValue(content, source, false) 一致
+ * —— 此时若 content 相对旧值发生变化，内核会自行清除 rich
+ * （kernel/model/attribute_view.go:8205-8209）。
+ */
+function toTextWriteValue(value: unknown): AttributeViewWriteValue {
+    if (value && typeof value === 'object') {
+        const text = value as AttributeViewTextValue;
+        const content = String(text.content ?? '');
+        return 'rich' in text ? { text: { content, rich: text.rich ?? null } } : { text: { content } };
+    }
+    return { text: { content: String(value ?? '') } };
+}
+
 export function convertToAVValue(keyType: string, value: any): AttributeViewWriteValue {
     switch (keyType) {
         case 'text':
-            return { text: { content: String(value || '') } };
+            return toTextWriteValue(value);
         case 'number':
             // 支持传入对象 { content, isNotEmpty } 或原始值
             if (value && typeof value === 'object') {

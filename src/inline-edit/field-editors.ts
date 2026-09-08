@@ -26,6 +26,7 @@ import {
     setOpenPanelCleanup
 } from "./popup";
 import { openSelectEditor } from "./select-editor";
+import { openRichTextEditor } from "./rich-text-editor";
 import {
     createTextInput,
     createTextArea,
@@ -41,6 +42,25 @@ import type { InlineEditOptions } from "./index";
 
 function handleTemplateEdit(options: InlineEditOptions): void {
     handlePopupEdit({ ...options, currentValue: options.template ?? '' });
+}
+
+/**
+ * 文本字段：思源 3.8.3 起 text 支持富文本，原生对所有 text 单元格都走 Protyle Lite
+ * 编辑器（cell.ts:523-543），不区分当前值是否已带 rich。这里保持一致：
+ * 纯文本值也进同一个所见即所得编辑器，保存后统一带上 rich。
+ */
+function handleTextEdit(options: InlineEditOptions): void {
+    openRichTextEditor({
+        app: options.app,
+        element: options.element,
+        avID: options.avID,
+        keyID: options.keyID,
+        itemID: options.itemID,
+        keyName: options.keyName,
+        currentValue: options.currentValue,
+        onSave: newValue => options.onSave?.(newValue),
+        onCancel: () => options.onCancel?.()
+    });
 }
 
 // 复选框写请求在途集合：快速连点同一复选框时基于同一旧值并发翻转会造成竞态回弹；
@@ -798,9 +818,6 @@ function handlePopupEdit(options: InlineEditOptions) {
         case 'number':
             inputElement = createNumberInput(currentValue);
             break;
-        case 'text':
-            inputElement = createTextArea(currentValue);
-            break;
         case 'template':
             inputElement = createTextArea(currentValue);
             inputElement.classList.add('inline-edit-template__input');
@@ -932,6 +949,7 @@ function handlePopupEdit(options: InlineEditOptions) {
 
 export {
     handleTemplateEdit,
+    handleTextEdit,
     handleCheckboxEdit,
     handleSelectEdit,
     handleMultiSelectEdit,

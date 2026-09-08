@@ -3,9 +3,11 @@
 @use "./styles/layouts/compact-waterfall";
 @use "./styles/cards/attribute-block";
 
-// 展示：容器与列表布局 → 字段 chip → 资源字段 → 弹出预览
+// 展示：容器与列表布局 → 字段 chip → 富文本预览 → 资源字段 → 弹出预览
+// rich-text 必须排在 chips 之后：它要覆盖 .db-display__value 的行内截断规则
 @use "./styles/display/container";
 @use "./styles/display/chips";
+@use "./styles/display/rich-text" as display-rich-text;
 @use "./styles/display/assets";
 @use "./styles/display/popover";
 @use "./styles/display/database-picker";
@@ -15,9 +17,10 @@
 @use "./styles/settings/color-picker";
 @use "./styles/settings/mobile-sheet";
 
-// 直接编辑：面板基座与动画 → 各字段编辑器
+// 直接编辑：面板基座与动画 → 各字段编辑器 → 文本字段的 Protyle Lite 面板
 @use "./styles/inline-edit/panels";
 @use "./styles/inline-edit/editors";
+@use "./styles/inline-edit/rich-text" as inline-edit-rich-text;
 
 // 授权面板
 @use "./styles/license/panel" as license-panel;

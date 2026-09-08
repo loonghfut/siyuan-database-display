@@ -42,6 +42,8 @@ export default class DatabaseDisplay extends Plugin {
         await this.license.refresh(this.settings.get("pro-license"));
         void this.trial.reportLoad();
         this.controller = new DisplayController({
+            // 文本字段的 Protyle Lite 编辑面板需要 App 才能构造编辑器实例
+            app: this.app,
             getConfig: () => readDisplayConfig(key => this.settings.get(key)),
             isFeatureEnabled: feature => this.proAccess.isFeatureEnabled(feature),
             openBlock: (blockId, openInSplit) => this.openBlock(blockId, openInSplit),

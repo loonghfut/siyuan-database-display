@@ -85,6 +85,29 @@ export interface RelationContent {
     isDetached?: boolean;
 }
 
+/**
+ * 文本字段的富文本源，对应内核 av.ValueTextRich。
+ * 思源 3.8.3 起 text 字段支持富文本，content 从「唯一数据源」降级为 rich 的纯文本投影。
+ */
+export interface AttributeViewTextRich {
+    /** 规格版本，内核 ValueTextRichSpec = 1；不符则整条 rich 被当作不存在。 */
+    spec?: number;
+    /** 源格式，内核 ValueTextRichFormatKramdown = "kramdown"。 */
+    format?: string;
+    /** SiYuan Kramdown 片段。 */
+    content?: string;
+}
+
+export interface AttributeViewTextValue {
+    content?: string;
+    /**
+     * 读出时纯文本值不带该键（内核 JSON 标签是 rich,omitempty）。
+     * 写入时语义有别：显式 null 表示清除富文本，缺省表示不改动
+     * —— 但缺省且 content 变化时内核会自动清除 rich，见 rich-text/value.ts 顶部说明。
+     */
+    rich?: AttributeViewTextRich | null;
+}
+
 export interface RelationValue {
     blockIDs?: string[];
     contents?: RelationContent[];
@@ -115,7 +138,7 @@ export interface AttributeViewValue {
     blockID?: string;
     id?: string;
     isDetached?: boolean;
-    text?: { content?: string };
+    text?: AttributeViewTextValue;
     number?: { content?: number };
     date?: { content?: number; content2?: number; hasEndDate?: boolean; isNotTime?: boolean };
     checkbox?: { checked?: boolean };
@@ -178,10 +201,16 @@ export interface DisplayItem {
     segments?: DisplaySegment[];
     /** 目标块图标（unicode 码点串或资源路径），用于 relation/block 字段 */
     icon?: string;
+    /**
+     * 文本字段的富文本 Kramdown 源。存在时展示层渲染成与思源单元格一致的
+     * 富文本预览（此时 text 是它的纯文本投影，仅供 aria-label / 截断判定 / 复制使用）。
+     */
+    richText?: string;
 }
 
 export type AttributeViewWriteValue =
-    | { text: { content: string } }
+    // rich 键必须按内核契约显式携带：保留富文本传完整对象，清除传 null，见 rich-text/value.ts
+    | { text: { content: string; rich?: AttributeViewTextRich | null } }
     | { number: { content: number; isNotEmpty?: boolean } }
     // isNotEmpty / isNotEmpty2 决定内核是否保留对应的时间：缺失即视为空值（kernel/model/attribute_view.go:7831）
     | { date: { content: number; isNotEmpty?: boolean; isNotTime?: boolean; hasEndDate?: boolean; content2?: number; isNotEmpty2?: boolean } }

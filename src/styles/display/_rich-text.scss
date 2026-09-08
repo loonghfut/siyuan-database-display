@@ -1,0 +1,99 @@
+// 富文本字段在 chip 里的预览。
+// 思源把 .av__celltext--rich 的排版分成三支（business/_av.scss:1122-1201）：
+// 基础支给 display:block / width:100% / overflow:hidden / font:inherit，
+// 「换行」与「不换行」两种形态则由祖先单元格的 data-wrap 决定。
+// 插件的 chip 不在 .av__cell 里，后两支都命中不到（只有基础支生效），
+// 因此这里按插件自己的两种展示形态补齐：
+// 行内 chip 对应思源的不换行单元格，列表 / 瀑布流模式对应换行单元格。
+
+// 基础支的其余声明直接沿用思源的，只把宽度改回 auto：
+// chip 里宽度由 flex 收缩与 max-width 决定，width:100% 会让短文本也撑满整行
+.db-display__value.av__celltext--rich {
+    width: auto;
+}
+
+// ===== 行内 chip：对齐思源不换行单元格（business/_av.scss:1167-1200）=====
+// chip 与不换行单元格是同一种语境 —— 行内、限高、点击进编辑器看全文。
+.my-protyle-attr--av:not(.my-protyle-attr--av--list) .db-display__value.av__celltext--rich {
+    max-height: 1.625em;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    // 块级元素一律拍平成行内，否则每个段落各占一行，单行省略就失效了
+    p,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    blockquote,
+    ul,
+    ol,
+    li,
+    pre,
+    .render-node {
+        display: inline;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        font-size: inherit;
+        line-height: inherit;
+        list-style: none;
+    }
+
+    // 拍平后块与块之间没有换行，用左边距补出可读的间隔
+    > :not(:first-child),
+    li + li,
+    li > :not(:first-child),
+    blockquote > :not(:first-child) {
+        margin-left: .5em;
+    }
+
+    // 代码块高亮后 hljs 会带上自己的背景与内边距，行内形态下只需要文字
+    .code-block,
+    code.hljs {
+        background: transparent;
+        padding: 0;
+    }
+}
+
+// ===== 列表 / 瀑布流模式：对齐思源换行单元格（business/_av.scss:1131-1165）=====
+// 保留块级结构与多行排版，与同一模式下纯文本字段的表现一致；
+// 行数上限仍由 display/_container.scss 的 line-clamp 规则统一收口，此处不设 max-height。
+.my-protyle-attr--av--list .db-display__value.av__celltext--rich {
+    white-space: normal;
+    text-overflow: clip;
+
+    p,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    li,
+    pre,
+    .render-node {
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        font-size: inherit;
+        line-height: inherit;
+    }
+
+    blockquote,
+    ul,
+    ol {
+        margin: 0;
+    }
+
+    ul,
+    ol {
+        padding-left: 1.5em;
+    }
+
+    > :not(:first-child) {
+        margin-top: .25em;
+    }
+}

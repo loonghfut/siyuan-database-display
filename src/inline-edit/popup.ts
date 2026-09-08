@@ -59,6 +59,19 @@ export function setOpenPanelCleanup(cleanup: (() => void) | null): void {
     openPanelCleanup = cleanup;
 }
 
+/**
+ * 只释放面板单例登记，不触发它的 cleanup。
+ *
+ * 富文本编辑面板（inline-edit/rich-text-editor）自行完成收尾：销毁 Protyle 实例、
+ * 断开观察者、移除遮罩。此时若再走 closeEditorPanel，cleanup 会反向调回面板的
+ * finish()，形成「面板关自己」的重入。面板收尾时改调本函数即可断开这条回路。
+ */
+export function releaseOpenPanel(panel: HTMLElement): void {
+    if (openPanel !== panel) return;
+    openPanelCleanup = null;
+    openPanel = null;
+}
+
 /** 在当前打开的编辑弹窗打开前，先关闭它（enableInlineEdit 切换字段类型时调用）。 */
 export function closeOpenPanel(): void {
     openPanelCleanup?.();

@@ -5,6 +5,7 @@
 
 import {
     handleTemplateEdit,
+    handleTextEdit,
     handleCheckboxEdit,
     handleSelectEdit,
     handleMultiSelectEdit,
@@ -14,6 +15,7 @@ import {
     handlePopupEdit
 } from "./field-editors";
 import { closeOpenPanel, closeOptionColorPalette, clearInlineEditPanels } from "./popup";
+import type { App } from "siyuan";
 import { AttributeViewRelation } from "../core/types";
 
 export interface InlineEditOptions {
@@ -28,6 +30,11 @@ export interface InlineEditOptions {
     template?: string;
     selectOptions?: any[];  // 添加选择选项（用于 select 和 mSelect）
     relation?: AttributeViewRelation;
+    /**
+     * 构造 Protyle 编辑器实例需要的 App（文本字段的 Protyle Lite 面板用）。
+     * 缺省时编辑器回落到 window.siyuan.ws.app。
+     */
+    app?: App;
     onSave?: (newValue: any) => void;
     onCancel?: () => void;
 }
@@ -42,6 +49,10 @@ export function enableInlineEdit(options: InlineEditOptions) {
 
     // 根据字段类型选择编辑方式
     switch (options.keyType) {
+        case 'text':
+            // 文本：思源同款的 Protyle Lite 所见即所得面板（3.8.3 起支持富文本）
+            handleTextEdit(options);
+            break;
         case 'checkbox':
             // 复选框：直接切换状态
             handleCheckboxEdit(options);

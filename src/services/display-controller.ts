@@ -1,4 +1,5 @@
 import { DisplayConfig } from "@/config/display-config";
+import type { App } from "siyuan";
 import { getCurrentDocumentId, getVisibleAttributeBlockParents, resolveDocumentId } from "@/data/block-context";
 import { attributeViewRepository, AttributeViewRepository } from "@/data/attribute-view-repository";
 import { extractDisplayItems } from "@/domain/content-extractor";
@@ -23,6 +24,8 @@ const REFRESH_DEBOUNCE_MS = 20;
 const QUIET_REFRESH_DELAY = 300;
 
 export interface DisplayControllerOptions {
+    /** 构造 Protyle 编辑器实例需要，由插件的 this.app 透传给文本字段的编辑面板。 */
+    app: App;
     getConfig: () => DisplayConfig;
     isFeatureEnabled: (feature: ProFeature) => boolean;
     openBlock: (blockId: string, openInSplit: boolean) => void;
@@ -356,6 +359,7 @@ export class DisplayController {
                     template: item.template,
                     selectOptions: item.selectOptions,
                     relation: item.relation,
+                    app: this.options.app,
                     onSave: onEdited
                 });
                 return;
@@ -377,6 +381,7 @@ export class DisplayController {
                 currentValue: item.rawValue,
                 selectOptions: item.selectOptions,
                 relation: item.relation,
+                app: this.options.app,
                 onSave: onEdited
             });
         } catch (error) {

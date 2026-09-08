@@ -101,9 +101,12 @@ interface Window {
         ws: any;
         languages: any;
         emojis: any;
+        /** 全局 z-index 计数器（SDK 的 ISiyuan.zIndex）：弹层递增取用才能稳定叠在浮窗之上。 */
+        zIndex: number;
     };
     Lute: any;
+    /** 思源页面注入的 DOMPurify。运行时 sanitize 支持第二个配置参数，SDK 类型未声明。 */
     DOMPurify?: {
-        sanitize: (html: string) => string;
+        sanitize: (html: string, config?: unknown) => string;
     };
 }

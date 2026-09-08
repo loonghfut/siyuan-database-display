@@ -1,6 +1,7 @@
 import { CARD_PADDINGS, CARD_RADII, DisplayConfig, isSafeColor, LIST_ITEM_RADII, LIST_LINE_HEIGHTS, LIST_ROW_GAPS, LIST_VALUE_LINES } from "@/config/display-config";
 import { AssetReference, DisplayItem, DisplayNavigationTarget, DisplaySegment, isInlineEditableField } from "@/core/types";
 import { getAVColorStyle, mountAVColorVars } from "@/domain/option-color";
+import { AV_RICH_TEXT_CLASS, getAVRichTextPreviewHTML, renderAVRichTextElements } from "@/domain/rich-text";
 import { t } from "@/i18n";
 import { assetLabel, assetThumbnailUrl } from "@/ui/asset-utils";
 import { createIconButton, iconElement } from "@/libs/dom";
@@ -582,6 +583,8 @@ export class AttributeRenderer {
         } else if (item.type === "checkbox" && context.config.checkboxStyle === "icon" && typeof item.rawValue === "boolean") {
             // 图标样式：用思源原生勾选图标替代文字，文字保留在 aria-label 中
             value.appendChild(this.createCheckboxIcon(item.rawValue));
+        } else if (item.richText) {
+            this.renderRichTextValue(value, item.richText);
         } else if (item.segments?.length) {
             this.renderSegments(value, item.segments, context.config.maxDisplayLength);
         } else {
@@ -603,6 +606,24 @@ export class AttributeRenderer {
         this.enableTruncatedTooltip(element, value);
         this.enableContextMenu(element, item, context);
         return plainText;
+    }
+
+    /**
+     * 富文本字段预览：与思源数据库单元格（cell.ts:1214 的 .av__celltext--rich）同构，
+     * 沿用同一个类名以便复用思源的排版样式，并由 renderAVRichTextElements 认得出节点。
+     *
+     * data-protyle-lite-render="safe" 不是装饰：mathRender 据此把 KaTeX 切到受限模式
+     * （mathRender.ts:53 的 getMathRenderSecurity），chartRender/processRender 也据此
+     * 跳过图表执行。少了它，字段内容里的公式会拿到可执行外部命令的权限。
+     *
+     * 预览内的链接与块引用不可点击：容器统一拦下了 mousedown/click 以隔离思源正文
+     * 编辑器（见 protectTransientContainer），chip 的点击语义是「打开编辑面板」。
+     */
+    private renderRichTextValue(value: HTMLElement, richText: string): void {
+        value.classList.add(AV_RICH_TEXT_CLASS, "b3-typography");
+        value.dataset.protyleLiteRender = "safe";
+        value.innerHTML = getAVRichTextPreviewHTML(richText);
+        renderAVRichTextElements(value);
     }
 
     /**

@@ -17,6 +17,7 @@ import {
 } from "@/core/types";
 import { DisplayConfig } from "@/config/display-config";
 import { resolveFieldRules } from "@/config/field-rules";
+import { getAVTextSource } from "@/domain/rich-text";
 import { t } from "@/i18n";
 
 function formatDate(value: number, format: DateFormat, includeTime: boolean, isNotTime = false): string {
@@ -163,6 +164,9 @@ function rawValue(value: AttributeViewValue, type: FieldType): unknown {
     if (type === "mSelect") return value.mSelect?.map(item => item.content).filter(Boolean) || [];
     if (type === "checkbox") return Boolean(value.checkbox?.checked);
     if (type === "date") return value.date ? { ...value.date } : null;
+    // text 返回整个值对象而不是纯字符串：富文本字段的编辑面板需要 rich 源，
+    // 只给 content 会让编辑器把 Kramdown 当普通文本改坏（见 inline-edit/rich-text-editor）
+    if (type === "text") return value.text ? { ...value.text } : null;
     if (type === "relation") return normalizeRelation(value);
     if (type === "mAsset") return value.mAsset ? [...value.mAsset] : [];
     if (type === "block") return value.block ? { ...value.block } : null;
@@ -221,6 +225,21 @@ function displayType(keyType: string, types: ReadonlySet<FieldType>): FieldType 
     return normalized && types.has(normalized) ? normalized : undefined;
 }
 
+/**
+ * 一条 value 只属于一个类型：以内核写入的 value.type 为准（内核在
+ * attribute_view.go:8159 强制 value.Type = key.Type），缺失时回落到列类型。
+ *
+ * 不能对每个显示类型都试探一遍 matches：历史数据里存在携带全部类型字段零值的
+ * value（number.content=0、checkbox={checked:false}、date/url 全空等，
+ * 由早期写入方把完整对象整体回传造成），试探会把同一条 value 渲染成
+ * 「0」「未勾选」等多个幻影 chip，夹在真实字段前后。思源原生按 cellValue.type
+ * 单分支渲染（av/cell.ts:1210 起的一串 else if），这里与之对齐。
+ */
+function valueTypeOf(value: AttributeViewValue, key: AttributeViewKey,
+                     showTypes: ReadonlySet<FieldType>): FieldType | undefined {
+    return displayType(value.type, showTypes) || displayType(key.type, showTypes);
+}
+
 function isSelectKey(keyType: string): boolean {
     return keyType === "select" || keyType === "mSelect";
 }
@@ -249,6 +268,12 @@ function createDisplayItem(
     if (type === "block") item.navigation = blockTarget(value.block, value.isDetached);
     if (type === "block") item.icon = value.block?.icon;
     if (type === "rollup") item.sources = rollupSources(value, config);
+    if (type === "text") {
+        // 富文本字段带上 Kramdown 源，展示层据此渲染与思源单元格一致的预览；
+        // item.text 仍是内核算好的纯文本投影，供 aria-label、截断判定与复制使用
+        const source = getAVTextSource(value.text);
+        if (source.kind === "rich") item.richText = source.content;
+    }
     return item;
 }
 
@@ -394,12 +419,11 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
 
             let shown = false;
             for (const value of keyValue.values || []) {
-                for (const type of showTypes) {
-                    if (!matches(value, type)) continue;
-                    for (const text of texts(value, type, config)) {
-                        shown = true;
-                        result.push(createDisplayItem(table, key, value, type, text, config));
-                    }
+                const type = valueTypeOf(value, key, showTypes);
+                if (!type || !matches(value, type)) continue;
+                for (const text of texts(value, type, config)) {
+                    shown = true;
+                    result.push(createDisplayItem(table, key, value, type, text, config));
                 }
             }
             if (!shown && rules.force.has(key.name)) {

@@ -1,0 +1,14 @@
+// 文本字段的 Protyle Lite 编辑面板。
+// 面板骨架沿用思源的 .av__mask / .av__richtext-editor / .av__richtext-host / .av__richtext-actions，
+// 布局、遮罩、移动端底栏形态全部由思源自己的 business/_av.scss:280-342 提供；
+// 工具栏（.protyle-toolbar 是 position:fixed，不会被面板的 overflow:hidden 裁掉）与
+// hint 浮层（挂到 body 并按 window.siyuan.zIndex 抬高）也都不需要插件兜底。
+// 这里只补插件额外加上去的那一条头部标题栏。
+
+.db-display-richtext__mask {
+    // 面板是纵向 flex（思源给的），头部固定高度不参与伸缩，编辑器主体吃掉剩余空间
+    .av__richtext-editor > .inline-edit-panel__header {
+        flex-shrink: 0;
+        background: var(--b3-theme-background);
+    }
+}
