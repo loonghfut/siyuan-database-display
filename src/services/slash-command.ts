@@ -1,5 +1,6 @@
 import { ICommand, IProtyle, Protyle } from "siyuan";
 import { PinnedDatabase } from "@/config/pinned-databases";
+import { DEFAULT_SLASH_TIMINGS, SlashTimings } from "@/config/slash-timings";
 import { attributeViewRepository } from "@/data/attribute-view-repository";
 import { reconcileBlockDatabaseBinding } from "@/domain/block-av-badge";
 import { eraseSlashCommandText, resolveSlashTargetBlock } from "@/domain/slash-target";
@@ -19,6 +20,8 @@ export interface DatabaseSlashOptions {
     databases: readonly PinnedDatabase[];
     /** 添加成功后定向强制刷新该块。 */
     onAdded: (blockID: string) => void;
+    /** 斜杠命令时序配置，缺省使用 DEFAULT_SLASH_TIMINGS。 */
+    timings?: SlashTimings;
 }
 
 /** 添加目标：斜杠命令与快捷键命令共用同一份添加逻辑。 */
@@ -56,7 +59,7 @@ export function createDatabaseSlashCommands(options: DatabaseSlashOptions): Data
                     editor: protyle?.protyle as IProtyle | undefined,
                     nodeElement,
                     eraseCommand: true
-                }, database, options.onAdded);
+                }, database, options.onAdded, options.timings);
             }
         };
     });
@@ -78,7 +81,7 @@ export function createDatabaseCommands(options: DatabaseSlashOptions): ICommand[
         langText: t("slash.addTo", { name: database.name }),
         hotkey: "",
         editorCallback: (protyle: IProtyle) => {
-            void addCurrentBlockToDatabase(protyle, database, options.onAdded);
+            void addCurrentBlockToDatabase(protyle, database, options.onAdded, options.timings);
         }
     }));
 }
@@ -117,14 +120,15 @@ function itemHTML(label: string): string {
 async function addCurrentBlockToDatabase(
     editor: IProtyle,
     database: PinnedDatabase,
-    onAdded: (blockID: string) => void
+    onAdded: (blockID: string) => void,
+    timings?: SlashTimings
 ): Promise<void> {
     const nodeElement = resolveEditorTargetBlock(editor);
     if (!nodeElement) {
         notify(t("common.missingBlockId"), 3000, "error");
         return;
     }
-    await addToPinnedDatabase({ protyle: undefined, editor, nodeElement, eraseCommand: false }, database, onAdded);
+    await addToPinnedDatabase({ protyle: undefined, editor, nodeElement, eraseCommand: false }, database, onAdded, timings);
 }
 
 /**
@@ -167,8 +171,10 @@ function resolveEditorTargetBlock(editor: IProtyle): HTMLElement | undefined {
 async function addToPinnedDatabase(
     target: AddTarget,
     database: PinnedDatabase,
-    onAdded: (blockID: string) => void
+    onAdded: (blockID: string) => void,
+    timings?: SlashTimings
 ): Promise<void> {
+    const timing = timings ?? DEFAULT_SLASH_TIMINGS;
     if (!target.nodeElement) return;
     const targetBlock = resolveSlashTargetBlock(target.nodeElement);
     const blockID = targetBlock?.dataset.nodeId;
@@ -181,10 +187,14 @@ async function addToPinnedDatabase(
     // 读取的是该事务的节点快照。因此必须先绑定再擦除：擦除捕获的 HTML 已带上
     // custom-avs，事务无论何时落库都不会洗掉绑定，补发推送的也是绑定后的属性——
     // 旧顺序（先擦后绑）里补发携带绑定前 IAL，正是角标闪烁/丢失的根源。
-    // 擦除事务的范围在回调开始时快照：绑定与等待期间用户可能继续输入或点击，
+    // 擦除事务的范围在回调开始时快照：绑定期间用户可能继续输入或点击，
     // editor.toolbar.range 会被新选区覆盖，届时擦除会因 range 塌陷而静默失配。
     // Range 对象本身是活的，边界随 DOM 变动自动调整，快照引用始终框住命令文本。
     const eraseRange = target.editor?.toolbar?.range;
+
+    // ── 步骤 1：调用内核 API 添加块到数据库 ──
+    // API 成功即代表内核已持久化绑定，后续 reconcile 可安全写入 DOM。
+    // 失败时仍擦除命令文本（hint.fill() 已消费文本且面板已关闭），然后 notify 错误。
     try {
         await attributeViewRepository.addBlocksToDatabase({
             avID: database.avID,
@@ -192,35 +202,57 @@ async function addToPinnedDatabase(
             blockIDs: [blockID],
             databaseBlockID: database.blockID
         });
-        // 主动刷新而非等广播：内核的 refreshAttributeView 只发给 protyle 连接
-        // （kernel/model/push_reload.go:523），插件监听的主 ws 是 main 类型，收不到。
-        onAdded(blockID);
-        // 等绑定标记经 updateAttrs 回放（或渲染对账）落到绑定目标块的 DOM 上，
-        // 再擦除：目标块与光标所在块相同时，擦除事务捕获的整块 HTML 才会带上
-        // custom-avs；被容器块包裹时两者不同，擦除本就不触及绑定块的属性。
-        await waitForBlockBinding(targetBlock, database.avID);
-        reconcileBlockDatabaseBinding([targetBlock], [{ avID: database.avID, name: database.name }]);
-        notify(t("slash.added", { name: database.name }), 3000, "info");
     } catch (error) {
+        // 命令文本已被 hint.fill() 消费且面板已关闭，无论 API 成败都要擦除
+        if (target.eraseCommand) {
+            try {
+                eraseCommandText(target.protyle, target.nodeElement, eraseRange);
+            } catch (eraseErr) {
+                console.debug("[DatabaseDisplay] erase after API failure errored", eraseErr);
+            }
+        }
         notify(t("slash.addFailed", { message: toErrorMessage(error) }), 5000, "error");
+        return;
     }
-    // 绑定失败也照常擦除：命令文本已被消费；此时块未绑定，擦除事务没有绑定可洗。
-    if (target.eraseCommand) eraseCommandText(target.protyle, target.nodeElement, eraseRange);
-}
 
-/**
- * 等待绑定标记（custom-avs 含 avID）出现在绑定目标块的元素上。
- *
- * 绑定的 updateAttrs 广播会回放给包括发起方在内的所有客户端
- * （kernel/model/blockial.go:542 PushModeBroadcast），渲染对账也可能先行补写；
- * 两者任一发生即可。超时按未就绪继续，由调用方的 reconcile 兜底。
- */
-async function waitForBlockBinding(blockElement: HTMLElement, avID: string, timeoutMs = 1500): Promise<void> {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-        const avIDs = (blockElement.getAttribute("custom-avs") || "").split(",").filter(Boolean);
-        if (avIDs.includes(avID)) return;
-        await new Promise(resolve => window.setTimeout(resolve, 50));
+    // ── 步骤 2：乐观 reconcile ──
+    // API 成功 = 内核已确认绑定，主动把 custom-avs 写到 DOM。
+    // 设计决策：不再等待内核 WebSocket 广播（时间不确定），而是立即对账。
+    // reconcileBlockDatabaseBinding 是幂等的——内核广播到达后再次写入相同值
+    // 不会产生副作用，因此提前写入完全安全。
+    reconcileBlockDatabaseBinding([targetBlock], [{ avID: database.avID, name: database.name }]);
+
+    // ── 步骤 3：触发定向刷新 ──
+    // 主动刷新而非等广播：内核的 refreshAttributeView 只发给 protyle 连接
+    // （kernel/model/push_reload.go:523），插件监听的主 ws 是 main 类型，收不到。
+    onAdded(blockID);
+
+    // ── 步骤 4：通知用户 ──
+    // 绑定确认 + reconcile 完成即反馈，不等擦除（擦除失败不影响结果）。
+    notify(t("slash.added", { name: database.name }), 3000, "info");
+    
+    // ── 步骤 5：擦除命令文本 ──
+    // 设计决策：已移除 waitForBlockBinding 非阻塞诊断。原因：步骤 2 的 reconcile
+    // 已主动写入 custom-avs，任何后续对同一属性的轮询都会立即命中，无法区分
+    // "内核广播已到达"与"我们自己写的"。内核广播到达后的 updateAttrs 回放是
+    // 幂等的（相同值写入），无需额外验证。
+    if (target.eraseCommand) {
+        try {
+            // 可选安全余量：给用户一段缓冲时间（某些慢设备上 DOM 更新可能有微延迟）
+            if (timing.preEraseDelayMs > 0) {
+                await new Promise(resolve => setTimeout(resolve, timing.preEraseDelayMs));
+            }
+            // Range 有效性检查：等待期间 DOM 可能已被替换（如撤销、页面切换），
+            // 此时 range.startContainer 脱离文档树，擦除会静默失败或误操作。
+            if (eraseRange && eraseRange.startContainer && !eraseRange.startContainer.isConnected) {
+                console.debug("[DatabaseDisplay] erase skipped: range detached from document", { blockId: blockID });
+            } else {
+                eraseCommandText(target.protyle, target.nodeElement, eraseRange);
+            }
+        } catch (eraseErr) {
+            // 擦除失败不应产生 unhandled rejection，绑定已成功
+            console.debug("[DatabaseDisplay] erase command text failed", eraseErr);
+        }
     }
 }
 
@@ -240,6 +272,11 @@ async function waitForBlockBinding(blockElement: HTMLElement, avID: string, time
  */
 function eraseCommandText(protyle: Protyle | undefined, nodeElement: HTMLElement, range: Range | undefined): void {
     const erased = eraseSlashCommandText(range, nodeElement);
-    if (!erased?.changed) return;
+    if (!erased?.changed) {
+        console.debug("[DatabaseDisplay] erase command text: no change detected", {
+            blockId: nodeElement.dataset.nodeId
+        });
+        return;
+    }
     protyle?.updateTransactionElement(nodeElement, erased.previousHTML);
 }

@@ -6,6 +6,7 @@ import { addDisplayFormatPanel } from "./panels/display-format";
 import { addFieldRulesPanel } from "./panels/field-rules";
 import { addNotificationsPanel } from "./panels/notifications";
 import { addPinnedDatabasesPanel } from "./panels/pinned-databases";
+import { addSlashTimingsPanel } from "./panels/slash-timings";
 import { addLicensePanel } from "./panels/license";
 import { LicenseService, TrialService } from "@/licensing";
 import type { ProFeature } from "@/licensing";
@@ -61,6 +62,7 @@ export function addSettings(
     addAppearancePanel(addPanel, i18n.settings.panel, shouldShowProBadge);
     addNotificationsPanel(addPanel, i18n.settings.panel);
     addPinnedDatabasesPanel(addPanel, i18n.settings.panel);
+    addSlashTimingsPanel(addPanel, i18n.settings.panel);
     addLicensePanel(addPanel, i18n.settings.panel, license, trial, onChanged, shouldShowProBadge, saveShowProBadge);
     installMobileSettingsSheet(settings);
     // 匹配面板项用完整 title；移动端导航空间有限，按钮文案用两字短标题，避免被把手遮挡
@@ -72,6 +74,7 @@ export function addSettings(
         { key: "appearance", title: i18n.settings.panel.appearance.title, label: compact ? i18n.settings.panel.appearance.shortTitle : undefined },
         { key: "notifications", title: i18n.settings.panel.notifications.title, label: compact ? i18n.settings.panel.notifications.shortTitle : undefined },
         { key: "pinned-databases", title: i18n.settings.panel.pinnedDatabases.title, label: compact ? i18n.settings.panel.pinnedDatabases.shortTitle : undefined },
+        { key: "slash-timings", title: i18n.settings.panel.slashTimings.title, label: compact ? i18n.settings.panel.slashTimings.shortTitle : undefined },
         { key: "license", title: i18n.settings.panel.license.title, label: compact ? i18n.settings.panel.license.shortTitle : undefined }
     ]);
 }
