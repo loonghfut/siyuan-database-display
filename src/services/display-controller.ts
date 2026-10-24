@@ -7,9 +7,11 @@ import { reconcileBlockDatabaseBinding } from "@/domain/block-av-badge";
 import { closeInlineEdit, enableInlineEdit } from "@/inline-edit";
 import { toErrorMessage } from "@/libs/error-utils";
 import { notify } from "@/libs/notify";
+import { openMapLink } from "@/libs/map-links";
 import { AttributeViewTable, DisplayItem, DisplayNavigationTarget, isInlineEditableField } from "@/core/types";
 import { AttributeRenderer, RenderContext } from "@/ui/attribute-renderer";
 import { ContentPopover } from "@/ui/content-popover";
+import { showLocationMap } from "@/ui/location-map";
 import { openChipMenu } from "@/ui/chip-menu";
 import { t } from "@/i18n";
 import { PRO_FEATURE_KEYS, ProFeature, requiredFeaturesForField } from "@/licensing";
@@ -230,6 +232,7 @@ export class DisplayController {
             onEdit: (item, element) => this.edit(blockId, item, element),
             onInlineEditLocked: () => notify(t("common.inlineEditRequiresPro"), 3000, "info"),
             onNavigate: (target, event) => this.navigate(target, event.ctrlKey || event.metaKey),
+            onOpenLocation: (item, element) => this.openLocation(item, element),
             onShowRollupSources: (item, element) => this.popover.showRollupSources(item, element),
             onPreviewAsset: (item, element) => this.popover.showAssetPreview(item, element, this.options.isFeatureEnabled("inline-edit")),
             onContextMenu: (item, element, event) => this.openChipMenu(item, element, event)
@@ -329,6 +332,45 @@ export class DisplayController {
         void this.openEditor(blockId, item, element);
     }
 
+    /**
+     * 位置字段 chip 点击：打开应用内地图。地图对话框集预览与编辑于一体，
+     * 编辑能力与行内编辑共用同一授权（inline-edit Pro 特性），无授权时仅预览 + 外链。
+     */
+    private openLocation(item: DisplayItem, element: HTMLElement): void {
+        const target = item.navigation;
+        if (target?.kind !== "map") return;
+        const blockId = this.blockIdFor(element);
+        const config = this.options.getConfig();
+        showLocationMap({
+            latitude: target.latitude,
+            longitude: target.longitude,
+            name: target.name,
+            editable: Boolean(blockId) && this.canEditItem(item, true),
+            mapService: config.mapService,
+            tileSource: config.mapTileSource,
+            onSave: value => {
+                void this.saveLocation(item, blockId, value);
+            }
+        });
+    }
+
+    private async saveLocation(item: DisplayItem, blockId: string, value: { name: string; latitude: number; longitude: number }): Promise<void> {
+        try {
+            const itemID = await this.repository.getItemId(item.avID, blockId);
+            if (!itemID) {
+                notify(t("common.missingRowId"), 3000, "error");
+                return;
+            }
+            // originalInput 记录的是用户的文本输入，地图选点后已失效，显式置空
+            await this.repository.setValue(item.avID, item.keyID, itemID, {
+                location: { name: value.name, latitude: value.latitude, longitude: value.longitude, originalInput: null }
+            });
+            this.scheduleRefresh(true, new Set([blockId]));
+        } catch (error) {
+            notify(t("common.saveFailed", { message: toErrorMessage(error) }), 5000, "error");
+        }
+    }
+
     private editAsset(item: DisplayItem, element: HTMLElement): void {
         if (!this.options.isFeatureEnabled("inline-edit")) return;
         const blockId = this.blockIdFor(element);
@@ -399,6 +441,11 @@ export class DisplayController {
     private navigate(target: DisplayNavigationTarget, openInSplit: boolean): void {
         if (target.kind === "block") {
             this.options.openBlock(target.blockId, openInSplit);
+            return;
+        }
+        if (target.kind === "map") {
+            // 地图外链在新窗口打开，openInSplit（Ctrl/Cmd 点击）不适用
+            openMapLink(target, this.options.getConfig().mapService);
             return;
         }
         this.options.openAsset(target.path, openInSplit);

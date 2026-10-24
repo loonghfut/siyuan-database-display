@@ -24,6 +24,8 @@ export interface RenderContext {
     onEdit: (item: DisplayItem, element: HTMLElement) => void;
     onInlineEditLocked: () => void;
     onNavigate: (target: DisplayNavigationTarget, event: MouseEvent) => void;
+    /** 位置字段 chip 点击：打开应用内地图（预览 + 可选编辑） */
+    onOpenLocation: (item: DisplayItem, element: HTMLElement) => void;
     onShowRollupSources: (item: DisplayItem, element: HTMLElement) => void;
     onPreviewAsset: (item: DisplayItem, element: HTMLElement, event: MouseEvent) => void;
     onContextMenu: (item: DisplayItem, element: HTMLElement, event: MouseEvent) => void;
@@ -388,6 +390,7 @@ export class AttributeRenderer {
         if (item.type === "mAsset" && item.asset) return this.createAssetItem(item, context);
         if (item.type === "rollup") return this.createRollupChip(item, context);
         if (item.navigation?.kind === "block") return this.createNavigationChip(item, context, true);
+        if (item.navigation?.kind === "map") return this.createNavigationChip(item, context, true);
         if (item.keyType === "url" && Boolean(item.rawValue)) return this.createUrlChip(item, context);
         return this.createEditableOrReadonlyChip(item, context);
     }
@@ -396,12 +399,15 @@ export class AttributeRenderer {
         const element = document.createElement("button");
         element.type = "button";
         element.className = "db-display__chip db-display__chip--navigation";
-        const plainText = this.populateChip(element, item, context, includeFieldName);
-        // relation/block 字段显示目标块图标；未设置时回退为默认文档图标，保证各行起始一致
-        const icon = item.icon ? this.createBlockIcon(item.icon) : this.createDefaultBlockIcon();
-        element.querySelector<HTMLElement>(".db-display__value")?.insertAdjacentElement("beforebegin", icon);
         const target = item.navigation!;
-        const label = target.kind === "block" ? t("common.openBlock") : t("common.openFile");
+        const plainText = this.populateChip(element, item, context, includeFieldName);
+        // 块/关联字段显示目标块图标；未设置时回退为默认文档图标，保证各行起始一致。
+        // 地图 chip 不加图标，保持与普通文本 chip 相同的形态
+        if (target.kind === "block") {
+            const icon = item.icon ? this.createBlockIcon(item.icon) : this.createDefaultBlockIcon();
+            element.querySelector<HTMLElement>(".db-display__value")?.insertAdjacentElement("beforebegin", icon);
+        }
+        const label = target.kind === "block" ? t("common.openBlock") : target.kind === "map" ? t("common.openMap") : t("common.openFile");
         element.title = label;
         element.setAttribute("aria-label", this.chipLabel(item, plainText, includeFieldName));
         // 关联字段绑定块时标记为块引用，暴露其目标块 ID 供外部定位/跳转
@@ -412,6 +418,11 @@ export class AttributeRenderer {
         this.applyColors(element, item, context.config);
         element.addEventListener("click", event => {
             event.stopPropagation();
+            // 位置字段打开应用内地图（预览/编辑一体），其余按导航目标处理
+            if (target.kind === "map") {
+                context.onOpenLocation(item, element);
+                return;
+            }
             context.onNavigate(target, event);
         });
         return element;

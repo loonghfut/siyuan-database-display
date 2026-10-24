@@ -193,6 +193,20 @@ function sourceItems(value: AttributeViewValue, type: FieldType, config: Display
             target: assetTarget(asset)
         })).filter(source => Boolean(source.text));
     }
+    if (type === "location") {
+        const location = value.location;
+        if (!location) return [];
+        const text = locationText(location);
+        if (!text) return [];
+        // 与顶层 location chip 一致：带坐标才可点击打开地图
+        const target = hasLocationCoordinates(location) ? {
+            kind: "map" as const,
+            latitude: location.latitude as number,
+            longitude: location.longitude as number,
+            name: location.name?.trim() || undefined
+        } : undefined;
+        return [{ text, type, target }];
+    }
     return texts(value, type, config).map(text => ({ text, type }));
 }
 
@@ -309,6 +323,18 @@ function createDisplayItem(
     };
     if (type === "block") item.navigation = blockTarget(value.block, value.isDetached);
     if (type === "block") item.icon = value.block?.icon;
+    // 位置字段带坐标时chip可点击打开地图；仅名称的位置无可定位目标，保持纯文本
+    if (type === "location") {
+        const location = value.location;
+        if (location && hasLocationCoordinates(location)) {
+            item.navigation = {
+                kind: "map",
+                latitude: location.latitude as number,
+                longitude: location.longitude as number,
+                name: location.name?.trim() || undefined
+            };
+        }
+    }
     if (type === "rollup") item.sources = rollupSources(value, config);
     if (type === "text") {
         // 富文本字段带上 Kramdown 源，展示层据此渲染与思源单元格一致的预览；

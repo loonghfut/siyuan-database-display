@@ -176,7 +176,9 @@ export interface AttributeViewTable {
 
 export type DisplayNavigationTarget =
     | { kind: "block"; blockId: string }
-    | { kind: "asset"; path: string };
+    | { kind: "asset"; path: string }
+    /** 位置字段的坐标（WGS84），由导航层按地图服务配置生成外链 */
+    | { kind: "map"; latitude: number; longitude: number; name?: string };
 
 export interface DisplaySource {
     text: string;
@@ -230,6 +232,8 @@ export type AttributeViewWriteValue =
     | { url: { content: string } }
     | { email: { content: string } }
     | { phone: { content: string } }
+    // 位置字段经内核通用值合并写入；originalInput 为用户文本输入的存档，地图选点后应显式置 null
+    | { location: { name?: string; latitude: number; longitude: number; originalInput?: string | null } }
     | { relation: { blockIDs: string[]; contents: RelationContent[] } }
     | { mAsset: AssetReference[] };
 

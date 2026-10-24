@@ -17,6 +17,7 @@ Database attribute display in document blocks, list blocks, super blocks, backli
 ### 📊 Database Field Display
 - **Comprehensive Support**: Supports 99% of block types for database attribute display
 - **Multi-field Types**: Supports multiple select, number, date, text, asset, checkbox, phone, URL, email, location and other field types
+- **In-app Location Map**: Click a location field with coordinates to view it on an embedded OpenStreetMap; drag the marker or enter coordinates to edit visually (Pro), or open it in AMap, Baidu Maps or Google Maps (configurable)
 - **Smart Filtering**: Automatically filters empty values, null and undefined
 
 ### 🎛️ Field Display Control

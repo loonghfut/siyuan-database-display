@@ -1,0 +1,68 @@
+// 位置字段的应用内地图对话框（ui/location-map）
+// 画布用固定高度自撑内容：不依赖思源对话框 body 的内部布局（各版本样式有差异）
+
+.db-location-map {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px 16px;
+    box-sizing: border-box;
+
+    .db-location-map__canvas {
+        height: min(380px, 50vh);
+        flex-shrink: 0;
+        border-radius: var(--b3-border-radius);
+        overflow: hidden;
+        z-index: 0; // 隔离 Leaflet 的 z-index 层级，避免瓦片盖住思源全局弹层
+        background-color: var(--b3-theme-surface-lighter);
+    }
+
+    .db-location-map__hint {
+        margin: 0;
+        font-size: 12px;
+        color: var(--b3-theme-on-surface-light);
+    }
+
+    .db-location-map__fields {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .db-location-map__field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+
+        .db-location-map__field-label {
+            flex-shrink: 0;
+            width: 64px;
+            font-size: 12px;
+            color: var(--b3-theme-on-surface);
+        }
+
+        .b3-text-field {
+            flex: 1;
+            min-width: 0;
+        }
+    }
+
+    .db-location-map__input--invalid {
+        border-color: var(--b3-theme-error) !important;
+        background-color: color-mix(in srgb, var(--b3-theme-error) 10%, transparent) !important;
+    }
+
+    .db-location-map__footer {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+    }
+}
+
+// 自绘 SVG 图钉的锚点：Leaflet 以左下角对准坐标
+.db-location-map__marker {
+    background: transparent;
+    border: none;
+}
