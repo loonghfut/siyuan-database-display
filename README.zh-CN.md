@@ -47,7 +47,7 @@ Pro 为一次性买断制，仅绑定思源用户 ID，不绑定设备，也不�
 
 ## 💬 问题反馈
 
-如果你遇到问题或有功能建议，欢迎：
+功能已经开发完成，如果你在使用中遇到问题或有功能建议，欢迎：
 
 - 在 [GitHub Issues](https://github.com/loonghfut/siyuan-database-display/issues) 提交详细的问题描述、运行环境和复现步骤；
 - 在思源笔记社区中反馈使用体验。

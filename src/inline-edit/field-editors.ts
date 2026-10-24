@@ -1,11 +1,12 @@
 // 各字段类型的直接编辑处理器：按字段类型弹出对应的编辑界面并写回内核。
 
-import { fetchSyncPost, IWebSocketData } from "siyuan";
+import { fetchSyncPost } from "siyuan";
 import { attributeViewRepository } from "../data/attribute-view-repository";
 import { AssetReference, AttributeViewWriteValue, SelectOption } from "../core/types";
 import { t } from "../i18n";
 import { toErrorMessage } from "../libs/error-utils";
 import { notify } from "../libs/notify";
+import { ContractFormData } from "../libs/contract-form-data";
 import { openRelationEditor, RelationEditorHandle } from "../ui/relation-editor";
 import { assetLabel } from "../ui/asset-utils";
 import { createIconButton, iconElement } from "../libs/dom";
@@ -297,13 +298,13 @@ function handleAssetEdit(options: InlineEditOptions): void {
 }
 
 async function uploadAsset(file: File): Promise<AssetReference> {
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await fetchSyncPost('/api/asset/upload', formData) as IWebSocketData;
-    if (response.code !== 0) throw new Error(response.msg || 'Asset upload failed');
-    const data = response.data as { path?: string } | undefined;
-    const path = data?.path;
-    if (!path) throw new Error('Asset upload returned no path');
+    // 内核 /api/asset/upload 的 multipart 字段历来是 file[]（kernel/model/upload.go），
+    // 响应路径在 succMap[文件名]（apicontract.AssetUploadData）
+    const formData = new ContractFormData({ "file[]": [file] });
+    const response = await fetchSyncPost('/api/asset/upload', formData);
+    if (response.code !== 0) throw new Error(response.msg || t('common.uploadFailed'));
+    const path = response.data?.succMap?.[file.name];
+    if (!path) throw new Error(t('common.uploadNoPath'));
     return {
         name: file.name,
         content: path,

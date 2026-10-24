@@ -282,7 +282,10 @@ export class AttributeViewRepository {
     }
 
     private async post<T>(endpoint: string, data: unknown): Promise<T> {
-        const response = await fetchSyncPost(`/api/av/${endpoint}`, data) as IWebSocketData;
+        // 显式声明为 string：动态拼接的模板串类型（`/api/av/${string}`）不匹配
+        // fetchSyncPost 的任何重载，只有普通 string 才走宽松的旧版分支
+        const url: string = `/api/av/${endpoint}`;
+        const response = await fetchSyncPost(url, data) as IWebSocketData;
         if (response.code !== 0) throw new Error(response.msg || `Attribute view request failed: ${endpoint}`);
         return response.data as T;
     }

@@ -16,7 +16,7 @@ Database attribute display in document blocks, list blocks, super blocks, backli
 
 ### 📊 Database Field Display
 - **Comprehensive Support**: Supports 99% of block types for database attribute display
-- **Multi-field Types**: Supports multiple select, number, date, text, asset, checkbox, phone, URL, email and other field types
+- **Multi-field Types**: Supports multiple select, number, date, text, asset, checkbox, phone, URL, email, location and other field types
 - **Smart Filtering**: Automatically filters empty values, null and undefined
 
 ### 🎛️ Field Display Control

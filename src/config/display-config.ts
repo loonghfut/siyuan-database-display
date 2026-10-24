@@ -74,22 +74,22 @@ const fieldTypeSet = new Set<string>(FIELD_TYPES);
 
 export const DEFAULT_FIELD_COLORS: Record<string, string> = {
     mSelect: "#4338ca", number: "#1d4ed8", date: "#047857", text: "#334155", template: "#7e22ce", mAsset: "#6d28d9", relation: "#0e7490",
-    rollup: "#a16207", block: "#c2410c", lineNumber: "#475569", checkbox: "#047857", phone: "#0f766e", url: "#a16207", email: "#be185d", created: "#475569", updated: "#475569"
+    rollup: "#a16207", block: "#c2410c", lineNumber: "#475569", checkbox: "#047857", phone: "#0f766e", url: "#a16207", email: "#be185d", location: "#0d9488", created: "#475569", updated: "#475569"
 };
 
 export const DEFAULT_FIELD_BACKGROUNDS: Record<string, string> = {
     mSelect: "#e0e7ff", number: "#dbeafe", date: "#d1fae5", text: "#e2e8f0", template: "#f3e8ff", mAsset: "#ede9fe", relation: "#cffafe",
-    rollup: "#fef3c7", block: "#ffedd5", lineNumber: "#e2e8f0", checkbox: "#d1fae5", phone: "#ccfbf1", url: "#fef3c7", email: "#fce7f3", created: "#e2e8f0", updated: "#e2e8f0"
+    rollup: "#fef3c7", block: "#ffedd5", lineNumber: "#e2e8f0", checkbox: "#d1fae5", phone: "#ccfbf1", url: "#fef3c7", email: "#fce7f3", location: "#ccfbf1", created: "#e2e8f0", updated: "#e2e8f0"
 };
 
 export const DEFAULT_DARK_FIELD_COLORS: Record<string, string> = {
     mSelect: "#c7d2fe", number: "#bfdbfe", date: "#a7f3d0", text: "#e2e8f0", template: "#e9d5ff", mAsset: "#ddd6fe", relation: "#a5f3fc",
-    rollup: "#fde68a", block: "#fed7aa", lineNumber: "#cbd5e1", checkbox: "#a7f3d0", phone: "#99f6e4", url: "#fde68a", email: "#fbcfe8", created: "#cbd5e1", updated: "#cbd5e1"
+    rollup: "#fde68a", block: "#fed7aa", lineNumber: "#cbd5e1", checkbox: "#a7f3d0", phone: "#99f6e4", url: "#fde68a", email: "#fbcfe8", location: "#5eead4", created: "#cbd5e1", updated: "#cbd5e1"
 };
 
 export const DEFAULT_DARK_FIELD_BACKGROUNDS: Record<string, string> = {
     mSelect: "#292756", number: "#18345f", date: "#143f33", text: "#293545", template: "#40235d", mAsset: "#322654", relation: "#123e4b",
-    rollup: "#4a3a18", block: "#4a2d1d", lineNumber: "#2c3848", checkbox: "#124438", phone: "#10443f", url: "#4a3a18", email: "#4a2039", created: "#2c3848", updated: "#2c3848"
+    rollup: "#4a3a18", block: "#4a2d1d", lineNumber: "#2c3848", checkbox: "#124438", phone: "#10443f", url: "#4a3a18", email: "#4a2039", location: "#134e4a", created: "#2c3848", updated: "#2c3848"
 };
 
 export function parseCsv(value: unknown): string[] {

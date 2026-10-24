@@ -1,6 +1,7 @@
 import {
     AssetReference,
     AttributeViewKey,
+    AttributeViewLocationValue,
     AttributeViewTable,
     AttributeViewValue,
     BlockReference,
@@ -45,6 +46,41 @@ function formatDate(value: number, format: DateFormat, includeTime: boolean, isN
  */
 function checkboxText(checked: boolean): string {
     return checked ? t("common.checked") : t("common.unchecked");
+}
+
+/** 与官方 hasAVLocationCoordinates 一致：经纬度同时为有限数值且在合法范围内才算有坐标。 */
+function hasLocationCoordinates(location: AttributeViewLocationValue): boolean {
+    const hasLatitude = typeof location.latitude === "number" && Number.isFinite(location.latitude) && Math.abs(location.latitude) <= 90;
+    const hasLongitude = typeof location.longitude === "number" && Number.isFinite(location.longitude) && Math.abs(location.longitude) <= 180;
+    return hasLatitude && hasLongitude;
+}
+
+/**
+ * 位置字段的展示文本，与思源单元格的 UI 形态一致
+ * （protyle/render/av/locationValue.ts 的 formatAVLocationText longitudeFirst 分支）：
+ * 有坐标时为「名称 经度, 纬度」，无坐标时只显示名称。
+ */
+function locationText(location: AttributeViewLocationValue | undefined): string {
+    if (!location) return "";
+    const name = location.name?.trim() || "";
+    if (!hasLocationCoordinates(location)) return name;
+    const coordinates = `${formatCoordinate(location.longitude as number)}, ${formatCoordinate(location.latitude as number)}`;
+    return name ? `${name} ${coordinates}` : coordinates;
+}
+
+/** 与官方 formatAVLocationCoordinate 一致：科学计数法展开为普通十进制，其余原样输出。 */
+function formatCoordinate(value: number): string {
+    const text = String(value);
+    if (!text.includes("e")) return text;
+    const negative = text.startsWith("-");
+    const [mantissa, exponent] = (negative ? text.slice(1) : text).split("e");
+    const [whole, fraction = ""] = mantissa.split(".");
+    const digits = whole + fraction;
+    const position = whole.length + Number(exponent);
+    const expanded = position <= 0 ? "0." + "0".repeat(-position) + digits
+        : position >= digits.length ? digits + "0".repeat(position - digits.length)
+            : digits.slice(0, position) + "." + digits.slice(position);
+    return (negative ? "-" : "") + expanded;
 }
 
 function normalizeRelation(value: AttributeViewValue): RelationValue {
@@ -171,6 +207,7 @@ function rawValue(value: AttributeViewValue, type: FieldType): unknown {
     if (type === "mAsset") return value.mAsset ? [...value.mAsset] : [];
     if (type === "block") return value.block ? { ...value.block } : null;
     if (type === "rollup") return value.rollup ? { ...value.rollup } : null;
+    if (type === "location") return value.location ? { ...value.location } : null;
     const field = value[type as keyof AttributeViewValue] as { content?: unknown } | undefined;
     return field?.content ?? "";
 }
@@ -198,6 +235,7 @@ function texts(value: AttributeViewValue, type: FieldType, config: DisplayConfig
         case "phone": return value.phone?.content ? [value.phone.content] : [];
         case "url": return value.url?.content ? [value.url.content] : [];
         case "email": return value.email?.content ? [value.email.content] : [];
+        case "location": return [locationText(value.location)].filter(Boolean);
         case "created": return value.created?.content ? [formatDate(value.created.content, config.dateFormat, config.includeTime)] : [];
         case "updated": return value.updated?.content ? [formatDate(value.updated.content, config.dateFormat, config.includeTime)] : [];
         case "lineNumber": return [];
@@ -213,6 +251,10 @@ function matches(value: AttributeViewValue, type: FieldType): boolean {
     if (type === "block") return Boolean(value.block?.content || value.block?.id);
     if (type === "rollup") return Boolean(value.rollup?.contents?.length);
     if (type === "lineNumber") return false;
+    if (type === "location") {
+        const location = value.location;
+        return Boolean(location && (location.name?.trim() || hasLocationCoordinates(location)));
+    }
     if (type === "relation") {
         const relation = normalizeRelation(value);
         return Boolean(relation.blockIDs?.length || relation.contents?.length);

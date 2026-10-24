@@ -1,10 +1,11 @@
-export const FIELD_TYPES = ["mSelect", "number", "date", "text", "template", "mAsset", "relation", "rollup", "block", "lineNumber", "checkbox", "phone", "url", "email", "created", "updated"] as const;
+export const FIELD_TYPES = ["mSelect", "number", "date", "text", "template", "mAsset", "relation", "rollup", "block", "lineNumber", "checkbox", "phone", "url", "email", "location", "created", "updated"] as const;
 
 export type FieldType = typeof FIELD_TYPES[number];
 export type CheckboxStyle = "icon" | "text";
 export type DateFormat = "YYYY-MM-DD" | "YYYY/MM/DD" | "MM/DD/YYYY" | "DD/MM/YYYY" | "full" | "relative";
 
-const READ_ONLY_FIELD_TYPES: readonly FieldType[] = ["block", "rollup", "lineNumber", "mAsset", "created", "updated"];
+// location 的值来自地图选点，插件不提供内联编辑入口
+const READ_ONLY_FIELD_TYPES: readonly FieldType[] = ["block", "rollup", "lineNumber", "mAsset", "created", "updated", "location"];
 
 export function isInlineEditableField(type: FieldType): boolean {
     return !READ_ONLY_FIELD_TYPES.includes(type);
@@ -113,6 +114,14 @@ export interface RelationValue {
     contents?: RelationContent[];
 }
 
+/** 内核 av.ValueLocation（kernel/av/value_location.go）。 */
+export interface AttributeViewLocationValue {
+    name?: string;
+    latitude?: number;
+    longitude?: number;
+    originalInput?: string;
+}
+
 export interface RelationCandidateValue extends AttributeViewValue {
     type?: string;
     block?: BlockReference;
@@ -145,6 +154,8 @@ export interface AttributeViewValue {
     url?: { content?: string };
     email?: { content?: string };
     phone?: { content?: string };
+    /** 位置字段（思源 3.8.7 新增），对应内核 av.ValueLocation。 */
+    location?: AttributeViewLocationValue;
     template?: { content?: string };
     mSelect?: Array<{ content?: string; color?: string }>;
     mAsset?: AssetReference[];
