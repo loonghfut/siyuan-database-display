@@ -17,7 +17,7 @@
  */
 
 import { NetworkClient } from "@/network/network-client";
-import { wgs84ToGcj02 } from "./map-links";
+import { gcj02ToWgs84, wgs84ToGcj02 } from "./map-links";
 
 /** 插件构建期注入的高德 Web 服务 Key（.license/amap-config.json） */
 declare const __DATABASE_DISPLAY_AMAP_KEY__: string;
@@ -38,14 +38,29 @@ export interface GeocodeOutcome {
     warning?: string;
 }
 
+/** 正向地理编码结果：坐标一律为 WGS84，与内核存储一致 */
+export interface ForwardOutcome {
+    latitude?: number;
+    longitude?: number;
+    /** 服务端明确报错的原因；非空表示重试无意义 */
+    reason?: string;
+}
+
 interface AmapRegeoResponse {
     status?: string;
     info?: string;
     regeocode?: { formatted_address?: string };
 }
 
+interface AmapGeoResponse {
+    status?: string;
+    info?: string;
+    /** geocodes[0].location 为「经度,纬度」次序，坐标系 GCJ-02 */
+    geocodes?: Array<{ location?: string }>;
+}
+
 interface PhotonResponse {
-    features?: Array<{ properties?: Record<string, unknown> }>;
+    features?: Array<{ properties?: Record<string, unknown>; geometry?: { coordinates?: number[] } }>;
 }
 
 interface BigDataCloudResponse {
@@ -207,6 +222,60 @@ function formatBigDataCloudAddress(result: BigDataCloudResponse): string | undef
 
 /** 一个逆地理编码提供方 */
 type GeocodeProvider = (latitude: number, longitude: number) => Promise<GeocodeOutcome>;
+
+/** 一个正向地理编码提供方 */
+type ForwardProvider = (query: string) => Promise<ForwardOutcome>;
+
+/**
+ * 高德正向地理编码：名称 → 坐标。
+ * 高德返回 GCJ-02，与插件内部 WGS84 约定不同，需转回 WGS84。
+ */
+async function forwardByAmap(apiKey: string, query: string): Promise<ForwardOutcome> {
+    const url = `https://restapi.amap.com/v3/geocode/geo?address=${encodeURIComponent(query)}&key=${encodeURIComponent(apiKey)}`;
+    const raw = await fetchJson(url);
+    if (typeof raw !== "object" || raw === null) return {};
+    const result = raw as AmapGeoResponse;
+    if (result.status !== "1") return { reason: result.info || "AMAP_ERROR" };
+    const location = result.geocodes?.[0]?.location;
+    if (!location) return {};
+    const [lng, lat] = location.split(",").map(Number);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return {};
+    const [wgsLat, wgsLng] = gcj02ToWgs84(lat, lng);
+    return { latitude: wgsLat, longitude: wgsLng };
+}
+
+/** Photon 正向地理编码：名称 → 坐标（OSM 数据，本身即 WGS84） */
+async function forwardByPhoton(query: string): Promise<ForwardOutcome> {
+    const url = `https://photon.komoot.io/api?q=${encodeURIComponent(query)}&limit=1`;
+    const raw = await fetchJson(url);
+    if (typeof raw !== "object" || raw === null) return {};
+    const coordinates = (raw as PhotonResponse).features?.[0]?.geometry?.coordinates;
+    if (!Array.isArray(coordinates) || coordinates.length < 2) return {};
+    const [lng, lat] = coordinates.map(Number);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return {};
+    return { latitude: lat, longitude: lng };
+}
+
+/**
+ * 正向地理编码（名称 → 坐标）：位置字段只有名称没有坐标时，用它定位地图初始视野。
+ * 与逆地理编码共用 Key 来源优先级：用户自配 > 插件构建期内置 > 免 Key 服务。
+ * 本函数不会 reject。
+ */
+export async function forwardGeocode(userKey: string, name: string): Promise<ForwardOutcome> {
+    const query = name.trim();
+    if (!query) return {};
+    const key = (userKey || "").trim() || builtInAmapKey();
+    const providers: ForwardProvider[] = [];
+    if (key) providers.push(query => forwardByAmap(key, query));
+    providers.push(forwardByPhoton);
+    let reason: string | undefined;
+    for (const provider of providers) {
+        const outcome = await provider(query);
+        if (typeof outcome.latitude === "number" && typeof outcome.longitude === "number") return outcome;
+        if (outcome.reason && !reason) reason = outcome.reason;
+    }
+    return reason ? { reason } : {};
+}
 
 /**
  * 自动路由的逆地理编码：按提供方链依次尝试，任一返回结果即采用。

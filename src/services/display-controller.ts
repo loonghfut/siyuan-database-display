@@ -335,15 +335,17 @@ export class DisplayController {
     /**
      * 位置字段 chip 点击：打开应用内地图。地图对话框集预览与编辑于一体，
      * 编辑能力与行内编辑共用同一授权（inline-edit Pro 特性），无授权时仅预览 + 外链。
+     * 没有坐标的位置字段同样可点开，在地图上选点补录。
      */
     private openLocation(item: DisplayItem, element: HTMLElement): void {
         const target = item.navigation;
         if (target?.kind !== "map") return;
         const blockId = this.blockIdFor(element);
         const config = this.options.getConfig();
+        const hasCoordinates = typeof target.latitude === "number" && typeof target.longitude === "number";
         showLocationMap({
-            latitude: target.latitude,
-            longitude: target.longitude,
+            latitude: hasCoordinates ? target.latitude : undefined,
+            longitude: hasCoordinates ? target.longitude : undefined,
             name: target.name,
             editable: Boolean(blockId) && this.canEditItem(item, true),
             amapApiKey: config.amapApiKey,
@@ -443,8 +445,11 @@ export class DisplayController {
             return;
         }
         if (target.kind === "map") {
-            // 地图外链在新窗口打开，openInSplit（Ctrl/Cmd 点击）不适用
-            openAmapLink(target);
+            // 地图外链在新窗口打开，openInSplit（Ctrl/Cmd 点击）不适用；
+            // 没有坐标的位置字段无从生成外链，直接忽略
+            const { latitude, longitude } = target;
+            if (typeof latitude !== "number" || typeof longitude !== "number") return;
+            openAmapLink({ latitude, longitude, name: target.name });
             return;
         }
         this.options.openAsset(target.path, openInSplit);

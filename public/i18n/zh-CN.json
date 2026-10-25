@@ -94,6 +94,7 @@
     "locationMap": {
         "title": "位置",
         "hint": "拖拽标记或点击地图调整位置",
+        "hintEmpty": "点击地图选择位置",
         "name": "位置名称",
         "latitude": "纬度（-90 ~ 90）",
         "longitude": "经度（-180 ~ 180）",

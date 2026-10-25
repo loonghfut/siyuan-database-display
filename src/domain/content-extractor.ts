@@ -56,6 +56,20 @@ function hasLocationCoordinates(location: AttributeViewLocationValue): boolean {
 }
 
 /**
+ * 位置字段的地图入口：有坐标则带上坐标（可生成外链），无坐标时只给名称，
+ * 让用户点开地图可视化选点补录。
+ */
+function locationTarget(location: AttributeViewLocationValue | undefined): DisplayNavigationTarget {
+    const hasCoordinates = location ? hasLocationCoordinates(location) : false;
+    return {
+        kind: "map",
+        latitude: hasCoordinates ? location!.latitude : undefined,
+        longitude: hasCoordinates ? location!.longitude : undefined,
+        name: location?.name?.trim() || undefined
+    };
+}
+
+/**
  * 位置字段的展示文本：只显示名称——坐标数字对快速浏览没有干扰性，且名称会由
  * 地图选点的逆地理编码自动填充。无名称时回落坐标文本，保证 chip 不为空。
  */
@@ -199,14 +213,8 @@ function sourceItems(value: AttributeViewValue, type: FieldType, config: Display
         if (!location) return [];
         const text = locationText(location);
         if (!text) return [];
-        // 与顶层 location chip 一致：带坐标才可点击打开地图
-        const target = hasLocationCoordinates(location) ? {
-            kind: "map" as const,
-            latitude: location.latitude as number,
-            longitude: location.longitude as number,
-            name: location.name?.trim() || undefined
-        } : undefined;
-        return [{ text, type, target }];
+        // 位置字段一律给地图入口：即使没有坐标也能点开地图选点（可视化补录）
+        return [{ text, type, target: locationTarget(location) }];
     }
     return texts(value, type, config).map(text => ({ text, type }));
 }
@@ -324,17 +332,9 @@ function createDisplayItem(
     };
     if (type === "block") item.navigation = blockTarget(value.block, value.isDetached);
     if (type === "block") item.icon = value.block?.icon;
-    // 位置字段带坐标时chip可点击打开地图；仅名称的位置无可定位目标，保持纯文本
+    // 位置字段一律给地图入口：没有坐标时也能点开地图选点（可视化补录）
     if (type === "location") {
-        const location = value.location;
-        if (location && hasLocationCoordinates(location)) {
-            item.navigation = {
-                kind: "map",
-                latitude: location.latitude as number,
-                longitude: location.longitude as number,
-                name: location.name?.trim() || undefined
-            };
-        }
+        item.navigation = locationTarget(value.location);
     }
     if (type === "rollup") item.sources = rollupSources(value, config);
     if (type === "text") {
@@ -497,7 +497,12 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
             }
             if (!shown && rules.force.has(key.name)) {
                 const type = displayType(key.type, showTypes);
-                if (type) result.push({ type, text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null, template: key.template, selectOptions: key.options, relation: key.relation });
+                if (type) {
+                    const item: DisplayItem = { type, text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null, template: key.template, selectOptions: key.options, relation: key.relation };
+                    // 强制显示的空位置字段同样给地图入口，用户可点开地图补录坐标
+                    if (type === "location") item.navigation = locationTarget(undefined);
+                    result.push(item);
+                }
             }
         }
     }

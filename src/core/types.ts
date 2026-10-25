@@ -177,8 +177,11 @@ export interface AttributeViewTable {
 export type DisplayNavigationTarget =
     | { kind: "block"; blockId: string }
     | { kind: "asset"; path: string }
-    /** 位置字段的坐标（WGS84），由导航层按地图服务配置生成外链 */
-    | { kind: "map"; latitude: number; longitude: number; name?: string };
+    /**
+     * 位置字段的地图入口。坐标为 WGS84；无坐标时（只有名称或完全为空）仅用于
+     * 打开地图编辑器让用户选点，此时不生成外链。
+     */
+    | { kind: "map"; latitude?: number; longitude?: number; name?: string };
 
 export interface DisplaySource {
     text: string;
