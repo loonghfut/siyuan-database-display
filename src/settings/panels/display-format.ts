@@ -1,7 +1,6 @@
 import { I18nDictionary } from "@/i18n";
 import type { ProFeature } from "@/licensing";
-import { MapService, MapTileSource, MAP_SERVICES, MAP_TILE_SOURCES } from "@/libs/map-links";
-import { bindCommit, createCheckbox, createLabel, createPanel, createSelect, parseObject } from "../components/controls";
+import { bindCommit, createCheckbox, createLabel, createPanel, createSelect, createTextInput, parseObject } from "../components/controls";
 import { AddPanel, SettingsPanelText } from "../types";
 
 export function addDisplayFormatPanel(
@@ -11,8 +10,8 @@ export function addDisplayFormatPanel(
     shouldShowProBadge: () => boolean,
     isFeatureEnabled: (feature: ProFeature) => boolean
 ): void {
-    addPanel("display-format", JSON.stringify({ dateFormat: "YYYY-MM-DD", includeTime: false, checkboxStyle: "icon", maxDisplayLength: 30, showFieldNames: false, listFontSize: 12, listMultiColumn: true, listLayoutStyle: "grid", listItemStyle: "plain", listLineHeight: "normal", listRowGap: "normal", listValueLines: "unlimited", listItemRadius: "auto", alignFieldNames: true, cardEnabled: true, cardRadius: "auto", cardPadding: "normal", editTrigger: "click", mapService: "amap", mapTileSource: "amap", layout: "below" }), text.format.title, text.format.description, (value, commit) => {
-        const state = parseObject<{ dateFormat?: string; includeTime?: boolean; checkboxStyle?: string; maxDisplayLength?: number; showFieldNames?: boolean; listFontSize?: number; listMultiColumn?: boolean; listLayoutStyle?: string; listItemStyle?: string; listLineHeight?: string; listRowGap?: string; listValueLines?: string; listItemRadius?: string; alignFieldNames?: boolean; cardEnabled?: boolean; cardRadius?: string; cardPadding?: string; editTrigger?: string; mapService?: string; mapTileSource?: string; layout?: string }>(value, {});
+    addPanel("display-format", JSON.stringify({ dateFormat: "YYYY-MM-DD", includeTime: false, checkboxStyle: "icon", maxDisplayLength: 30, showFieldNames: false, listFontSize: 12, listMultiColumn: true, listLayoutStyle: "grid", listItemStyle: "plain", listLineHeight: "normal", listRowGap: "normal", listValueLines: "unlimited", listItemRadius: "auto", alignFieldNames: true, cardEnabled: true, cardRadius: "auto", cardPadding: "normal", editTrigger: "click", amapKey: "", layout: "below" }), text.format.title, text.format.description, (value, commit) => {
+        const state = parseObject<{ dateFormat?: string; includeTime?: boolean; checkboxStyle?: string; maxDisplayLength?: number; showFieldNames?: boolean; listFontSize?: number; listMultiColumn?: boolean; listLayoutStyle?: string; listItemStyle?: string; listLineHeight?: string; listRowGap?: string; listValueLines?: string; listItemRadius?: string; alignFieldNames?: boolean; cardEnabled?: boolean; cardRadius?: string; cardPadding?: string; editTrigger?: string; amapKey?: string; layout?: string }>(value, {});
         const panel = createPanel("db-settings--format");
         const layout = createSelect(text.format.layoutOptions, state.layout === "above" ? "above" : state.layout === "inline" ? "inline" : "below");
         const listLayoutStyle = createSelect(text.format.listLayoutStyleOptions, state.listLayoutStyle === "waterfall" ? "waterfall" : "grid");
@@ -29,8 +28,11 @@ export function addDisplayFormatPanel(
         if (!canUseInlineEdit) editTrigger.title = text.format.inlineEditProTooltip;
         const date = createSelect(i18n.settings.dateFormat.options, state.dateFormat || "YYYY-MM-DD");
         const checkbox = createSelect(i18n.settings.checkboxStyle.options, state.checkboxStyle === "text" ? "text" : "icon");
-        const mapService = createSelect(text.format.mapServiceOptions, MAP_SERVICES.includes(state.mapService as MapService) ? state.mapService as string : "amap");
-        const mapTileSource = createSelect(text.format.mapTileSourceOptions, MAP_TILE_SOURCES.includes(state.mapTileSource as MapTileSource) ? state.mapTileSource as string : "amap");
+        const amapKey = createTextInput(typeof state.amapKey === "string" ? state.amapKey : "", text.format.amapKeyPlaceholder);
+        const amapKeyRow = createLabel(text.format.amapKey, amapKey);
+        const amapKeyHint = document.createElement("p");
+        amapKeyHint.className = "db-settings__hint";
+        amapKeyHint.textContent = text.format.amapKeyHint;
         const includeTime = createCheckbox(Boolean(state.includeTime));
         const showFieldNames = createCheckbox(state.showFieldNames === true);
         const cardEnabled = createCheckbox(state.cardEnabled !== false);
@@ -123,9 +125,9 @@ export function addDisplayFormatPanel(
             editTriggerTitle.append(proBadge);
         }
         const cardRow = createLabel(text.format.card, cardEnabled);
-        panel.append(layoutRow, listSettings, editTriggerRow, createLabel(text.format.date, date), createLabel(text.format.checkbox, checkbox), createLabel(text.format.time, includeTime), createLabel(text.format.mapService, mapService), createLabel(text.format.mapTileSource, mapTileSource), createLabel(text.format.fieldNames, showFieldNames), cardRow, cardSettings, createLabel(text.format.maxLength, length));
+        panel.append(layoutRow, listSettings, editTriggerRow, createLabel(text.format.date, date), createLabel(text.format.checkbox, checkbox), createLabel(text.format.time, includeTime), amapKeyRow, amapKeyHint, createLabel(text.format.fieldNames, showFieldNames), cardRow, cardSettings, createLabel(text.format.maxLength, length));
         bindCommit(panel, () => {
-            const nextValue = JSON.stringify({ dateFormat: date.value, checkboxStyle: checkbox.value, includeTime: includeTime.checked, maxDisplayLength: Math.min(200, Math.max(10, Number(length.value) || 30)), showFieldNames: showFieldNames.checked, listFontSize: Math.min(24, Math.max(10, Number(fontSize.value) || 12)), listMultiColumn: multiColumn.checked, listLayoutStyle: listLayoutStyle.value === "waterfall" ? "waterfall" : "grid", listItemStyle: listItemStyle.value === "capsule" ? "capsule" : listItemStyle.value === "accent" ? "accent" : "plain", listLineHeight: lineHeight.value === "compact" ? "compact" : lineHeight.value === "relaxed" ? "relaxed" : "normal", listRowGap: rowGap.value === "tight" ? "tight" : rowGap.value === "relaxed" ? "relaxed" : "normal", listValueLines: valueLines.value === "one" ? "one" : valueLines.value === "two" ? "two" : valueLines.value === "three" ? "three" : "unlimited", listItemRadius: itemRadius.value === "none" ? "none" : itemRadius.value === "small" ? "small" : itemRadius.value === "medium" ? "medium" : itemRadius.value === "pill" ? "pill" : "auto", alignFieldNames: alignFieldNames.checked, cardEnabled: cardEnabled.checked, cardRadius: cardRadius.value === "none" ? "none" : cardRadius.value === "small" ? "small" : cardRadius.value === "medium" ? "medium" : cardRadius.value === "large" ? "large" : "auto", cardPadding: cardPadding.value === "tight" ? "tight" : cardPadding.value === "loose" ? "loose" : "normal", editTrigger: editTrigger.value === "dblclick" ? "dblclick" : "click", mapService: MAP_SERVICES.includes(mapService.value as MapService) ? mapService.value : "amap", mapTileSource: MAP_TILE_SOURCES.includes(mapTileSource.value as MapTileSource) ? mapTileSource.value : "amap", layout: layout.value === "above" ? "above" : layout.value === "inline" ? "inline" : "below" });
+            const nextValue = JSON.stringify({ dateFormat: date.value, checkboxStyle: checkbox.value, includeTime: includeTime.checked, maxDisplayLength: Math.min(200, Math.max(10, Number(length.value) || 30)), showFieldNames: showFieldNames.checked, listFontSize: Math.min(24, Math.max(10, Number(fontSize.value) || 12)), listMultiColumn: multiColumn.checked, listLayoutStyle: listLayoutStyle.value === "waterfall" ? "waterfall" : "grid", listItemStyle: listItemStyle.value === "capsule" ? "capsule" : listItemStyle.value === "accent" ? "accent" : "plain", listLineHeight: lineHeight.value === "compact" ? "compact" : lineHeight.value === "relaxed" ? "relaxed" : "normal", listRowGap: rowGap.value === "tight" ? "tight" : rowGap.value === "relaxed" ? "relaxed" : "normal", listValueLines: valueLines.value === "one" ? "one" : valueLines.value === "two" ? "two" : valueLines.value === "three" ? "three" : "unlimited", listItemRadius: itemRadius.value === "none" ? "none" : itemRadius.value === "small" ? "small" : itemRadius.value === "medium" ? "medium" : itemRadius.value === "pill" ? "pill" : "auto", alignFieldNames: alignFieldNames.checked, cardEnabled: cardEnabled.checked, cardRadius: cardRadius.value === "none" ? "none" : cardRadius.value === "small" ? "small" : cardRadius.value === "medium" ? "medium" : cardRadius.value === "large" ? "large" : "auto", cardPadding: cardPadding.value === "tight" ? "tight" : cardPadding.value === "loose" ? "loose" : "normal", editTrigger: editTrigger.value === "dblclick" ? "dblclick" : "click", amapKey: amapKey.value.trim(), layout: layout.value === "above" ? "above" : layout.value === "inline" ? "inline" : "below" });
             panel.dataset.value = nextValue;
             commit(nextValue);
         });

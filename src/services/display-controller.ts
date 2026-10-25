@@ -7,7 +7,7 @@ import { reconcileBlockDatabaseBinding } from "@/domain/block-av-badge";
 import { closeInlineEdit, enableInlineEdit } from "@/inline-edit";
 import { toErrorMessage } from "@/libs/error-utils";
 import { notify } from "@/libs/notify";
-import { openMapLink } from "@/libs/map-links";
+import { openAmapLink } from "@/libs/map-links";
 import { AttributeViewTable, DisplayItem, DisplayNavigationTarget, isInlineEditableField } from "@/core/types";
 import { AttributeRenderer, RenderContext } from "@/ui/attribute-renderer";
 import { ContentPopover } from "@/ui/content-popover";
@@ -346,8 +346,7 @@ export class DisplayController {
             longitude: target.longitude,
             name: target.name,
             editable: Boolean(blockId) && this.canEditItem(item, true),
-            mapService: config.mapService,
-            tileSource: config.mapTileSource,
+            amapApiKey: config.amapApiKey,
             onSave: value => {
                 void this.saveLocation(item, blockId, value);
             }
@@ -445,7 +444,7 @@ export class DisplayController {
         }
         if (target.kind === "map") {
             // 地图外链在新窗口打开，openInSplit（Ctrl/Cmd 点击）不适用
-            openMapLink(target, this.options.getConfig().mapService);
+            openAmapLink(target);
             return;
         }
         this.options.openAsset(target.path, openInSplit);

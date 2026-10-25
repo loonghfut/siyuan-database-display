@@ -1,5 +1,4 @@
 import { CheckboxStyle, DateFormat, FIELD_TYPES, FieldType } from "@/core/types";
-import { MapService, MapTileSource } from "@/libs/map-links";
 import { parseFieldRules, ResolvedFieldRules } from "./field-rules";
 
 export interface ColorRule {
@@ -38,10 +37,6 @@ export const LIST_VALUE_LINES: Record<ListValueLines, number> = { unlimited: 0, 
 export const LIST_ITEM_RADII: Record<ListItemRadius, string | null> = { auto: null, none: "0px", small: "3px", medium: "6px", pill: "999px" };
 export const CARD_RADII: Record<CardRadius, string | null> = { auto: null, none: "0px", small: "4px", medium: "8px", large: "12px" };
 export const CARD_PADDINGS: Record<CardPadding, number> = { tight: 4, normal: 8 };
-/** 位置字段的地图服务枚举（parseEnum 用，键即合法值） */
-export const MAP_SERVICE_OPTIONS: Record<MapService, true> = { amap: true, baidu: true, google: true, geo: true };
-/** 应用内瓦片源枚举 */
-export const MAP_TILE_SOURCE_OPTIONS: Record<MapTileSource, true> = { amap: true, osm: true };
 
 export interface DisplayConfig {
     documentFields: FieldType[];
@@ -70,10 +65,8 @@ export interface DisplayConfig {
     cardPadding: CardPadding;
     editTrigger: EditTrigger;
     layout: DisplayLayout;
-    /** 位置字段点击打开的地图服务（lib/map-links） */
-    mapService: MapService;
-    /** 应用内地图的瓦片源（lib/map-links）；默认高德，国内直连可用 */
-    mapTileSource: MapTileSource;
+    /** 高德「Web 服务」Key：配置后地图选点经逆地理编码自动填充位置名称 */
+    amapApiKey: string;
     fieldColors: Record<string, string>;
     fieldBackgrounds: Record<string, string>;
     valueColors: Record<string, string | ColorRule>;
@@ -161,7 +154,7 @@ function sanitizeValueColors(value: unknown): Record<string, string | ColorRule>
 export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig {
     const fieldSettings = parseJsonObject<{ document?: string; block?: string }>(get("display-fields"), {});
     const fieldRules = parseFieldRules(get("field-rules"));
-    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; listItemStyle: ListItemStyle; listLineHeight: ListLineHeight; listRowGap: ListRowGap; listValueLines: ListValueLines; listItemRadius: ListItemRadius; alignFieldNames: boolean; cardEnabled: boolean; cardRadius: CardRadius; cardPadding: CardPadding; editTrigger: EditTrigger; mapService?: string; mapTileSource?: string; layout: DisplayLayout }>>(get("display-format"), {});
+    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; listItemStyle: ListItemStyle; listLineHeight: ListLineHeight; listRowGap: ListRowGap; listValueLines: ListValueLines; listItemRadius: ListItemRadius; alignFieldNames: boolean; cardEnabled: boolean; cardRadius: CardRadius; cardPadding: CardPadding; editTrigger: EditTrigger; amapKey?: string; layout: DisplayLayout }>>(get("display-format"), {});
     const appearance = parseJsonObject<AppearanceTheme & { light?: AppearanceTheme; dark?: AppearanceTheme }>(get("display-appearance"), {});
     const themeMode = typeof document !== "undefined" && document.documentElement.dataset.themeMode === "dark" ? "dark" : "light";
     const themeAppearance = appearance[themeMode] || appearance;
@@ -207,8 +200,7 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
         cardRadius: parseEnum(formatSettings.cardRadius, CARD_RADII, "auto"),
         cardPadding: parseEnum(formatSettings.cardPadding, CARD_PADDINGS, "normal"),
         editTrigger: formatSettings.editTrigger === "dblclick" ? "dblclick" : "click",
-        mapService: parseEnum(formatSettings.mapService, MAP_SERVICE_OPTIONS, "amap"),
-        mapTileSource: parseEnum(formatSettings.mapTileSource, MAP_TILE_SOURCE_OPTIONS, "amap"),
+        amapApiKey: typeof formatSettings.amapKey === "string" ? formatSettings.amapKey.trim() : "",
         layout: formatSettings.layout === "inline"
                     ? "inline"
                     : formatSettings.layout === "above"

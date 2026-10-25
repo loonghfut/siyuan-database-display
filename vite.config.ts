@@ -18,9 +18,17 @@ const trialConfigPath = resolve(__dirname, ".license/trial-config.json");
 const trialConfig = existsSync(trialConfigPath) ? JSON.parse(readFileSync(trialConfigPath, "utf8")) as { trialDays?: number; webhookUrl?: string } : {};
 const trialDays = Number(trialConfig.trialDays);
 const trialWebhookUrl = typeof trialConfig.webhookUrl === "string" ? trialConfig.webhookUrl.trim() : "";
+// 插件内置的高德 Web 服务 Key：让用户零配置即可用地名解析；
+// 用户在设置里填写的 Key 优先于它。未配置时插件仍可用免 Key 服务解析地名。
+const amapConfigPath = resolve(__dirname, ".license/amap-config.json");
+const amapConfig = existsSync(amapConfigPath) ? JSON.parse(readFileSync(amapConfigPath, "utf8")) as { webServiceKey?: string } : {};
+const amapWebServiceKey = typeof amapConfig.webServiceKey === "string" ? amapConfig.webServiceKey.trim() : "";
 
 if (!isDev && (!proLicensePublicKey || !trialWebhookUrl || !Number.isFinite(trialDays) || trialDays <= 0)) {
     throw new Error("Missing or invalid .license release configuration. Generate the license key and configure trial-config.json before building a release.");
+}
+if (!amapWebServiceKey) {
+    console.warn("[build] .license/amap-config.json 未配置 webServiceKey：地名解析将退回免 Key 服务（精度较低），建议配置以提供零配置的高德解析。");
 }
 
 const outputDir = isDev ? "dev" : "dist";
@@ -71,7 +79,8 @@ export default defineConfig({
         "process.env.NODE_ENV": JSON.stringify(env.NODE_ENV),
         "__DATABASE_DISPLAY_PRO_PUBLIC_KEY__": JSON.stringify(proLicensePublicKey),
         "__DATABASE_DISPLAY_TRIAL_DAYS__": JSON.stringify(trialDays),
-        "__DATABASE_DISPLAY_TRIAL_WEBHOOK_URL__": JSON.stringify(trialWebhookUrl)
+        "__DATABASE_DISPLAY_TRIAL_WEBHOOK_URL__": JSON.stringify(trialWebhookUrl),
+        "__DATABASE_DISPLAY_AMAP_KEY__": JSON.stringify(amapWebServiceKey)
     },
 
     build: {

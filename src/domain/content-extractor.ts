@@ -56,16 +56,17 @@ function hasLocationCoordinates(location: AttributeViewLocationValue): boolean {
 }
 
 /**
- * 位置字段的展示文本，与思源单元格的 UI 形态一致
- * （protyle/render/av/locationValue.ts 的 formatAVLocationText longitudeFirst 分支）：
- * 有坐标时为「名称 经度, 纬度」，无坐标时只显示名称。
+ * 位置字段的展示文本：只显示名称——坐标数字对快速浏览没有干扰性，且名称会由
+ * 地图选点的逆地理编码自动填充。无名称时回落坐标文本，保证 chip 不为空。
  */
 function locationText(location: AttributeViewLocationValue | undefined): string {
     if (!location) return "";
     const name = location.name?.trim() || "";
-    if (!hasLocationCoordinates(location)) return name;
-    const coordinates = `${formatCoordinate(location.longitude as number)}, ${formatCoordinate(location.latitude as number)}`;
-    return name ? `${name} ${coordinates}` : coordinates;
+    if (name) return name;
+    if (hasLocationCoordinates(location)) {
+        return `${formatCoordinate(location.longitude as number)}, ${formatCoordinate(location.latitude as number)}`;
+    }
+    return location.originalInput?.trim() || "";
 }
 
 /** 与官方 formatAVLocationCoordinate 一致：科学计数法展开为普通十进制，其余原样输出。 */
