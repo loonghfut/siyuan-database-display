@@ -1,6 +1,16 @@
 // 位置字段的应用内地图对话框（ui/location-map）
 // 画布用固定高度自撑内容：不依赖思源对话框 body 的内部布局（各版本样式有差异）
 
+@keyframes db-location-map-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .db-location-map {
     display: flex;
     flex-direction: column;
@@ -8,13 +18,37 @@
     padding: 12px 16px 16px;
     box-sizing: border-box;
 
-    .db-location-map__canvas {
-        height: min(380px, 50vh);
+    // 地图容器外套一层：定位徽标覆盖其上，圆角与裁剪交给外层
+    .db-location-map__map-wrap {
+        position: relative;
         flex-shrink: 0;
         border-radius: var(--b3-border-radius);
         overflow: hidden;
-        z-index: 0; // 隔离 Leaflet 的 z-index 层级，避免瓦片盖住思源全局弹层
         background-color: var(--b3-theme-surface-lighter);
+
+        .db-location-map__canvas {
+            height: min(380px, 50vh);
+            z-index: 0; // 隔离 Leaflet 的 z-index 层级，避免瓦片盖住思源全局弹层
+        }
+    }
+
+    // 定位徽标：覆盖在地图上方，不拦截地图交互
+    .db-location-map__locating {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--b3-theme-on-surface);
+        background-color: var(--b3-theme-surface);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        pointer-events: none;
+        z-index: 500; // 高于 Leaflet 控件层
     }
 
     .db-location-map__hint {
@@ -58,6 +92,27 @@
         justify-content: flex-end;
         align-items: center;
         gap: 8px;
+    }
+
+    // 加载指示：思源 #iconRefresh 图标，绕自身中心旋转
+    .db-location-map__spinner {
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+        color: var(--b3-theme-on-surface-light);
+
+        svg {
+            width: 14px;
+            height: 14px;
+            animation: db-location-map-spin 1s linear infinite;
+            transform-origin: center;
+        }
+    }
+
+    // 类选择器上的 display 会盖掉 UA 的 [hidden] { display: none }，需显式兜住
+    .db-location-map__spinner[hidden],
+    .db-location-map__locating[hidden] {
+        display: none;
     }
 }
 

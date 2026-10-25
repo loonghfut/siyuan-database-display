@@ -14,6 +14,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Dialog } from "siyuan";
 import { t } from "@/i18n";
+import { iconElement } from "@/libs/dom";
 import { notify } from "@/libs/notify";
 import { forwardGeocode, reverseGeocode } from "@/libs/amap-geocode";
 import { gcj02ToWgs84, openAmapLink, wgs84ToGcj02 } from "@/libs/map-links";
@@ -69,6 +70,14 @@ function createField(label: string, value: string, type = "text"): { row: HTMLEl
     return { row, input };
 }
 
+/** 加载指示：思源 #iconRefresh 图标 + 插件自有的旋转动画（保证绕图标自身中心旋转） */
+function createSpinner(): HTMLElement {
+    const spinner = document.createElement("span");
+    spinner.className = "db-location-map__spinner";
+    spinner.append(iconElement("iconRefresh"));
+    return spinner;
+}
+
 export function showLocationMap(options: LocationMapOptions): void {
     const initialWgsLat = typeof options.latitude === "number" ? clampCoordinate(options.latitude, -90, 90) : undefined;
     const initialWgsLng = typeof options.longitude === "number" ? clampCoordinate(options.longitude, -180, 180) : undefined;
@@ -81,13 +90,27 @@ export function showLocationMap(options: LocationMapOptions): void {
 
     const canvas = document.createElement("div");
     canvas.className = "db-location-map__canvas";
+    // 地图外套一层：定位徽标覆盖在地图上，但不拦截地图本身的交互
+    const mapWrap = document.createElement("div");
+    mapWrap.className = "db-location-map__map-wrap";
+    const locating = document.createElement("div");
+    locating.className = "db-location-map__locating";
+    locating.hidden = true;
+    const locatingText = document.createElement("span");
+    locatingText.textContent = t("locationMap.locating");
+    locating.append(createSpinner(), locatingText);
+    mapWrap.append(canvas, locating);
     const fields = document.createElement("div");
     fields.className = "db-location-map__fields";
     const footer = document.createElement("div");
     footer.className = "db-location-map__footer";
 
     const name = createField(t("locationMap.name"), options.name || "");
-    // 无坐标时输入框留空：空串必须视为无效值，不能被 Number("") 读成 0
+    // 名称旁的加载指示：解释「名称为何迟迟没有填上」
+    const nameSpinner = createSpinner();
+    nameSpinner.hidden = true;
+    nameSpinner.title = t("locationMap.resolving");
+    name.row.append(nameSpinner);
     const latitude = createField(t("locationMap.latitude"), hasInitialPosition ? String(initialWgsLat) : "", "number");
     const longitude = createField(t("locationMap.longitude"), hasInitialPosition ? String(initialWgsLng) : "", "number");
 
@@ -147,14 +170,21 @@ export function showLocationMap(options: LocationMapOptions): void {
     let nameEdited = false;
     /** 主提供方失败已降级：只提示一次 */
     let fallbackWarned = false;
+    /** 名称解析中：显示名称旁的加载指示 */
+    const setResolving = (resolving: boolean): void => {
+        nameSpinner.hidden = !resolving;
+    };
     const scheduleRegeo = (): void => {
         if (regeoStopped || regeoFails >= 2) return;
         window.clearTimeout(regeoTimer);
+        // 立刻给出反馈：请求本身还有防抖 + 网络往返，用户不该面对「点了没反应」
+        setResolving(true);
         // 固定本次请求的坐标：回调时标记若已移走，丢弃过期结果
         const lat = wgsLat;
         const lng = wgsLng;
         regeoTimer = window.setTimeout(() => {
             reverseGeocode(options.amapApiKey, lat, lng).then(outcome => {
+                setResolving(false);
                 if (disposed) return;
                 // 选点后用户又移动了标记：旧地名不能盖到新位置上
                 if (lat !== wgsLat || lng !== wgsLng) return;
@@ -179,6 +209,7 @@ export function showLocationMap(options: LocationMapOptions): void {
                     }
                 }
             }).catch(() => {
+                setResolving(false);
                 regeoFails += 1;
             });
         }, 500);
@@ -272,7 +303,7 @@ export function showLocationMap(options: LocationMapOptions): void {
         footer.append(cancel, save);
     }
 
-    root.append(canvas, fields, footer);
+    root.append(mapWrap, fields, footer);
 
     map = L.map(canvas, { zoomControl: true, attributionControl: true });
     L.tileLayer(AMAP_TILE_URL, {
@@ -299,7 +330,9 @@ export function showLocationMap(options: LocationMapOptions): void {
     // 仅有名称没有坐标时，用正向地理编码把视野聚焦到该地：只移动视野不落钉，
     // 落点仍由用户点选，避免把机器解析结果直接当成用户选点
     if (!hasInitialPosition && options.name) {
+        locating.hidden = false;
         void forwardGeocode(options.amapApiKey, options.name).then(outcome => {
+            locating.hidden = true;
             if (disposed) return;
             if (typeof outcome.latitude !== "number" || typeof outcome.longitude !== "number") return;
             map?.setView(toDisplay(outcome.latitude, outcome.longitude), FOCUS_ZOOM);

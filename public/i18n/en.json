@@ -95,6 +95,8 @@
         "title": "Location",
         "hint": "Drag the marker or click the map to adjust the location",
         "hintEmpty": "Click the map to choose a location",
+        "locating": "Locating…",
+        "resolving": "Resolving place name",
         "name": "Location name",
         "latitude": "Latitude (-90 to 90)",
         "longitude": "Longitude (-180 to 180)",
