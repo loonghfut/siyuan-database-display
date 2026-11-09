@@ -1,6 +1,6 @@
 {
   "name": "siyuan-database-display",
-  "version": "5.1.0",
+  "version": "5.4.3",
   "type": "module",
   "packageManager": "pnpm@9.6.0",
   "description": "Display database attribute values of blocks inline in SiYuan (思源笔记数据库数据展示插件)",
@@ -12,8 +12,12 @@
     "dev": "cross-env NODE_ENV=development VITE_SOURCEMAP=inline vite build --watch",
     "build": "cross-env NODE_ENV=production vite build",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "make-link": "node --no-warnings ./scripts/make_dev_link.js",
     "make-link-win": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/elevate.ps1 -scriptPath ./scripts/make_dev_link.js",
+    "check-version": "node --no-warnings ./scripts/version-sync.mjs --check",
+    "sync-version": "node --no-warnings ./scripts/version-sync.mjs --write",
     "update-version": "node --no-warnings ./scripts/update_version.js",
     "make-install": "vite build && node --no-warnings ./scripts/make_install.js",
     "generate-license-key": "node scripts/generate-license-key.mjs",
@@ -38,7 +42,8 @@
     "typescript": "^5.1.3",
     "vite": "^5.2.9",
     "vite-plugin-static-copy": "^1.0.2",
-    "vite-plugin-zip-pack": "^1.0.5"
+    "vite-plugin-zip-pack": "^1.0.5",
+    "vitest": "^2.1.9"
   },
   "dependencies": {
     "tweetnacl": "^1.0.3"

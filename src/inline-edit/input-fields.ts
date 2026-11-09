@@ -5,7 +5,7 @@ import { AttributeViewTextValue, AttributeViewWriteValue } from "../core/types";
 /**
  * 创建文本输入框
  */
-export function createTextInput(value: any, type: string): HTMLInputElement {
+export function createTextInput(value: unknown, type: string): HTMLInputElement {
     const input = document.createElement('input');
     input.type = getInputType(type);
     input.value = String(value || '');
@@ -24,7 +24,7 @@ export function createTextArea(value: unknown): HTMLTextAreaElement {
 /**
  * 创建数字输入框
  */
-export function createNumberInput(value: any): HTMLInputElement {
+export function createNumberInput(value: unknown): HTMLInputElement {
     const input = document.createElement('input');
     input.type = 'number';
     // 支持传入原始数字或对象 { content, isNotEmpty }
@@ -65,7 +65,7 @@ export function sizeTextAreaToContent(textarea: HTMLTextAreaElement): void {
 /**
  * 获取输入框的值
  */
-export function getInputValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, keyType: string): any {
+export function getInputValue(element: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, keyType: string): string | string[] | boolean | number | null {
     if (element instanceof HTMLSelectElement) {
         if (keyType === 'mSelect') {
             // 多选：返回所有选中的值数组
@@ -125,38 +125,40 @@ function toTextWriteValue(value: unknown): AttributeViewWriteValue {
     return { text: { content: String(value ?? '') } };
 }
 
-export function convertToAVValue(keyType: string, value: any): AttributeViewWriteValue {
+export function convertToAVValue(keyType: string, value: unknown): AttributeViewWriteValue {
     switch (keyType) {
         case 'text':
             return toTextWriteValue(value);
         case 'number':
             // 支持传入对象 { content, isNotEmpty } 或原始值
             if (value && typeof value === 'object') {
-                const content = Number(value.content ?? 0);
-                const isNotEmpty = Boolean(value.isNotEmpty);
-                return { number: { content: content || 0, isNotEmpty } } as any;
+                const obj = value as { content?: unknown; isNotEmpty?: unknown };
+                const content = Number(obj.content ?? 0);
+                const isNotEmpty = Boolean(obj.isNotEmpty);
+                return { number: { content: content || 0, isNotEmpty } };
             }
             const content = Number(value) || 0;
             const isNotEmpty = (value !== '' && value !== null && value !== undefined);
-            return { number: { content, isNotEmpty } } as any;
+            return { number: { content, isNotEmpty } };
         case 'date': {
             // 兼容数值与对象两种输入
             if (value && typeof value === 'object') {
-                const content = Number(value.content ?? 0) || 0;
-                const content2 = Number(value.content2 ?? 0) || 0;
+                const dateObj = value as { content?: unknown; content2?: unknown; isNotEmpty?: unknown; isNotEmpty2?: unknown; hasEndDate?: unknown; isNotTime?: unknown };
+                const content = Number(dateObj.content ?? 0) || 0;
+                const content2 = Number(dateObj.content2 ?? 0) || 0;
                 // isNotEmpty 决定内核是否保留时间：内核 UpdateAttributeViewCell 里
                 // isNotEmpty 为假时会把 content 清零，缺了这个标记写入的日期会被抹掉。
                 // 调用方未显式给出时按 content 是否为 0 推断。
-                const isNotEmpty = typeof value.isNotEmpty === 'boolean' ? value.isNotEmpty : content !== 0;
-                const isNotEmpty2 = typeof value.isNotEmpty2 === 'boolean' ? value.isNotEmpty2 : content2 !== 0;
+                const isNotEmpty = typeof dateObj.isNotEmpty === 'boolean' ? dateObj.isNotEmpty : content !== 0;
+                const isNotEmpty2 = typeof dateObj.isNotEmpty2 === 'boolean' ? dateObj.isNotEmpty2 : content2 !== 0;
                 return {
                     date: {
                         content,
                         isNotEmpty,
                         content2,
                         isNotEmpty2,
-                        hasEndDate: Boolean(value.hasEndDate),
-                        isNotTime: Boolean(value.isNotTime)
+                        hasEndDate: Boolean(dateObj.hasEndDate),
+                        isNotTime: Boolean(dateObj.isNotTime)
                     }
                 };
             }

@@ -203,6 +203,7 @@ export interface DisplayItem {
     type: FieldType;
     text: string;
     avID: string;
+    avName?: string;
     keyID: string;
     keyName: string;
     keyType: string;

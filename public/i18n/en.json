@@ -4,7 +4,9 @@
         "cancel": "Cancel",
         "clear": "-- Clear --",
         "saveSuccess": "Saved successfully",
-        "saveFailed": "Save failed: ${message}", "uploadFailed": "Upload failed", "uploadNoPath": "Upload succeeded but returned no asset path",
+        "saveFailed": "Save failed: ${message}",
+        "uploadFailed": "Upload failed",
+        "uploadNoPath": "Upload succeeded but returned no asset path",
         "missingBlockId": "Unable to get block ID",
         "missingRowId": "Unable to get row ID",
         "fetchRowIdFailed": "Failed to get row ID: ${message}",
@@ -34,9 +36,15 @@
         "valueCopied": "Value copied",
         "copyFailed": "Copy failed",
         "hideField": "Hide this field",
+        "hideFieldCurrentDb": "Hide in this database",
+        "hideFieldGlobal": "Hide globally",
         "fieldHidden": "Field hidden: ${name}",
+        "fieldHiddenCurrentDb": "Field '${name}' hidden in this database",
         "openInSplit": "Open in split view",
-        "inlineEditRequiresPro": "Inline editing is a Pro feature"
+        "openInExternalMap": "Open in AMap",
+        "openUrl": "Open link",
+        "inlineEditRequiresPro": "Inline editing is a Pro feature",
+        "database": "Database"
     },
     "slash": {
         "addTo": "Add to: ${name}",
@@ -110,16 +118,234 @@
         "navigation": "Settings categories",
         "sheetDragHandle": "Drag down to close settings",
         "panel": {
-            "displayFields": { "title": "Fields to display", "shortTitle": "Fields", "description": "Choose the fields shown on document blocks and regular blocks", "document": "Document blocks", "block": "Regular blocks" },
-            "fieldRules": { "title": "Field exceptions", "shortTitle": "Rules", "description": "Hidden fields are omitted. Forced fields retain their name when empty. Rules can be set globally or per database", "global": "All databases", "hidden": "Hide fields", "force": "Always show", "hiddenPlaceholder": "For example: Password", "forcePlaceholder": "For example: Status", "addHidden": "Add hidden field", "addForce": "Add always show", "removeRule": "Remove", "perDatabase": "Per database", "perDatabaseHint": "These rules are added on top of the rules above and only apply to the selected database.", "addDatabase": "Add database", "removeDatabase": "Remove database", "empty": "Not configured yet; every database uses the global rules only.", "unnamed": "Untitled database", "fieldPickerLoading": "Loading fields...", "fieldPickerNoResult": "This database has no fields.", "fieldPickerFailed": "Failed to load fields.", "fieldPickerAllAdded": "All fields are already added." },
-            "format": { "title": "Display format", "shortTitle": "Format", "description": "Control attribute layout, date, checkbox, and long-text presentation. List layouts support regular and container blocks with grid or horizontal compact waterfall arrangements; list items leave room for the native bullet or number marker.", "date": "Date", "checkbox": "Checkbox", "time": "Show time", "amapKey": "AMap Web-Service key (optional)", "amapKeyPlaceholder": "Leave empty to use the keyless name service", "amapKeyHint": "Place names are filled in without any configuration; adding an AMap Web-Service key upgrades the precision to house level (your key takes priority over the built-in one)", "fieldNames": "Show field names", "card": "Enable card style", "maxLength": "Maximum characters", "fontSize": "List font size (px)", "multiColumn": "Adapt to available width with multiple columns", "listLayoutStyle": "List arrangement", "listLayoutStyleOptions": { "grid": "Grid list", "waterfall": "Horizontal compact waterfall" }, "listItemStyle": "List item style", "listItemStyleOptions": { "plain": "Plain text", "capsule": "Capsule pills", "accent": "Color accent bar" }, "listLineHeight": "List line height", "listLineHeightOptions": { "compact": "Compact (1.25)", "normal": "Normal (1.35)", "relaxed": "Relaxed (1.6)" }, "listRowGap": "Row spacing", "listRowGapOptions": { "tight": "Tight (0px)", "normal": "Normal (2px)", "relaxed": "Relaxed (6px)" }, "listValueLines": "Maximum value lines", "listValueLinesOptions": { "unlimited": "Unlimited", "one": "1 line", "two": "2 lines", "three": "3 lines" }, "listItemRadius": "Pill corner radius", "listItemRadiusOptions": { "auto": "Default", "none": "Square", "small": "Small (3px)", "medium": "Medium (6px)", "pill": "Fully round" }, "alignFieldNames": "Align field names in one column", "cardHint": "Card-only options. Padding also sets the gap between the attribute list and the card edges.", "cardRadius": "Card corner radius", "cardRadiusOptions": { "auto": "Follow theme", "none": "Square", "small": "Small (4px)", "medium": "Medium (8px)", "large": "Large (12px)" }, "cardPadding": "Card padding", "cardPaddingOptions": { "tight": "Tight (4px)", "normal": "Normal (8px)" }, "listHint": "List-only options. Above and below lists track container block size changes automatically; waterfall mode packs fields by content width. Capsule and accent styles follow the field color palette.", "listProTooltip": "List layouts are a Pro Beta feature", "inlineEditProTooltip": "Inline editing is a Pro feature", "beta": "BETA", "editTrigger": "Edit trigger", "editTriggerOptions": { "click": "Single click", "dblclick": "Double click" }, "layout": "Attribute layout", "layoutOptions": { "above": "List above block", "below": "List below block", "inline": "Inline at block top-right" } },
-            "appearance": { "title": "Label appearance", "shortTitle": "Style", "description": "Choose text and background colors by field type. Value overrides are for exceptional values only", "lightTheme": "Light theme", "darkTheme": "Dark theme", "useDefaultColors": "Use default colors", "typeRules": "Field types", "textColor": "Text color", "backgroundColor": "Background color", "opacity": "Opacity", "valueRules": "Value overrides", "valueName": "Matching value", "enableBackground": "Background", "addValueRule": "Add rule", "removeValueRule": "Remove rule", "newValue": "New value" },
-            "notifications": { "title": "Notifications", "shortTitle": "Toast", "description": "Control whether the plugin shows SiYuan toast messages", "show": "Show operation notifications" },
-            "license": { "title": "Pro license", "shortTitle": "Pro", "description": "Pro is a perpetual purchase tied only to your SiYuan account ID. It works on all devices signed in to this account.", "apply": "Apply", "support": "Support", "supportTitle": "Contact support", "supportHint": "For questions about Pro licensing, contact the author via email.", "copyEmail": "Copy email", "copiedEmail": "Copied", "sendEmail": "Send email", "statusLabel": "License status", "showProBadge": "Show Pro badges", "userId": "Current SiYuan user ID", "copyUserId": "Copy ID", "copiedUserId": "Copied", "license": "Authorization code", "placeholder": "Paste the authorization code received after purchase", "verify": "Save and verify", "verifying": "Verifying...", "verifySuccess": "Pro activated", "verifyFailed": "Authorization code verification failed. Check the code and current account.", "clear": "Clear license", "cleared": "Pro license cleared", "status": { "active": "Pro active", "missing": "Not activated", "invalid": "Invalid authorization code", "wrong-user": "License belongs to another account", "unconfigured": "This build has no verification key", "unsupported": "This SiYuan version cannot verify licenses" } },
-            "trial": { "title": "Pro trial", "description": "Try Pro features free for 7 days. Each SiYuan account can activate the trial once.", "statusLabel": "Trial status", "start": "Start 7-day trial", "starting": "Starting...", "started": "7-day Pro trial activated", "failed": "The trial cannot be activated", "active": "Trial active until ${expiresAt}", "status": { "available": "7-day trial available", "used": "Trial already used", "missing-profile": "Missing SiYuan account ID or user name", "unavailable": "Trial is not configured in this build" } },
-            "fieldTypes": { "mSelect": "Multi-select", "number": "Number", "date": "Date", "text": "Text", "template": "Template", "mAsset": "File", "relation": "Relation", "rollup": "Rollup", "block": "Block", "lineNumber": "Line number", "checkbox": "Checkbox", "phone": "Phone", "url": "Link", "email": "Email", "location": "Location", "created": "Created", "updated": "Updated", "pro": "PRO", "proTooltip": "Requires Pro" },
-            "pinnedDatabases": { "title": "Slash command databases", "shortTitle": "Slash", "description": "Each database listed here becomes its own / command that adds the block to that database directly, with no further selection. The command targets the block under the cursor, or the nearest container block (list item, super block, quote, callout) wrapping it. Each database also gets a keyboard shortcut command (no default shortcut) that you can bind in Settings → Shortcuts → Plugins.", "add": "Add database", "remove": "Remove", "empty": "Not configured yet; no / command or shortcut is registered.", "unnamed": "Untitled database" },
-            "slashTimings": { "title": "Slash Command Timing", "shortTitle": "Timing", "description": "Configure erase timing for slash command text cleanup", "preEraseDelay": "Pre-erase delay (ms)", "preEraseDelayHint": "Extra wait before erasing command text, helps with slow menu animations (0-2000, 0=disabled)", "tuningTips": "Tuning Tips", "tuningTipsContent": "• Command text remains after erase → set \"Pre-erase delay\" to 200-500ms\n• Keep defaults for normal use", "restoreDefaults": "Restore Defaults" }
+            "displayFields": {
+                "title": "Fields to display",
+                "shortTitle": "Fields",
+                "description": "Choose the fields shown on document blocks and regular blocks",
+                "document": "Document blocks",
+                "block": "Regular blocks"
+            },
+            "fieldRules": {
+                "title": "Field exceptions",
+                "shortTitle": "Rules",
+                "description": "Hidden fields are omitted. Forced fields retain their name when empty. Rules can be set globally or per database",
+                "global": "All databases",
+                "hidden": "Hide fields",
+                "force": "Always show",
+                "hiddenPlaceholder": "For example: Password",
+                "forcePlaceholder": "For example: Status",
+                "addHidden": "Add hidden field",
+                "addForce": "Add always show",
+                "removeRule": "Remove",
+                "perDatabase": "Per database",
+                "perDatabaseHint": "These rules are added on top of the rules above and only apply to the selected database.",
+                "addDatabase": "Add database",
+                "removeDatabase": "Remove database",
+                "empty": "Not configured yet; every database uses the global rules only.",
+                "unnamed": "Untitled database",
+                "fieldPickerLoading": "Loading fields...",
+                "fieldPickerNoResult": "This database has no fields.",
+                "fieldPickerFailed": "Failed to load fields.",
+                "fieldPickerAllAdded": "All fields are already added."
+            },
+            "format": {
+                "title": "Display format",
+                "shortTitle": "Format",
+                "description": "Control attribute layout, date, checkbox, and long-text presentation. List layouts support regular and container blocks with grid or horizontal compact waterfall arrangements; list items leave room for the native bullet or number marker.",
+                "date": "Date",
+                "checkbox": "Checkbox",
+                "time": "Show time",
+                "amapKey": "AMap Web-Service key (optional)",
+                "amapKeyPlaceholder": "Leave empty to use the keyless name service",
+                "amapKeyHint": "Place names are filled in without any configuration; adding an AMap Web-Service key upgrades the precision to house level (your key takes priority over the built-in one)",
+                "fieldNames": "Show field names",
+                "card": "Enable card style",
+                "maxLength": "Maximum characters",
+                "fontSize": "List font size (px)",
+                "multiColumn": "Adapt to available width with multiple columns",
+                "listLayoutStyle": "List arrangement",
+                "listLayoutStyleOptions": {
+                    "grid": "Grid list",
+                    "waterfall": "Horizontal compact waterfall"
+                },
+                "listItemStyle": "List item style",
+                "listItemStyleOptions": {
+                    "plain": "Plain text",
+                    "capsule": "Capsule pills",
+                    "accent": "Color accent bar"
+                },
+                "listLineHeight": "List line height",
+                "listLineHeightOptions": {
+                    "compact": "Compact (1.25)",
+                    "normal": "Normal (1.35)",
+                    "relaxed": "Relaxed (1.6)"
+                },
+                "listRowGap": "Row spacing",
+                "listRowGapOptions": {
+                    "tight": "Tight (0px)",
+                    "normal": "Normal (2px)",
+                    "relaxed": "Relaxed (6px)"
+                },
+                "listValueLines": "Maximum value lines",
+                "listValueLinesOptions": {
+                    "unlimited": "Unlimited",
+                    "one": "1 line",
+                    "two": "2 lines",
+                    "three": "3 lines"
+                },
+                "listItemRadius": "Pill corner radius",
+                "listItemRadiusOptions": {
+                    "auto": "Default",
+                    "none": "Square",
+                    "small": "Small (3px)",
+                    "medium": "Medium (6px)",
+                    "pill": "Fully round"
+                },
+                "alignFieldNames": "Align field names in one column",
+                "cardHint": "Card-only options. Padding also sets the gap between the attribute list and the card edges.",
+                "cardRadius": "Card corner radius",
+                "cardRadiusOptions": {
+                    "auto": "Follow theme",
+                    "none": "Square",
+                    "small": "Small (4px)",
+                    "medium": "Medium (8px)",
+                    "large": "Large (12px)"
+                },
+                "cardPadding": "Card padding",
+                "cardPaddingOptions": {
+                    "tight": "Tight (4px)",
+                    "normal": "Normal (8px)"
+                },
+                "listHint": "List-only options. Above and below lists track container block size changes automatically; waterfall mode packs fields by content width. Capsule and accent styles follow the field color palette.",
+                "listProTooltip": "List layouts are a Pro Beta feature",
+                "inlineEditProTooltip": "Inline editing is a Pro feature",
+                "beta": "BETA",
+                "editTrigger": "Edit trigger",
+                "editTriggerOptions": {
+                    "click": "Single click",
+                    "dblclick": "Double click"
+                },
+                "layout": "Attribute layout",
+                "layoutOptions": {
+                    "above": "List above block",
+                    "below": "List below block",
+                    "inline": "Inline at block top-right"
+                },
+                "showDatabaseGroups": "Group fields by database"
+            },
+            "appearance": {
+                "title": "Label appearance",
+                "shortTitle": "Style",
+                "description": "Choose text and background colors by field type. Value overrides are for exceptional values only",
+                "lightTheme": "Light theme",
+                "darkTheme": "Dark theme",
+                "useDefaultColors": "Use default colors",
+                "typeRules": "Field types",
+                "textColor": "Text color",
+                "backgroundColor": "Background color",
+                "opacity": "Opacity",
+                "valueRules": "Value overrides",
+                "valueName": "Matching value",
+                "enableBackground": "Background",
+                "addValueRule": "Add rule",
+                "removeValueRule": "Remove rule",
+                "newValue": "New value"
+            },
+            "notifications": {
+                "title": "Notifications",
+                "shortTitle": "Toast",
+                "description": "Control whether the plugin shows SiYuan toast messages",
+                "show": "Show operation notifications"
+            },
+            "license": {
+                "title": "Pro license",
+                "shortTitle": "Pro",
+                "description": "Pro is a perpetual purchase tied only to your SiYuan account ID. It works on all devices signed in to this account.",
+                "apply": "Apply",
+                "support": "Support",
+                "supportTitle": "Contact support",
+                "supportHint": "For questions about Pro licensing, contact the author via email.",
+                "copyEmail": "Copy email",
+                "copiedEmail": "Copied",
+                "sendEmail": "Send email",
+                "statusLabel": "License status",
+                "showProBadge": "Show Pro badges",
+                "userId": "Current SiYuan user ID",
+                "copyUserId": "Copy ID",
+                "copiedUserId": "Copied",
+                "license": "Authorization code",
+                "placeholder": "Paste the authorization code received after purchase",
+                "verify": "Save and verify",
+                "verifying": "Verifying...",
+                "verifySuccess": "Pro activated",
+                "verifyFailed": "Authorization code verification failed. Check the code and current account.",
+                "clear": "Clear license",
+                "cleared": "Pro license cleared",
+                "status": {
+                    "active": "Pro active",
+                    "missing": "Not activated",
+                    "invalid": "Invalid authorization code",
+                    "wrong-user": "License belongs to another account",
+                    "unconfigured": "This build has no verification key",
+                    "unsupported": "This SiYuan version cannot verify licenses"
+                }
+            },
+            "trial": {
+                "title": "Pro trial",
+                "description": "Try Pro features free for 7 days. Each SiYuan account can activate the trial once.",
+                "statusLabel": "Trial status",
+                "start": "Start 7-day trial",
+                "starting": "Starting...",
+                "started": "7-day Pro trial activated",
+                "failed": "The trial cannot be activated",
+                "active": "Trial active until ${expiresAt}",
+                "status": {
+                    "available": "7-day trial available",
+                    "used": "Trial already used",
+                    "missing-profile": "Missing SiYuan account ID or user name",
+                    "unavailable": "Trial is not configured in this build"
+                }
+            },
+            "fieldTypes": {
+                "mSelect": "Multi-select",
+                "number": "Number",
+                "date": "Date",
+                "text": "Text",
+                "template": "Template",
+                "mAsset": "File",
+                "relation": "Relation",
+                "rollup": "Rollup",
+                "block": "Block",
+                "lineNumber": "Line number",
+                "checkbox": "Checkbox",
+                "phone": "Phone",
+                "url": "Link",
+                "email": "Email",
+                "location": "Location",
+                "created": "Created",
+                "updated": "Updated",
+                "pro": "PRO",
+                "proTooltip": "Requires Pro"
+            },
+            "pinnedDatabases": {
+                "title": "Slash command databases",
+                "shortTitle": "Slash",
+                "description": "Each database listed here becomes its own / command that adds the block to that database directly, with no further selection. The command targets the block under the cursor, or the nearest container block (list item, super block, quote, callout) wrapping it. Each database also gets a keyboard shortcut command (no default shortcut) that you can bind in Settings → Shortcuts → Plugins.",
+                "add": "Add database",
+                "remove": "Remove",
+                "empty": "Not configured yet; no / command or shortcut is registered.",
+                "unnamed": "Untitled database"
+            },
+            "slashTimings": {
+                "title": "Slash Command Timing",
+                "shortTitle": "Timing",
+                "description": "Configure erase timing for slash command text cleanup",
+                "preEraseDelay": "Pre-erase delay (ms)",
+                "preEraseDelayHint": "Extra wait before erasing command text, helps with slow menu animations (0-2000, 0=disabled)",
+                "tuningTips": "Tuning Tips",
+                "tuningTipsContent": "• Command text remains after erase → set \"Pre-erase delay\" to 200-500ms\n• Keep defaults for normal use",
+                "restoreDefaults": "Restore Defaults"
+            }
         },
         "disShow": {
             "title": "Document block fields",

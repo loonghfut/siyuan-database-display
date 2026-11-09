@@ -70,8 +70,8 @@ export function addPinnedDatabasesPanel(addPanel: AddPanel, text: SettingsPanelT
                 target: add,
                 event,
                 pinned: [],
-                // 已添加的数据库不再列出，避免重复添加同一项
-                exclude: databases.map(database => database.avID),
+                // 已添加完整数据库的不再列出；仅添加了某视图的库仍可列出以添加其他视图
+                exclude: databases.filter(database => !database.viewID).map(database => database.avID),
                 text: {
                     placeholder: t("slash.pickerPlaceholder"),
                     searchAll: t("slash.searchAll"),
@@ -80,13 +80,15 @@ export function addPinnedDatabasesPanel(addPanel: AddPanel, text: SettingsPanelT
                     loading: t("slash.loading"),
                     searchFailed: t("slash.searchFailed")
                 },
-                search: keyword => attributeViewRepository.searchAttributeView(keyword),
+                search: keyword => attributeViewRepository.searchAttributeView(keyword, { includeViewMatches: true }),
                 onPick: (pick): void => {
-                    if (databases.some(item => item.avID === pick.avID)) return;
+                    const pickKey = pick.viewID ? `${pick.avID}:${pick.viewID}` : pick.avID;
+                    if (databases.some(item => (item.viewID ? `${item.avID}:${item.viewID}` : item.avID) === pickKey)) return;
                     const database: PinnedDatabase = {
                         avID: pick.avID,
                         name: pick.name,
-                        ...(pick.blockID ? { blockID: pick.blockID } : {})
+                        ...(pick.blockID ? { blockID: pick.blockID } : {}),
+                        ...(pick.viewID ? { viewID: pick.viewID } : {})
                     };
                     databases.push(database);
                     render();

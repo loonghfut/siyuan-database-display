@@ -70,6 +70,8 @@ export interface DisplayConfig {
     fieldColors: Record<string, string>;
     fieldBackgrounds: Record<string, string>;
     valueColors: Record<string, string | ColorRule>;
+    /** 列表模式下是否按数据库分组显示字段（开启后相邻字段按数据库加分隔行） */
+    showDatabaseGroups: boolean;
 }
 
 const fieldTypeSet = new Set<string>(FIELD_TYPES);
@@ -154,7 +156,7 @@ function sanitizeValueColors(value: unknown): Record<string, string | ColorRule>
 export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig {
     const fieldSettings = parseJsonObject<{ document?: string; block?: string }>(get("display-fields"), {});
     const fieldRules = parseFieldRules(get("field-rules"));
-    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; listItemStyle: ListItemStyle; listLineHeight: ListLineHeight; listRowGap: ListRowGap; listValueLines: ListValueLines; listItemRadius: ListItemRadius; alignFieldNames: boolean; cardEnabled: boolean; cardRadius: CardRadius; cardPadding: CardPadding; editTrigger: EditTrigger; amapKey?: string; layout: DisplayLayout }>>(get("display-format"), {});
+    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; listItemStyle: ListItemStyle; listLineHeight: ListLineHeight; listRowGap: ListRowGap; listValueLines: ListValueLines; listItemRadius: ListItemRadius; alignFieldNames: boolean; cardEnabled: boolean; cardRadius: CardRadius; cardPadding: CardPadding; editTrigger: EditTrigger; amapKey?: string; layout: DisplayLayout; showDatabaseGroups: boolean }>>(get("display-format"), {});
     const appearance = parseJsonObject<AppearanceTheme & { light?: AppearanceTheme; dark?: AppearanceTheme }>(get("display-appearance"), {});
     const themeMode = typeof document !== "undefined" && document.documentElement.dataset.themeMode === "dark" ? "dark" : "light";
     const themeAppearance = appearance[themeMode] || appearance;
@@ -210,7 +212,8 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
         // 其余类型回落默认值，避免胶囊底色/字段文字色在未配置的字段上整组丢失
         fieldColors: { ...sanitizeColorMap(get("field-color-map"), defaultColors), ...colors },
         fieldBackgrounds: { ...sanitizeColorMap(get("field-bg-color-map"), defaultBackgrounds), ...backgrounds },
-        valueColors: Object.keys(themeAppearance.values || {}).length ? sanitizeValueColors(JSON.stringify(themeAppearance.values)) : sanitizeValueColors(get("field-value-color-map"))
+        valueColors: Object.keys(themeAppearance.values || {}).length ? sanitizeValueColors(JSON.stringify(themeAppearance.values)) : sanitizeValueColors(get("field-value-color-map")),
+        showDatabaseGroups: formatSettings.showDatabaseGroups === true
     };
 }
 

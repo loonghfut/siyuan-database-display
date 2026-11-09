@@ -39,3 +39,10 @@ jobs:
             echo "$errors"
             exit 1
           fi
+
+      # plugin.json 是版本号唯一来源，package.json 必须同步；不一致时直接失败
+      - name: Check version consistency
+        run: pnpm run check-version
+
+      - name: Run unit tests
+        run: pnpm test

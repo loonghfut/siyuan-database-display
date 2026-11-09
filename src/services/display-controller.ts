@@ -32,7 +32,7 @@ export interface DisplayControllerOptions {
     isFeatureEnabled: (feature: ProFeature) => boolean;
     openBlock: (blockId: string, openInSplit: boolean) => void;
     openAsset: (path: string, openInSplit: boolean) => void;
-    hideField: (fieldName: string) => void;
+    hideField: (fieldName: string, avID?: string) => void;
 }
 
 export class DisplayController {
@@ -318,8 +318,10 @@ export class DisplayController {
         openChipMenu(item, event, {
             canEdit: this.canEditItem(item),
             onEdit: () => this.edit(this.blockIdFor(element), item, element),
-            onHideField: target => this.options.hideField(target.keyName),
-            onNavigate: target => this.navigate(target, true)
+            onHideField: (target, currentDbOnly) =>
+                this.options.hideField(target.keyName, currentDbOnly ? target.avID : undefined),
+            onNavigate: target => this.navigate(target, true),
+            onOpenLocation: target => this.openLocation(target, element)
         });
     }
 

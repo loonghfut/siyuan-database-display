@@ -248,3 +248,45 @@
     outline: 2px solid var(--b3-theme-primary);
     outline-offset: 1px;
 }
+
+/* 多数据库视觉分组标题 */
+.db-display__db-group-header {
+    grid-column: 1 / -1;
+    width: 100%;
+    flex-basis: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    margin-bottom: 2px;
+    padding-top: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 14px;
+    color: var(--b3-theme-on-surface-light);
+    opacity: 0.85;
+    user-select: none;
+    border-top: 1px dashed color-mix(in srgb, var(--b3-theme-on-surface) 15%, transparent);
+
+    &:first-child {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+    }
+
+    .db-display__db-group-icon {
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+        color: var(--b3-theme-primary);
+        opacity: 0.85;
+    }
+
+    .db-display__db-group-title {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        letter-spacing: 0.2px;
+    }
+}
+

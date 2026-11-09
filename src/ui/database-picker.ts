@@ -12,6 +12,7 @@ export interface DatabasePick {
     avID: string;
     name: string;
     blockID?: string;
+    viewID?: string;
 }
 
 export interface DatabasePickerText {
@@ -50,14 +51,19 @@ interface PickEntry {
     name: string;
     blockID?: string;
     hPath?: string;
+    viewID?: string;
+    isView?: boolean;
 }
 
 function entryHTML(entry: PickEntry): string {
     const meta = entry.hPath
         ? `<div class="b3-list-item__meta b3-list-item__showall">${escapeHtml(entry.hPath)}</div>`
         : "";
-    return `<div class="b3-list-item b3-list-item--narrow" data-av-id="${escapeHtml(entry.avID)}" data-block-id="${escapeHtml(entry.blockID || "")}" data-name="${escapeHtml(entry.name)}">
-    <svg class="b3-list-item__graphic"><use xlink:href="#iconDatabase"></use></svg>
+    const viewAttr = entry.viewID ? ` data-view-id="${escapeHtml(entry.viewID)}"` : "";
+    const indentStyle = entry.isView ? ' style="padding-left: 28px;"' : "";
+    const iconName = entry.isView ? "iconTable" : "iconDatabase";
+    return `<div class="b3-list-item b3-list-item--narrow" data-av-id="${escapeHtml(entry.avID)}" data-block-id="${escapeHtml(entry.blockID || "")}" data-name="${escapeHtml(entry.name)}"${viewAttr}${indentStyle}>
+    <svg class="b3-list-item__graphic"><use xlink:href="#${iconName}"></use></svg>
     <div class="b3-list-item--two fn__flex-1">
         <div class="b3-list-item__first"><span class="b3-list-item__text">${escapeHtml(entry.name)}</span></div>
         ${meta}
@@ -191,12 +197,30 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
                         listElement.innerHTML = emptyListHTML(results.length > 0);
                         return;
                     }
-                    listElement.innerHTML = visible.map(item => entryHTML({
-                        avID: item.avID,
-                        name: item.avName || item.avID,
-                        blockID: item.blockID,
-                        hPath: item.hPath
-                    })).join("");
+                    const htmlParts: string[] = [];
+                    for (const item of visible) {
+                        htmlParts.push(entryHTML({
+                            avID: item.avID,
+                            name: item.avName || item.avID,
+                            blockID: item.blockID,
+                            hPath: item.hPath
+                        }));
+                        if (item.children?.length) {
+                            for (const child of item.children) {
+                                if (child.viewID) {
+                                    const viewName = child.viewName || child.viewID;
+                                    htmlParts.push(entryHTML({
+                                        avID: item.avID,
+                                        name: `${item.avName || item.avID} (${viewName})`,
+                                        blockID: item.blockID,
+                                        viewID: child.viewID,
+                                        isView: true
+                                    }));
+                                }
+                            }
+                        }
+                    }
+                    listElement.innerHTML = htmlParts.join("");
                     focusFirst();
                 } catch {
                     if (sequence !== requestSequence) return;
@@ -230,7 +254,8 @@ export function openDatabasePicker(options: DatabasePickerOptions): void {
                 options.onPick({
                     avID,
                     name: target.dataset.name || avID,
-                    ...(target.dataset.blockId ? { blockID: target.dataset.blockId } : {})
+                    ...(target.dataset.blockId ? { blockID: target.dataset.blockId } : {}),
+                    ...(target.dataset.viewId ? { viewID: target.dataset.viewId } : {})
                 });
                 // 走的是明确的关闭路径，直接注销监听，不必等下一次 resize 判定失效
                 disposeResize();

@@ -49,7 +49,7 @@ export default class DatabaseDisplay extends Plugin {
             isFeatureEnabled: feature => this.proAccess.isFeatureEnabled(feature),
             openBlock: (blockId, openInSplit) => this.openBlock(blockId, openInSplit),
             openAsset: (path, openInSplit) => this.openAsset(path, openInSplit),
-            hideField: fieldName => this.hideField(fieldName)
+            hideField: (fieldName, avID) => this.hideField(fieldName, avID)
         });
         this.eventBus.on("switch-protyle", this.onSwitchProtyle);
         this.eventBus.on("loaded-protyle-dynamic", this.onLoaded);
@@ -150,18 +150,32 @@ export default class DatabaseDisplay extends Plugin {
     }
 
     /**
-     * 右键菜单"隐藏此字段"：写入全局隐藏规则，对所有数据库生效。
-     * 只想隐藏某个数据库的字段时，在设置面板的「按数据库」里单独配置。
+     * 右键菜单"隐藏此字段"：支持按当前数据库或全局生效。
      */
-    private hideField(fieldName: string): void {
+    private hideField(fieldName: string, avID?: string): void {
         if (!fieldName) return;
         const rules = parseFieldRules(this.settings.get(SETTING_KEY_FIELD_RULES));
-        const hidden = new Set([...rules.global.hidden, ...parseCsv(this.settings.get("hidden-fields")), fieldName]);
-        rules.global.hidden = [...hidden];
-        void this.settings.setAndSave(SETTING_KEY_FIELD_RULES, serializeFieldRules(rules)).then(() => {
-            notify(t("common.fieldHidden", { name: fieldName }), 3000, "info");
-            this.controller?.scheduleRefresh(true);
-        });
+        if (avID) {
+            let targetDb = rules.databases.find(db => db.avID === avID);
+            if (!targetDb) {
+                targetDb = { avID, hidden: [], force: [] };
+                rules.databases.push(targetDb);
+            }
+            if (!targetDb.hidden.includes(fieldName)) {
+                targetDb.hidden.push(fieldName);
+            }
+            void this.settings.setAndSave(SETTING_KEY_FIELD_RULES, serializeFieldRules(rules)).then(() => {
+                notify(t("common.fieldHiddenCurrentDb", { name: fieldName }), 3000, "info");
+                this.controller?.scheduleRefresh(true);
+            });
+        } else {
+            const hidden = new Set([...rules.global.hidden, ...parseCsv(this.settings.get("hidden-fields")), fieldName]);
+            rules.global.hidden = [...hidden];
+            void this.settings.setAndSave(SETTING_KEY_FIELD_RULES, serializeFieldRules(rules)).then(() => {
+                notify(t("common.fieldHidden", { name: fieldName }), 3000, "info");
+                this.controller?.scheduleRefresh(true);
+            });
+        }
     }
 
     private openBlock(blockId: string, openInSplit: boolean): void {

@@ -321,7 +321,7 @@ function createDisplayItem(
     const item: DisplayItem = {
         type,
         text,
-        avID: table.avID,
+        avID: table.avID, avName: table.avName,
         keyID: key.id,
         keyName: key.name,
         keyType: key.type,
@@ -392,7 +392,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                     result.push({
                         type: "mSelect",
                         text: selected.join("、"),
-                        avID: table.avID,
+                        avID: table.avID, avName: table.avName,
                         keyID: key.id,
                         keyName: key.name,
                         keyType: key.type,
@@ -401,7 +401,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                         segments
                     });
                 } else if (rules.force.has(key.name)) {
-                    result.push({ type: "mSelect", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: [], selectOptions: key.options });
+                    result.push({ type: "mSelect", text: key.name, avID: table.avID, avName: table.avName, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: [], selectOptions: key.options });
                 }
                 continue;
             }
@@ -414,7 +414,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                         result.push({
                             type: "relation",
                             text: entry.text,
-                            avID: table.avID,
+                            avID: table.avID, avName: table.avName,
                             keyID: key.id,
                             keyName: key.name,
                             keyType: key.type,
@@ -428,7 +428,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                     result.push({
                         type: "relation",
                         text: key.name,
-                        avID: table.avID,
+                        avID: table.avID, avName: table.avName,
                         keyID: key.id,
                         keyName: key.name,
                         keyType: key.type,
@@ -451,7 +451,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                             result.push({
                                 type: "mAsset",
                                 text,
-                                avID: table.avID,
+                                avID: table.avID, avName: table.avName,
                                 keyID: key.id,
                                 keyName: key.name,
                                 keyType: key.type,
@@ -463,7 +463,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                     }
                 }
                 if (!shown && rules.force.has(key.name) && showTypes.has("mAsset")) {
-                    result.push({ type: "mAsset", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null });
+                    result.push({ type: "mAsset", text: key.name, avID: table.avID, avName: table.avName, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null });
                 }
                 continue;
             }
@@ -474,14 +474,14 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
                     result.push({
                         type: "lineNumber",
                         text: String(value),
-                        avID: table.avID,
+                        avID: table.avID, avName: table.avName,
                         keyID: key.id,
                         keyName: key.name,
                         keyType: key.type,
                         rawValue: value
                     });
                 } else if (rules.force.has(key.name) && showTypes.has("lineNumber")) {
-                    result.push({ type: "lineNumber", text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null });
+                    result.push({ type: "lineNumber", text: key.name, avID: table.avID, avName: table.avName, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null });
                 }
                 continue;
             }
@@ -498,7 +498,7 @@ export function extractDisplayItems(tables: AttributeViewTable[], types: FieldTy
             if (!shown && rules.force.has(key.name)) {
                 const type = displayType(key.type, showTypes);
                 if (type) {
-                    const item: DisplayItem = { type, text: key.name, avID: table.avID, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null, template: key.template, selectOptions: key.options, relation: key.relation };
+                    const item: DisplayItem = { type, text: key.name, avID: table.avID, avName: table.avName, keyID: key.id, keyName: key.name, keyType: key.type, rawValue: null, template: key.template, selectOptions: key.options, relation: key.relation };
                     // 强制显示的空位置字段同样给地图入口，用户可点开地图补录坐标
                     if (type === "location") item.navigation = locationTarget(undefined);
                     result.push(item);

@@ -10,7 +10,7 @@
 
 <p>
   <a href="https://github.com/loonghfut/siyuan-database-display"><img src="https://img.shields.io/badge/GitHub-loonghfut%2Fsiyuan--database--display-181717?logo=github" alt="GitHub"></a>
-  <img src="https://img.shields.io/badge/思源笔记-%3E%3D%203.7.0-5b8def" alt="思源笔记版本要求">
+  <img src="https://img.shields.io/badge/思源笔记-%3E%3D%203.8.3-5b8def" alt="思源笔记版本要求">
   <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License">
 </p>
 

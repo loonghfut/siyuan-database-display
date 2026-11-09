@@ -16,7 +16,30 @@ import {
 } from "./field-editors";
 import { closeOpenPanel, closeOptionColorPalette, clearInlineEditPanels } from "./popup";
 import type { App } from "siyuan";
-import { AttributeViewRelation } from "../core/types";
+import {
+    AssetReference,
+    AttributeViewRelation,
+    AttributeViewTextValue,
+    RelationValue,
+    SelectOption,
+} from "../core/types";
+
+/**
+ * 各字段类型的 currentValue 类型联合。
+ * rawValue 由 content-extractor 按字段类型提取，各路径详见 rawValue() 函数。
+ */
+export type InlineEditCurrentValue =
+    | AttributeViewTextValue          // text
+    | { content: number; isNotEmpty?: boolean }  // number
+    | number                          // raw number
+    | { content: number; content2?: number | null; hasEndDate?: boolean; isNotEmpty?: boolean; isNotTime?: boolean }  // date
+    | string[]                        // mSelect / select（已选选项名数组）
+    | boolean                         // checkbox
+    | RelationValue                   // relation
+    | AssetReference[]                // mAsset
+    | string                          // url / email / phone / template / popup
+    | { content?: string }            // block / rollup
+    | null;
 
 export interface InlineEditOptions {
     element: HTMLElement;
@@ -26,16 +49,18 @@ export interface InlineEditOptions {
     keyID: string;
     keyName: string;
     keyType: string;
-    currentValue: any;
+    currentValue: InlineEditCurrentValue;
     template?: string;
-    selectOptions?: any[];  // 添加选择选项（用于 select 和 mSelect）
+    /** 单选/多选列的候选选项（select / mSelect 字段使用）。 */
+    selectOptions?: SelectOption[];
     relation?: AttributeViewRelation;
     /**
      * 构造 Protyle 编辑器实例需要的 App（文本字段的 Protyle Lite 面板用）。
      * 缺省时编辑器回落到 window.siyuan.ws.app。
      */
     app?: App;
-    onSave?: (newValue: any) => void;
+    /** 保存后的回调；newValue 类型与字段类型对应，编辑器层负责保证正确性。 */
+    onSave?: (newValue: InlineEditCurrentValue) => void;
     onCancel?: () => void;
 }
 

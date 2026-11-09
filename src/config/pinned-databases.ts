@@ -30,8 +30,10 @@ export function parsePinnedDatabases(value: unknown): PinnedDatabase[] {
     for (const entry of parsed) {
         if (!entry || typeof entry !== "object") continue;
         const { avID, name, blockID, viewID } = entry as Record<string, unknown>;
-        if (typeof avID !== "string" || !avID || seen.has(avID)) continue;
-        seen.add(avID);
+        if (typeof avID !== "string" || !avID) continue;
+        const key = typeof viewID === "string" && viewID ? `${avID}:${viewID}` : avID;
+        if (seen.has(key)) continue;
+        seen.add(key);
         databases.push({
             avID,
             name: typeof name === "string" && name ? name : avID,

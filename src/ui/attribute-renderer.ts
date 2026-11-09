@@ -310,8 +310,17 @@ export class AttributeRenderer {
 
     private createItems(items: DisplayItem[], context: RenderContext): HTMLElement[] {
         const elements: HTMLElement[] = [];
+        const avIds = new Set(items.map(it => it.avID).filter(Boolean));
+        const shouldGroup = context.config.showDatabaseGroups && avIds.size > 1;
+        let lastAvID: string | undefined;
+
         for (let index = 0; index < items.length;) {
             const item = items[index];
+            if (shouldGroup && item.avID !== lastAvID) {
+                lastAvID = item.avID;
+                const dbName = item.avName || t("common.database", undefined, "Database");
+                elements.push(this.createDatabaseGroupHeader(dbName));
+            }
             if (item.type === "relation") {
                 const group = [item];
                 index++;
@@ -336,6 +345,18 @@ export class AttributeRenderer {
             index++;
         }
         return elements;
+    }
+
+    private createDatabaseGroupHeader(name: string): HTMLElement {
+        const header = document.createElement("div");
+        header.className = "db-display__db-group-header";
+        const icon = iconElement("iconDatabase");
+        icon.classList.add("db-display__db-group-icon");
+        const title = document.createElement("span");
+        title.className = "db-display__db-group-title";
+        title.textContent = name;
+        header.append(icon, title);
+        return header;
     }
 
     private belongsToRelationGroup(candidate: DisplayItem, item: DisplayItem): boolean {
@@ -812,7 +833,8 @@ export class AttributeRenderer {
             layout: config.layout,
             colors: config.fieldColors,
             backgrounds: config.fieldBackgrounds,
-            values: config.valueColors
+            values: config.valueColors,
+            showDatabaseGroups: config.showDatabaseGroups
         };
     }
 }

@@ -49,7 +49,7 @@ export function createDatabaseSlashCommands(options: DatabaseSlashOptions): Data
     return options.databases.map(database => {
         const label = t("slash.addTo", { name: database.name });
         return {
-            id: `addToDatabase-${database.avID}`,
+            id: databaseCommandKey(database.avID, database.viewID),
             // 同时匹配命令全名与数据库名，输入任一即可命中
             filter: [label, database.name],
             html: itemHTML(label),
@@ -76,8 +76,8 @@ export function createDatabaseCommands(options: DatabaseSlashOptions): ICommand[
         return [];
     }
     return options.databases.map(database => ({
-        // langKey 同时作为快捷键设置的持久化键，用 avID 保证数据库改名后仍复用用户配置
-        langKey: databaseCommandKey(database.avID),
+        // langKey 同时作为快捷键设置的持久化键，用 avID 与可选 viewID 保证数据库改名后仍复用用户配置
+        langKey: databaseCommandKey(database.avID, database.viewID),
         langText: t("slash.addTo", { name: database.name }),
         hotkey: "",
         editorCallback: (protyle: IProtyle) => {
@@ -95,8 +95,8 @@ export function isDatabaseCommandKey(langKey: string): boolean {
 }
 
 /** 快捷键命令在「设置 → 快捷键」中的键名，与斜杠命令 id 保持一致。 */
-export function databaseCommandKey(avID: string): string {
-    return `${DATABASE_COMMAND_KEY_PREFIX}${avID}`;
+export function databaseCommandKey(avID: string, viewID?: string): string {
+    return viewID ? `${DATABASE_COMMAND_KEY_PREFIX}${avID}-${viewID}` : `${DATABASE_COMMAND_KEY_PREFIX}${avID}`;
 }
 
 /** 尚未配置常用数据库时留一个引导项，避免用户以为命令没生效。 */

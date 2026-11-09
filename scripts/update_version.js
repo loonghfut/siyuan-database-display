@@ -1,141 +1,111 @@
-// const fs = require('fs');
-// const path = require('path');
-// const readline = require('readline');
-import fs from 'node:fs';
-import path from 'node:path';
-import readline from 'node:readline';
+// 版本号递增脚本。
+// plugin.json 是唯一版本来源：递增基于它的当前版本，并同步写入 package.json，避免两者再次漂移。
+//
+// 用法：
+//   pnpm update-version          交互式选择 patch / minor / major / 手动输入
+//   pnpm update-version patch    非交互，直接递增补丁号
+//   pnpm update-version 5.4.4    非交互，指定版本号
+import readline from "node:readline";
+import {
+    PLUGIN_JSON_PATH,
+    PACKAGE_JSON_PATH,
+    bumpVersion,
+    collectVersionProblems,
+    isValidVersion,
+    readVersions,
+    writeJson,
+} from "./version-utils.mjs";
 
-// Utility to read JSON file
-function readJsonFile(filePath) {
-    return new Promise((resolve, reject) => {
-        fs.readFile(filePath, 'utf8', (err, data) => {
-            if (err) return reject(err);
-            try {
-                const jsonData = JSON.parse(data);
-                resolve(jsonData);
-            } catch (e) {
-                reject(e);
-            }
-        });
-    });
-}
-
-// Utility to write JSON file
-function writeJsonFile(filePath, jsonData) {
-    return new Promise((resolve, reject) => {
-        fs.writeFile(filePath, JSON.stringify(jsonData, null, 2), 'utf8', (err) => {
-            if (err) return reject(err);
-            resolve();
-        });
-    });
-}
-
-// Utility to prompt the user for input
 function promptUser(query) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     return new Promise((resolve) => rl.question(query, (answer) => {
         rl.close();
-        resolve(answer);
+        resolve(answer.trim());
     }));
 }
 
-// Function to parse the version string
-function parseVersion(version) {
-    const [major, minor, patch] = version.split('.').map(Number);
-    return { major, minor, patch };
-}
+async function resolveNewVersion(currentVersion) {
+    const arg = process.argv[2]?.trim();
 
-// Function to auto-increment version parts
-function incrementVersion(version, type) {
-    let { major, minor, patch } = parseVersion(version);
-
-    switch (type) {
-        case 'major':
-            major++;
-            minor = 0;
-            patch = 0;
-            break;
-        case 'minor':
-            minor++;
-            patch = 0;
-            break;
-        case 'patch':
-            patch++;
-            break;
-        default:
-            break;
+    // 非交互模式：支持 patch / minor / major / 显式版本号
+    if (arg) {
+        if (["patch", "minor", "major"].includes(arg)) return bumpVersion(currentVersion, arg);
+        if (isValidVersion(arg)) return arg;
+        throw new Error(`无法识别的参数 "${arg}"，可用值：patch | minor | major | x.y.z`);
     }
 
-    return `${major}.${minor}.${patch}`;
-}
+    const newPatchVersion = bumpVersion(currentVersion, "patch");
+    const newMinorVersion = bumpVersion(currentVersion, "minor");
+    const newMajorVersion = bumpVersion(currentVersion, "major");
 
-// Main script
-(async function () {
-    try {
-        const pluginJsonPath = path.join(process.cwd(), 'plugin.json');
-        const packageJsonPath = path.join(process.cwd(), 'package.json');
+    console.log("\n🔄  如何更新版本号？\n");
+    console.log(`   1️⃣  递增补丁号 patch   (${newPatchVersion})`);
+    console.log(`   2️⃣  递增次版本 minor   (${newMinorVersion})`);
+    console.log(`   3️⃣  递增主版本 major   (${newMajorVersion})`);
+    console.log("   4️⃣  手动输入版本号");
+    console.log("   0️⃣  退出，不做修改\n");
 
-        // Read both JSON files
-        const pluginData = await readJsonFile(pluginJsonPath);
-        const packageData = await readJsonFile(packageJsonPath);
-
-        // Get the current version from both files (assuming both have the same version)
-        const currentVersion = pluginData.version || packageData.version;
-        console.log(`\n🌟  Current version: \x1b[36m${currentVersion}\x1b[0m\n`);
-
-        // Calculate potential new versions for auto-update
-        const newPatchVersion = incrementVersion(currentVersion, 'patch');
-        const newMinorVersion = incrementVersion(currentVersion, 'minor');
-        const newMajorVersion = incrementVersion(currentVersion, 'major');
-
-        // Prompt the user with formatted options
-        console.log('🔄  How would you like to update the version?\n');
-        console.log(`   1️⃣  Auto update \x1b[33mpatch\x1b[0m version   (new version: \x1b[32m${newPatchVersion}\x1b[0m)`);
-        console.log(`   2️⃣  Auto update \x1b[33mminor\x1b[0m version   (new version: \x1b[32m${newMinorVersion}\x1b[0m)`);
-        console.log(`   3️⃣  Auto update \x1b[33mmajor\x1b[0m version   (new version: \x1b[32m${newMajorVersion}\x1b[0m)`);
-        console.log(`   4️⃣  Input version \x1b[33mmanually\x1b[0m`);
-        // Press 0 to skip version update
-        console.log('   0️⃣  Quit without updating\n');
-
-        const updateChoice = await promptUser('👉  Please choose (1/2/3/4): ');
-
-        let newVersion;
-
-        switch (updateChoice.trim()) {
-            case '1':
-                newVersion = newPatchVersion;
-                break;
-            case '2':
-                newVersion = newMinorVersion;
-                break;
-            case '3':
-                newVersion = newMajorVersion;
-                break;
-            case '4':
-                newVersion = await promptUser('✍️  Please enter the new version (in a.b.c format): ');
-                break;
-            case '0':
-                console.log('\n🛑  Skipping version update.');
-                return;
-            default:
-                console.log('\n❌  Invalid option, no version update.');
-                return;
+    const choice = await promptUser("👉  请选择 (1/2/3/4): ");
+    switch (choice) {
+        case "1":
+            return newPatchVersion;
+        case "2":
+            return newMinorVersion;
+        case "3":
+            return newMajorVersion;
+        case "4": {
+            const input = await promptUser("✍️  请输入新版本号（形如 1.2.3）: ");
+            if (!isValidVersion(input)) throw new Error(`版本号格式非法：${JSON.stringify(input)}`);
+            return input;
         }
-
-        // Update the version in both plugin.json and package.json
-        pluginData.version = newVersion;
-        packageData.version = newVersion;
-
-        // Write the updated JSON back to files
-        await writeJsonFile(pluginJsonPath, pluginData);
-        await writeJsonFile(packageJsonPath, packageData);
-
-        console.log(`\n✅  Version successfully updated to: \x1b[32m${newVersion}\x1b[0m\n`);
-
-    } catch (error) {
-        console.error('❌  Error:', error);
+        case "0":
+            return null;
+        default:
+            throw new Error(`无效选项：${JSON.stringify(choice)}`);
     }
-})();
+}
+
+async function main() {
+    const { pluginVersion, pluginData, packageData } = readVersions();
+
+    if (!isValidVersion(pluginVersion)) {
+        throw new Error(`plugin.json 中的 version 非法：${JSON.stringify(pluginVersion)}`);
+    }
+
+    // 先暴露已有漂移，避免在错误版本上继续递增
+    const problems = collectVersionProblems();
+    if (problems.length > 0) {
+        console.warn("⚠️  检测到版本号不一致：");
+        for (const problem of problems) console.warn(`   - ${problem}`);
+        console.warn("");
+    }
+
+    console.log(`🌟  当前版本（plugin.json）：${pluginVersion}`);
+    if (packageData.version !== pluginVersion) {
+        console.log(`    package.json 当前为：${packageData.version}`);
+    }
+    console.log("");
+
+    const newVersion = await resolveNewVersion(pluginVersion);
+    if (!newVersion) {
+        console.log("🛑  已取消，未修改版本号。");
+        return;
+    }
+    if (newVersion === pluginVersion && packageData.version === pluginVersion) {
+        console.log(`🤷  版本号未变化：${newVersion}`);
+        return;
+    }
+
+    pluginData.version = newVersion;
+    packageData.version = newVersion;
+    writeJson(PLUGIN_JSON_PATH, pluginData);
+    writeJson(PACKAGE_JSON_PATH, packageData);
+
+    console.log(`✅  版本号已更新为 ${newVersion}（plugin.json + package.json）`);
+    console.log(`\n下一步建议：\n   pnpm check-version   # 确认一致\n   git add plugin.json package.json && git commit -m "v${newVersion}"`);
+}
+
+main().catch((error) => {
+    console.error("❌  错误：", error instanceof Error ? error.message : error);
+    process.exit(1);
+});

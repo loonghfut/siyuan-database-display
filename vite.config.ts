@@ -32,6 +32,23 @@ if (!amapWebServiceKey) {
 }
 
 const outputDir = isDev ? "dev" : "dist";
+
+// 版本一致性守卫：plugin.json 是唯一版本来源，package.json 必须与之一致。
+// 开发模式仅告警（不打断 watch），生产构建直接失败，避免发布版本号错乱的产物。
+const versionGuard: VitePlugin = {
+    name: "version-guard",
+    buildStart() {
+        const pluginVersion = JSON.parse(readFileSync(resolve(__dirname, "plugin.json"), "utf8")).version;
+        const packageVersion = JSON.parse(readFileSync(resolve(__dirname, "package.json"), "utf8")).version;
+        if (pluginVersion === packageVersion) return;
+        const message =
+            `版本号不一致：plugin.json=${pluginVersion}，package.json=${packageVersion}。` +
+            "请执行 pnpm sync-version 以 plugin.json 为准同步，或 pnpm update-version 递增版本。";
+        if (isDev) this.warn(message);
+        else this.error(message);
+    }
+};
+
 const watchExternalPlugin: VitePlugin = {
     name: "watch-external",
     async buildStart() {
@@ -56,6 +73,7 @@ export default defineConfig({
     },
 
     plugins: [
+        versionGuard,
         svelte(),
 
         vitePluginYamlI18n({

@@ -87,6 +87,14 @@ mSelect,text,date,checkbox
 - **Performance Optimization**: Efficient data processing and DOM operations
 - **Extensibility**: Easy to add new field types and display styles
 
+### 🔢 Version Management
+
+`plugin.json` is the single source of truth for the plugin version; `package.json` mirrors it and is never edited by hand.
+
+- `pnpm check-version` — verify both versions match (also enforced by CI and by production builds)
+- `pnpm sync-version` — align `package.json` with `plugin.json`
+- `pnpm update-version [patch|minor|major|x.y.z]` — bump both files together, then commit as `vX.Y.Z`
+
 ## 📋 Changelog
 
 ### Latest Version
