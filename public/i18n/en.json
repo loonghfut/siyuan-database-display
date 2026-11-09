@@ -172,6 +172,10 @@
                 "listItemStyleOptions": {
                     "plain": "Plain text",
                     "capsule": "Capsule pills",
+                    "badge": "Modern badge",
+                    "bordered": "Outlined border",
+                    "dot": "Status dot",
+                    "underline": "Underline",
                     "accent": "Color accent bar"
                 },
                 "listLineHeight": "List line height",
@@ -203,6 +207,14 @@
                 },
                 "alignFieldNames": "Align field names in one column",
                 "cardHint": "Card-only options. Padding also sets the gap between the attribute list and the card edges.",
+                "cardStyle": "Card appearance style",
+                "cardStyleOptions": {
+                    "border": "Classic border",
+                    "shadow": "Soft shadow",
+                    "flat": "Flat tinted",
+                    "left-bar": "Left accent bar",
+                    "glass": "Frosted glass"
+                },
                 "cardRadius": "Card corner radius",
                 "cardRadiusOptions": {
                     "auto": "Follow theme",

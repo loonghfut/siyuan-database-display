@@ -172,6 +172,10 @@
                 "listItemStyleOptions": {
                     "plain": "纯文字",
                     "capsule": "胶囊徽章",
+                    "badge": "现代微标",
+                    "bordered": "极简线框",
+                    "dot": "状态圆点",
+                    "underline": "优雅下划线",
                     "accent": "彩色强调条"
                 },
                 "listLineHeight": "列表行高",
@@ -203,6 +207,14 @@
                 },
                 "alignFieldNames": "字段名按列对齐",
                 "cardHint": "仅卡片效果可用。内边距同时决定属性列表与卡片边缘的间距。",
+                "cardStyle": "卡片外观风格",
+                "cardStyleOptions": {
+                    "border": "经典描边",
+                    "shadow": "柔和微阴影",
+                    "flat": "极简浅底色",
+                    "left-bar": "左侧强调条",
+                    "glass": "轻透磨砂"
+                },
                 "cardRadius": "卡片圆角",
                 "cardRadiusOptions": {
                     "auto": "跟随主题",

@@ -61,6 +61,11 @@ export class AttributeRenderer {
         const attributeContainer = [...parent.children].find(child => child.classList.contains("protyle-attr")) as HTMLElement | undefined;
         if (!attributeContainer) return;
         parent.classList.toggle("db-display--card", context.config.cardEnabled);
+        const cardStyleClasses = ["db-display--card-border", "db-display--card-shadow", "db-display--card-flat", "db-display--card-left-bar", "db-display--card-glass"];
+        parent.classList.remove(...cardStyleClasses);
+        if (context.config.cardEnabled) {
+            parent.classList.add(`db-display--card-${context.config.cardStyle}`);
+        }
         this.applyCardStyleVars(parent, context.config);
         // 清理旧版本留下的宿主状态；之后仅操作 .protyle-attr 内的展示节点。
         parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below");
@@ -110,12 +115,16 @@ export class AttributeRenderer {
         const listStyleClass = context.config.listLayoutStyle === "waterfall"
             ? " my-protyle-attr--av--waterfall"
             : "";
-        // 列表项样式：capsule/accent 追加变体类，plain 不加类保持默认纯文字
-        const itemStyleClass = context.config.listItemStyle === "capsule"
-            ? " my-protyle-attr--av--capsule"
-            : context.config.listItemStyle === "accent"
-                ? " my-protyle-attr--av--accent"
-                : "";
+        // 列表项样式变体类
+        const itemStyleMap: Record<string, string> = {
+            capsule: " my-protyle-attr--av--capsule",
+            badge: " my-protyle-attr--av--badge",
+            bordered: " my-protyle-attr--av--bordered",
+            dot: " my-protyle-attr--av--dot",
+            underline: " my-protyle-attr--av--underline",
+            accent: " my-protyle-attr--av--accent"
+        };
+        const itemStyleClass = itemStyleMap[context.config.listItemStyle] || "";
         // 值行数上限：仅在限制生效时追加类，由 CSS 用 line-clamp 截断
         const clampClass = useList && context.config.listValueLines !== "unlimited"
             ? " my-protyle-attr--av--clamp"
@@ -123,7 +132,7 @@ export class AttributeRenderer {
         const containerClass = this.getContainerClass(parent);
         container.className = useList
             ? `my-protyle-attr--av my-protyle-attr--av--list ${listPositionClass} ${listColumnsClass}${listStyleClass}${itemStyleClass}${clampClass}${containerClass}`
-            : "my-protyle-attr--av";
+            : `my-protyle-attr--av${itemStyleClass}${containerClass}`;
         if (useList) {
             container.style.setProperty("--db-attr-list-font-size", `${context.config.listFontSize}px`);
             this.applyListStyleVars(container, context.config);
@@ -131,6 +140,7 @@ export class AttributeRenderer {
         } else {
             container.style.removeProperty("--db-attr-list-font-size");
             this.clearListStyleVars(container);
+            this.setStyleVar(container, "--db-attr-list-radius", LIST_ITEM_RADII[context.config.listItemRadius]);
             this.listAlignFieldNames.delete(container);
         }
         // 容器随旧块被思源替换/重建时，据此定位所属块以支持一帧内快速恢复
@@ -155,7 +165,11 @@ export class AttributeRenderer {
         parent.style.removeProperty("--db-attr-block-height");
         parent.style.removeProperty("--db-card-radius");
         parent.style.removeProperty("--db-card-gap");
-        parent.classList.remove("db-display--rendered", "db-display--list-above", "db-display--list-below", "db-display--card");
+        parent.classList.remove(
+            "db-display--rendered", "db-display--list-above", "db-display--list-below",
+            "db-display--card", "db-display--card-border", "db-display--card-shadow",
+            "db-display--card-flat", "db-display--card-left-bar", "db-display--card-glass"
+        );
     }
 
     dispose(): void {
@@ -370,8 +384,8 @@ export class AttributeRenderer {
     private createAssetGroup(items: DisplayItem[], context: RenderContext): HTMLElement {
         const group = document.createElement("span");
         group.className = `db-display__asset-group${context.config.showFieldNames ? " db-display__asset-group--has-field-name" : ""}`;
-        // 仅强调条样式需要分组自带字段色（currentColor 绘制条形）；其他模式不动分组样式
-        if (context.config.listItemStyle === "accent") this.applyColors(group, items[0], context.config);
+        // 胶囊/强调条/圆点/线框等样式需要分组自带字段色
+        if (context.config.listItemStyle !== "plain") this.applyColors(group, items[0], context.config);
         if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName, items[0], context.config));
         const values = document.createElement("span");
         values.className = "db-display__group-values";
@@ -383,8 +397,8 @@ export class AttributeRenderer {
     private createRelationGroup(items: DisplayItem[], context: RenderContext): HTMLElement {
         const group = document.createElement("span");
         group.className = `db-display__relation-group${context.config.showFieldNames ? " db-display__relation-group--has-field-name" : ""}`;
-        // 仅强调条样式需要分组自带字段色（currentColor 绘制条形）；其他模式不动分组样式
-        if (context.config.listItemStyle === "accent") this.applyColors(group, items[0], context.config);
+        // 胶囊/强调条/圆点/线框等样式需要分组自带字段色
+        if (context.config.listItemStyle !== "plain") this.applyColors(group, items[0], context.config);
         if (context.config.showFieldNames) group.appendChild(this.createFieldName(items[0].keyName, items[0], context.config));
         const values = document.createElement("span");
         values.className = "db-display__group-values";
@@ -809,7 +823,10 @@ export class AttributeRenderer {
         const rule = typeof valueRule === "string" ? { color: valueRule } : valueRule;
         const color = rule?.color || config.fieldColors[item.type];
         const background = rule?.bg || config.fieldBackgrounds[item.type];
-        if (isSafeColor(color)) element.style.color = color;
+        if (isSafeColor(color)) {
+            element.style.color = color;
+            element.style.setProperty("--db-chip-color", color);
+        }
         if (isSafeColor(background)) element.style.setProperty("--db-chip-background", background);
     }
 
@@ -827,6 +844,7 @@ export class AttributeRenderer {
             listItemRadius: config.listItemRadius,
             alignFieldNames: config.alignFieldNames,
             cardEnabled: config.cardEnabled,
+            cardStyle: config.cardStyle,
             cardRadius: config.cardRadius,
             cardPadding: config.cardPadding,
             editTrigger: config.editTrigger,

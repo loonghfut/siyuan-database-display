@@ -10,12 +10,65 @@
     --db-attr-list-inset: var(--db-card-gap);
     border-radius: var(--db-card-radius, var(--b3-border-radius-b, 8px));
     box-shadow: 0 0 0 1px var(--b3-border-color);
-    transition: box-shadow 120ms ease;
+    transition: box-shadow 160ms ease, background-color 160ms ease;
 }
 
 /* 背景仅填充块自身；选中/搜索命中时让位，保证思源原生的选中底色可见。 */
 [data-node-id][custom-avs].db-display--card:not(.protyle-title):not(.protyle-wysiwyg--select):not(.protyle-wysiwyg--hl) {
     background-color: var(--b3-theme-surface);
+}
+
+/* ===== 卡片外观风格变体 ===== */
+
+/* 风格 1：经典细线描边（默认） */
+[data-node-id][custom-avs].db-display--card.db-display--card-border:not(.protyle-title) {
+    box-shadow: 0 0 0 1px var(--b3-border-color);
+
+    &:hover {
+        box-shadow: 0 0 0 1px var(--b3-theme-primary-lighter, var(--b3-border-color));
+    }
+}
+
+/* 风格 2：柔和微阴影（现代轻量悬浮质感，层叠柔光） */
+[data-node-id][custom-avs].db-display--card.db-display--card-shadow:not(.protyle-title) {
+    box-shadow: 0 1px 3px 0 color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent),
+                0 4px 12px -2px color-mix(in srgb, var(--b3-theme-on-surface) 5%, transparent);
+
+    &:hover {
+        box-shadow: 0 2px 6px 0 color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent),
+                    0 8px 20px -3px color-mix(in srgb, var(--b3-theme-on-surface) 8%, transparent);
+    }
+}
+
+/* 风格 3：极简浅底色（无硬边框，自然舒适表面） */
+[data-node-id][custom-avs].db-display--card.db-display--card-flat:not(.protyle-title) {
+    box-shadow: none;
+    background-color: color-mix(in srgb, var(--b3-theme-on-surface) 3.5%, var(--b3-theme-surface)) !important;
+
+    &:hover {
+        background-color: color-mix(in srgb, var(--b3-theme-on-surface) 5.5%, var(--b3-theme-surface)) !important;
+    }
+}
+
+/* 风格 4：左侧重点强调条（类似高级引用卡片，厚主题色竖条突出重点） */
+[data-node-id][custom-avs].db-display--card.db-display--card-left-bar:not(.protyle-title) {
+    box-shadow: inset 3.5px 0 0 0 var(--b3-theme-primary), 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 8%, transparent);
+
+    &:hover {
+        box-shadow: inset 3.5px 0 0 0 var(--b3-theme-primary), 0 0 0 1px var(--b3-theme-primary-lighter, var(--b3-border-color));
+    }
+}
+
+/* 风格 5：轻透磨砂（现代半透明毛玻璃质感） */
+[data-node-id][custom-avs].db-display--card.db-display--card-glass:not(.protyle-title) {
+    background-color: color-mix(in srgb, var(--b3-theme-surface) 75%, transparent) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 10%, transparent);
+
+    &:hover {
+        box-shadow: inset 0 0 0 1px var(--b3-theme-primary-lighter, var(--b3-border-color));
+    }
 }
 
 /* 水平间隙：padding 提供呼吸空间，等量负 margin-inline 把占位拉回，
@@ -77,12 +130,13 @@
     width: calc(100% - 34px - var(--db-card-gap, 0px) * 2);
 }
 
-/* 悬停仅增强边缘颜色，不改变布局。 */
-[data-node-id][custom-avs].db-display--card:not(.protyle-title):hover {
+/* 悬停仅增强边缘颜色，不改变布局（未配置变体类时的通用兜底）。 */
+[data-node-id][custom-avs].db-display--card:not([class*="db-display--card-"]):not(.protyle-title):hover {
     box-shadow: 0 0 0 1px var(--b3-theme-primary-lighter, var(--b3-border-color));
 }
 
+/* 选中与高亮状态（所有卡片风格统一高亮主色外环） */
 [data-node-id][custom-avs].db-display--card:not(.protyle-title).protyle-wysiwyg--select,
 [data-node-id][custom-avs].db-display--card:not(.protyle-title).protyle-wysiwyg--hl {
-    box-shadow: 0 0 0 1px var(--b3-theme-primary);
+    box-shadow: 0 0 0 1px var(--b3-theme-primary) !important;
 }

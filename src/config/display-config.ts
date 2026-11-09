@@ -14,8 +14,8 @@ export interface AppearanceTheme {
 /** 属性布局：above/below = 纵向列表；inline = 思源原生右上角横排 */
 export type DisplayLayout = "inline" | "above" | "below";
 export type ListLayoutStyle = "grid" | "waterfall";
-/** 列表项样式：plain = 纯文字；capsule = 胶囊徽章；accent = 彩色强调条 */
-export type ListItemStyle = "plain" | "capsule" | "accent";
+/** 列表项样式：plain = 纯文字；capsule = 胶囊徽章；badge = 现代微标；bordered = 极简线框；dot = 状态圆点；underline = 优雅下划线；accent = 彩色强调条 */
+export type ListItemStyle = "plain" | "capsule" | "accent" | "badge" | "bordered" | "dot" | "underline";
 export type EditTrigger = "click" | "dblclick";
 /** 列表行高倍率：normal 与内置版式一致，compact/relaxed 为可选密度 */
 export type ListLineHeight = "compact" | "normal" | "relaxed";
@@ -23,8 +23,10 @@ export type ListLineHeight = "compact" | "normal" | "relaxed";
 export type ListRowGap = "tight" | "normal" | "relaxed";
 /** 列表字段值最大行数：unlimited 与内置行为一致（不截断） */
 export type ListValueLines = "unlimited" | "one" | "two" | "three";
-/** 胶囊圆角：auto 沿用内置圆角（随字号缩放），其余为固定像素 */
+/** 胶囊与微标圆角：auto 沿用内置圆角（随字号缩放），其余为固定像素 */
 export type ListItemRadius = "auto" | "none" | "small" | "medium" | "pill";
+/** 卡片外观风格：border = 经典描边；shadow = 柔和微阴影；flat = 极简浅底色；left-bar = 左侧强调条；glass = 轻透磨砂 */
+export type CardStyle = "border" | "shadow" | "flat" | "left-bar" | "glass";
 /** 卡片圆角：auto 跟随思源主题圆角 */
 export type CardRadius = "auto" | "none" | "small" | "medium" | "large";
 /** 卡片内边距（同时决定属性列表与卡片边缘的间距） */
@@ -33,6 +35,8 @@ export type CardPadding = "tight" | "normal";
 export const LIST_LINE_HEIGHTS: Record<ListLineHeight, number> = { compact: 1.25, normal: 1.35, relaxed: 1.6 };
 export const LIST_ROW_GAPS: Record<ListRowGap, number> = { tight: 0, normal: 2, relaxed: 6 };
 export const LIST_VALUE_LINES: Record<ListValueLines, number> = { unlimited: 0, one: 1, two: 2, three: 3 };
+export const LIST_ITEM_STYLES: Record<ListItemStyle, true> = { plain: true, capsule: true, accent: true, badge: true, bordered: true, dot: true, underline: true };
+export const CARD_STYLES: Record<CardStyle, true> = { border: true, shadow: true, flat: true, "left-bar": true, glass: true };
 /** null = 不写入变量，回落样式表内置圆角 */
 export const LIST_ITEM_RADII: Record<ListItemRadius, string | null> = { auto: null, none: "0px", small: "3px", medium: "6px", pill: "999px" };
 export const CARD_RADII: Record<CardRadius, string | null> = { auto: null, none: "0px", small: "4px", medium: "8px", large: "12px" };
@@ -61,6 +65,7 @@ export interface DisplayConfig {
     /** 列表模式下是否把字段名统一为最长字段名宽度；关闭后字段名紧跟其值 */
     alignFieldNames: boolean;
     cardEnabled: boolean;
+    cardStyle: CardStyle;
     cardRadius: CardRadius;
     cardPadding: CardPadding;
     editTrigger: EditTrigger;
@@ -156,7 +161,7 @@ function sanitizeValueColors(value: unknown): Record<string, string | ColorRule>
 export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig {
     const fieldSettings = parseJsonObject<{ document?: string; block?: string }>(get("display-fields"), {});
     const fieldRules = parseFieldRules(get("field-rules"));
-    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; listItemStyle: ListItemStyle; listLineHeight: ListLineHeight; listRowGap: ListRowGap; listValueLines: ListValueLines; listItemRadius: ListItemRadius; alignFieldNames: boolean; cardEnabled: boolean; cardRadius: CardRadius; cardPadding: CardPadding; editTrigger: EditTrigger; amapKey?: string; layout: DisplayLayout; showDatabaseGroups: boolean }>>(get("display-format"), {});
+    const formatSettings = parseJsonObject<Partial<{ dateFormat: DateFormat; includeTime: boolean; checkboxStyle: CheckboxStyle; maxDisplayLength: number; showFieldNames: boolean; listFontSize: number; listMultiColumn: boolean; listLayoutStyle: ListLayoutStyle; listItemStyle: ListItemStyle; listLineHeight: ListLineHeight; listRowGap: ListRowGap; listValueLines: ListValueLines; listItemRadius: ListItemRadius; alignFieldNames: boolean; cardEnabled: boolean; cardStyle: CardStyle; cardRadius: CardRadius; cardPadding: CardPadding; editTrigger: EditTrigger; amapKey?: string; layout: DisplayLayout; showDatabaseGroups: boolean }>>(get("display-format"), {});
     const appearance = parseJsonObject<AppearanceTheme & { light?: AppearanceTheme; dark?: AppearanceTheme }>(get("display-appearance"), {});
     const themeMode = typeof document !== "undefined" && document.documentElement.dataset.themeMode === "dark" ? "dark" : "light";
     const themeAppearance = appearance[themeMode] || appearance;
@@ -191,7 +196,7 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
             : 12,
         listMultiColumn: formatSettings.listMultiColumn !== false,
         listLayoutStyle: formatSettings.listLayoutStyle === "waterfall" ? "waterfall" : "grid",
-        listItemStyle: formatSettings.listItemStyle === "capsule" ? "capsule" : formatSettings.listItemStyle === "accent" ? "accent" : "plain",
+        listItemStyle: parseEnum(formatSettings.listItemStyle, LIST_ITEM_STYLES, "plain"),
         // 可选的样式微调项均为枚举值，缺省时与内置版式一致
         listLineHeight: parseEnum(formatSettings.listLineHeight, LIST_LINE_HEIGHTS, "normal"),
         listRowGap: parseEnum(formatSettings.listRowGap, LIST_ROW_GAPS, "normal"),
@@ -199,6 +204,7 @@ export function readDisplayConfig(get: (key: string) => unknown): DisplayConfig 
         listItemRadius: parseEnum(formatSettings.listItemRadius, LIST_ITEM_RADII, "auto"),
         alignFieldNames: formatSettings.alignFieldNames !== false,
         cardEnabled: formatSettings.cardEnabled !== false,
+        cardStyle: parseEnum(formatSettings.cardStyle, CARD_STYLES, "border"),
         cardRadius: parseEnum(formatSettings.cardRadius, CARD_RADII, "auto"),
         cardPadding: parseEnum(formatSettings.cardPadding, CARD_PADDINGS, "normal"),
         editTrigger: formatSettings.editTrigger === "dblclick" ? "dblclick" : "click",

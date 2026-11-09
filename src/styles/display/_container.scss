@@ -296,32 +296,28 @@
     background-image: none !important;
 }
 
-/* ===== 列表项样式变体（由渲染器按 listItemStyle 追加变体类，行内模式不参与） ===== */
+/* ===== 列表/行内项样式变体（由渲染器按 listItemStyle 追加变体类） ===== */
 
-/* 胶囊徽章样式：每个字段一枚圆角胶囊，随列表字号缩放（em 内边距）。
-   底色取「标签样式」面板配置的字段背景色/按值覆盖背景——芯片与字段名标签
-   上已有行内 --db-chip-background（未配置时不设置，回退中性半透明）；
-   分组字段的字段名与各值胶囊同样取该字段底色；hover 用亮度反馈，
-   不替换掉配置色。多选项色块保持思源自带选项色。 */
-.my-protyle-attr--av--list.my-protyle-attr--av--capsule {
+/* 1. 胶囊徽章样式：每个字段一枚圆角胶囊，随字号缩放 */
+.my-protyle-attr--av.my-protyle-attr--av--capsule {
     gap: 4px 8px;
+
+    .db-display__chip {
+        background-image: none !important;
+    }
 }
 
-.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__chip {
+.my-protyle-attr--av.my-protyle-attr--av--capsule > .db-display__chip {
     width: fit-content;
     padding: 0.12em 0.6em;
-    /* 可换行元素默认不用 999px：多行时半圆端点会让首末行文字落到圆弧外的未绘制区
-       （表现为角落缺底色）。0.8em 在单行时恰为行盒+内边距总高的一半，仍是
-       完整胶囊端点；多行退化为圆角矩形。设置项可覆盖为固定像素或全圆角 */
     border-radius: var(--db-attr-list-radius, 0.8em);
-    /* 基础 chip 规则为行内模式的渐变底写了 transparent !important，胶囊需同级反压 */
     background-color: var(--db-chip-background, color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent)) !important;
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
     transition: color 0.15s ease, text-decoration-color 0.15s ease, filter 0.15s ease;
-}
 
-.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__chip:hover {
-    filter: brightness(0.95);
+    &:hover {
+        filter: brightness(0.95);
+    }
 }
 
 .my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__field-name {
@@ -329,33 +325,185 @@
     width: auto;
 }
 
-.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__relation-group > .db-display__field-name .db-display__field-name-label,
-.my-protyle-attr--av--list.my-protyle-attr--av--capsule > .db-display__asset-group > .db-display__field-name .db-display__field-name-label {
+.my-protyle-attr--av.my-protyle-attr--av--capsule > .db-display__relation-group > .db-display__field-name .db-display__field-name-label,
+.my-protyle-attr--av.my-protyle-attr--av--capsule > .db-display__asset-group > .db-display__field-name .db-display__field-name-label {
     padding: 0.12em 0.6em;
     border-radius: var(--db-attr-list-radius, 999px);
     background-color: var(--db-chip-background, color-mix(in srgb, var(--b3-theme-on-surface) 6%, transparent));
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
 }
 
-.my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__group-values > .db-display__chip {
+.my-protyle-attr--av.my-protyle-attr--av--capsule .db-display__group-values > .db-display__chip {
     padding: 0.12em 0.6em;
-    /* 值可能换行，默认同上用 0.8em 半径 */
     border-radius: var(--db-attr-list-radius, 0.8em);
-    /* 同上：反压基础 chip 的 transparent !important */
     background-color: var(--db-chip-background, transparent) !important;
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 9%, transparent);
 }
 
-.my-protyle-attr--av--list.my-protyle-attr--av--capsule .db-display__option-chip {
+.my-protyle-attr--av.my-protyle-attr--av--capsule .db-display__option-chip {
     border-radius: var(--db-attr-list-radius, 999px);
 }
 
-/* 彩色强调条样式：每个字段行左侧一枚 3px 圆角竖条，颜色取该字段的行内配色
-   （currentColor，即“标签样式”面板配置的字段色/值色），hover 随文字变色；
-   字段名列宽对齐保留，各行值仍从同一列起始。 */
-.my-protyle-attr--av--list.my-protyle-attr--av--accent > .db-display__chip,
-.my-protyle-attr--av--list.my-protyle-attr--av--accent > .db-display__relation-group,
-.my-protyle-attr--av--list.my-protyle-attr--av--accent > .db-display__asset-group {
+/* 2. 现代微标样式：微圆角矩形，浅色半透明背景搭配精细内描边，干练高级 */
+.my-protyle-attr--av.my-protyle-attr--av--badge {
+    gap: 4px 6px;
+
+    .db-display__chip {
+        background-image: none !important;
+    }
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--badge > .db-display__chip {
+    width: fit-content;
+    padding: 0.12em 0.52em;
+    border-radius: var(--db-attr-list-radius, 4px);
+    background-color: var(--db-chip-background, color-mix(in srgb, var(--b3-theme-on-surface) 5%, transparent)) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 10%, transparent);
+    transition: color 0.15s ease, filter 0.15s ease;
+
+    &:hover {
+        filter: brightness(0.94);
+    }
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--badge .db-display__field-name {
+    flex-basis: auto;
+    width: auto;
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--badge > .db-display__relation-group > .db-display__field-name .db-display__field-name-label,
+.my-protyle-attr--av.my-protyle-attr--av--badge > .db-display__asset-group > .db-display__field-name .db-display__field-name-label {
+    padding: 0.12em 0.52em;
+    border-radius: var(--db-attr-list-radius, 4px);
+    background-color: var(--db-chip-background, color-mix(in srgb, var(--b3-theme-on-surface) 5%, transparent));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 10%, transparent);
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--badge .db-display__group-values > .db-display__chip {
+    padding: 0.12em 0.52em;
+    border-radius: var(--db-attr-list-radius, 4px);
+    background-color: var(--db-chip-background, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--b3-theme-on-surface) 10%, transparent);
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--badge .db-display__option-chip {
+    border-radius: var(--db-attr-list-radius, 4px);
+}
+
+/* 3. 极简线框样式：零背景填充，纯粹的纤细 1px 线框，空灵通透 */
+.my-protyle-attr--av.my-protyle-attr--av--bordered {
+    gap: 4px 6px;
+
+    .db-display__chip {
+        background-image: none !important;
+    }
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--bordered > .db-display__chip {
+    width: fit-content;
+    padding: 0.1em 0.5em;
+    border-radius: var(--db-attr-list-radius, 4px);
+    background-color: transparent !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 28%, var(--b3-border-color));
+    transition: color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+        background-color: color-mix(in srgb, currentColor 8%, transparent) !important;
+    }
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--bordered .db-display__field-name {
+    flex-basis: auto;
+    width: auto;
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--bordered > .db-display__relation-group > .db-display__field-name .db-display__field-name-label,
+.my-protyle-attr--av.my-protyle-attr--av--bordered > .db-display__asset-group > .db-display__field-name .db-display__field-name-label {
+    padding: 0.1em 0.5em;
+    border-radius: var(--db-attr-list-radius, 4px);
+    background-color: transparent !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 28%, var(--b3-border-color));
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--bordered .db-display__group-values > .db-display__chip {
+    padding: 0.1em 0.5em;
+    border-radius: var(--db-attr-list-radius, 4px);
+    background-color: transparent !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 28%, var(--b3-border-color));
+
+    &:hover {
+        background-color: color-mix(in srgb, currentColor 8%, transparent) !important;
+    }
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--bordered .db-display__option-chip {
+    border-radius: var(--db-attr-list-radius, 4px);
+}
+
+/* 4. 状态圆点样式：文字前缀彩色微圆点指示灯，极简灵动 */
+.my-protyle-attr--av.my-protyle-attr--av--dot {
+    gap: 2px 10px;
+
+    .db-display__chip {
+        background-image: none !important;
+    }
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--dot > .db-display__chip::before,
+.my-protyle-attr--av.my-protyle-attr--av--dot > .db-display__relation-group::before,
+.my-protyle-attr--av.my-protyle-attr--av--dot > .db-display__asset-group::before {
+    content: "";
+    display: inline-block;
+    width: 6.5px;
+    height: 6.5px;
+    min-width: 6.5px;
+    border-radius: 50%;
+    background-color: currentColor;
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 20%, transparent);
+    margin-right: 5px;
+    align-self: center;
+    flex-shrink: 0;
+}
+
+.my-protyle-attr--av--list.my-protyle-attr--av--dot > .db-display__chip::before,
+.my-protyle-attr--av--list.my-protyle-attr--av--dot > .db-display__relation-group::before,
+.my-protyle-attr--av--list.my-protyle-attr--av--dot > .db-display__asset-group::before {
+    align-self: flex-start;
+    margin-top: calc((1em * var(--db-attr-list-line-height, 1.35) - 6.5px) / 2);
+}
+
+/* 5. 优雅下划线样式：字段底部带有 2px 柔和彩色强调线 */
+.my-protyle-attr--av.my-protyle-attr--av--underline {
+    gap: 3px 10px;
+
+    .db-display__chip {
+        background-image: none !important;
+    }
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--underline > .db-display__chip,
+.my-protyle-attr--av.my-protyle-attr--av--underline > .db-display__relation-group,
+.my-protyle-attr--av.my-protyle-attr--av--underline > .db-display__asset-group {
+    border-bottom: 2px solid color-mix(in srgb, currentColor 50%, transparent);
+    border-radius: 1px;
+    padding-bottom: 2px;
+    transition: border-bottom-color 0.15s ease;
+
+    &:hover {
+        border-bottom-color: currentColor;
+    }
+}
+
+/* 6. 彩色强调条样式：每个字段行左侧一枚 3px 圆角竖条 */
+.my-protyle-attr--av.my-protyle-attr--av--accent {
+    .db-display__chip {
+        background-image: none !important;
+    }
+}
+
+.my-protyle-attr--av.my-protyle-attr--av--accent > .db-display__chip,
+.my-protyle-attr--av.my-protyle-attr--av--accent > .db-display__relation-group,
+.my-protyle-attr--av.my-protyle-attr--av--accent > .db-display__asset-group {
     border-left: 3px solid currentColor;
     border-top-left-radius: 3px;
     border-bottom-left-radius: 3px;

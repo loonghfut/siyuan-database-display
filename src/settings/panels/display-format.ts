@@ -10,12 +10,13 @@ export function addDisplayFormatPanel(
     shouldShowProBadge: () => boolean,
     isFeatureEnabled: (feature: ProFeature) => boolean
 ): void {
-    addPanel("display-format", JSON.stringify({ dateFormat: "YYYY-MM-DD", includeTime: false, checkboxStyle: "icon", maxDisplayLength: 30, showFieldNames: false, listFontSize: 12, listMultiColumn: true, listLayoutStyle: "grid", listItemStyle: "plain", listLineHeight: "normal", listRowGap: "normal", listValueLines: "unlimited", listItemRadius: "auto", alignFieldNames: true, cardEnabled: true, cardRadius: "auto", cardPadding: "normal", editTrigger: "click", amapKey: "", layout: "below", showDatabaseGroups: false }), text.format.title, text.format.description, (value, commit) => {
-        const state = parseObject<{ dateFormat?: string; includeTime?: boolean; checkboxStyle?: string; maxDisplayLength?: number; showFieldNames?: boolean; listFontSize?: number; listMultiColumn?: boolean; listLayoutStyle?: string; listItemStyle?: string; listLineHeight?: string; listRowGap?: string; listValueLines?: string; listItemRadius?: string; alignFieldNames?: boolean; cardEnabled?: boolean; cardRadius?: string; cardPadding?: string; editTrigger?: string; amapKey?: string; layout?: string; showDatabaseGroups?: boolean }>(value, {});
+    addPanel("display-format", JSON.stringify({ dateFormat: "YYYY-MM-DD", includeTime: false, checkboxStyle: "icon", maxDisplayLength: 30, showFieldNames: false, listFontSize: 12, listMultiColumn: true, listLayoutStyle: "grid", listItemStyle: "plain", listLineHeight: "normal", listRowGap: "normal", listValueLines: "unlimited", listItemRadius: "auto", alignFieldNames: true, cardEnabled: true, cardStyle: "border", cardRadius: "auto", cardPadding: "normal", editTrigger: "click", amapKey: "", layout: "below", showDatabaseGroups: false }), text.format.title, text.format.description, (value, commit) => {
+        const state = parseObject<{ dateFormat?: string; includeTime?: boolean; checkboxStyle?: string; maxDisplayLength?: number; showFieldNames?: boolean; listFontSize?: number; listMultiColumn?: boolean; listLayoutStyle?: string; listItemStyle?: string; listLineHeight?: string; listRowGap?: string; listValueLines?: string; listItemRadius?: string; alignFieldNames?: boolean; cardEnabled?: boolean; cardStyle?: string; cardRadius?: string; cardPadding?: string; editTrigger?: string; amapKey?: string; layout?: string; showDatabaseGroups?: boolean }>(value, {});
         const panel = createPanel("db-settings--format");
         const layout = createSelect(text.format.layoutOptions, state.layout === "above" ? "above" : state.layout === "inline" ? "inline" : "below");
         const listLayoutStyle = createSelect(text.format.listLayoutStyleOptions, state.listLayoutStyle === "waterfall" ? "waterfall" : "grid");
-        const listItemStyle = createSelect(text.format.listItemStyleOptions, state.listItemStyle === "capsule" ? "capsule" : state.listItemStyle === "accent" ? "accent" : "plain");
+        const validItemStyles = ["plain", "capsule", "badge", "bordered", "dot", "underline", "accent"];
+        const listItemStyle = createSelect(text.format.listItemStyleOptions, validItemStyles.includes(state.listItemStyle || "") ? state.listItemStyle as string : "plain");
         const canUseListLayout = isFeatureEnabled("list-layout");
         if (!canUseListLayout) {
             layout.querySelectorAll<HTMLOptionElement>('option[value="above"], option[value="below"]').forEach(option => option.disabled = true);
@@ -58,6 +59,8 @@ export function addDisplayFormatPanel(
         const rowGap = createSelect(text.format.listRowGapOptions, state.listRowGap === "tight" ? "tight" : state.listRowGap === "relaxed" ? "relaxed" : "normal");
         const valueLines = createSelect(text.format.listValueLinesOptions, state.listValueLines === "one" ? "one" : state.listValueLines === "two" ? "two" : state.listValueLines === "three" ? "three" : "unlimited");
         const itemRadius = createSelect(text.format.listItemRadiusOptions, ["none", "small", "medium", "pill"].includes(state.listItemRadius || "") ? state.listItemRadius as string : "auto");
+        const validCardStyles = ["border", "shadow", "flat", "left-bar", "glass"];
+        const cardStyle = createSelect(text.format.cardStyleOptions, validCardStyles.includes(state.cardStyle || "") ? state.cardStyle as string : "border");
         const cardRadius = createSelect(text.format.cardRadiusOptions, ["none", "small", "medium", "large"].includes(state.cardRadius || "") ? state.cardRadius as string : "auto");
         const cardPadding = createSelect(text.format.cardPaddingOptions, state.cardPadding === "tight" ? "tight" : "normal");
         const listSettings = document.createElement("div");
@@ -83,13 +86,14 @@ export function addDisplayFormatPanel(
         const cardHint = document.createElement("p");
         cardHint.className = "db-settings__hint";
         cardHint.textContent = text.format.cardHint;
-        cardSettings.append(cardHint, createLabel(text.format.cardRadius, cardRadius), createLabel(text.format.cardPadding, cardPadding));
+        cardSettings.append(cardHint, createLabel(text.format.cardStyle, cardStyle), createLabel(text.format.cardRadius, cardRadius), createLabel(text.format.cardPadding, cardPadding));
         const syncListSettingsVisibility = (): void => {
             const listVisible = canUseListLayout && layout.value !== "inline";
             listSettings.classList.toggle("fn__none", !listVisible);
             multiColumnRow.classList.toggle("fn__none", !listVisible || listLayoutStyle.value === "waterfall");
-            // 圆角只对胶囊徽章生效，其他列表项样式下隐藏该行
-            itemRadiusRow.classList.toggle("fn__none", listItemStyle.value !== "capsule");
+            // 圆角对胶囊徽章、现代微标和极简线框生效，其他样式下隐藏该行
+            const supportsRadius = ["capsule", "badge", "bordered"].includes(listItemStyle.value);
+            itemRadiusRow.classList.toggle("fn__none", !supportsRadius);
         };
         const syncCardSettingsVisibility = (): void => {
             cardSettings.classList.toggle("fn__none", !cardEnabled.checked);
@@ -128,7 +132,7 @@ export function addDisplayFormatPanel(
         const cardRow = createLabel(text.format.card, cardEnabled);
         panel.append(layoutRow, listSettings, editTriggerRow, createLabel(text.format.date, date), createLabel(text.format.checkbox, checkbox), createLabel(text.format.time, includeTime), amapKeyRow, amapKeyHint, createLabel(text.format.fieldNames, showFieldNames), createLabel(text.format.showDatabaseGroups, showDatabaseGroups), cardRow, cardSettings, createLabel(text.format.maxLength, length));
         bindCommit(panel, () => {
-            const nextValue = JSON.stringify({ dateFormat: date.value, checkboxStyle: checkbox.value, includeTime: includeTime.checked, maxDisplayLength: Math.min(200, Math.max(10, Number(length.value) || 30)), showFieldNames: showFieldNames.checked, showDatabaseGroups: showDatabaseGroups.checked, listFontSize: Math.min(24, Math.max(10, Number(fontSize.value) || 12)), listMultiColumn: multiColumn.checked, listLayoutStyle: listLayoutStyle.value === "waterfall" ? "waterfall" : "grid", listItemStyle: listItemStyle.value === "capsule" ? "capsule" : listItemStyle.value === "accent" ? "accent" : "plain", listLineHeight: lineHeight.value === "compact" ? "compact" : lineHeight.value === "relaxed" ? "relaxed" : "normal", listRowGap: rowGap.value === "tight" ? "tight" : rowGap.value === "relaxed" ? "relaxed" : "normal", listValueLines: valueLines.value === "one" ? "one" : valueLines.value === "two" ? "two" : valueLines.value === "three" ? "three" : "unlimited", listItemRadius: itemRadius.value === "none" ? "none" : itemRadius.value === "small" ? "small" : itemRadius.value === "medium" ? "medium" : itemRadius.value === "pill" ? "pill" : "auto", alignFieldNames: alignFieldNames.checked, cardEnabled: cardEnabled.checked, cardRadius: cardRadius.value === "none" ? "none" : cardRadius.value === "small" ? "small" : cardRadius.value === "medium" ? "medium" : cardRadius.value === "large" ? "large" : "auto", cardPadding: cardPadding.value === "tight" ? "tight" : cardPadding.value === "loose" ? "loose" : "normal", editTrigger: editTrigger.value === "dblclick" ? "dblclick" : "click", amapKey: amapKey.value.trim(), layout: layout.value === "above" ? "above" : layout.value === "inline" ? "inline" : "below" });
+            const nextValue = JSON.stringify({ dateFormat: date.value, checkboxStyle: checkbox.value, includeTime: includeTime.checked, maxDisplayLength: Math.min(200, Math.max(10, Number(length.value) || 30)), showFieldNames: showFieldNames.checked, showDatabaseGroups: showDatabaseGroups.checked, listFontSize: Math.min(24, Math.max(10, Number(fontSize.value) || 12)), listMultiColumn: multiColumn.checked, listLayoutStyle: listLayoutStyle.value === "waterfall" ? "waterfall" : "grid", listItemStyle: listItemStyle.value, listLineHeight: lineHeight.value === "compact" ? "compact" : lineHeight.value === "relaxed" ? "relaxed" : "normal", listRowGap: rowGap.value === "tight" ? "tight" : rowGap.value === "relaxed" ? "relaxed" : "normal", listValueLines: valueLines.value === "one" ? "one" : valueLines.value === "two" ? "two" : valueLines.value === "three" ? "three" : "unlimited", listItemRadius: itemRadius.value === "none" ? "none" : itemRadius.value === "small" ? "small" : itemRadius.value === "medium" ? "medium" : itemRadius.value === "pill" ? "pill" : "auto", alignFieldNames: alignFieldNames.checked, cardEnabled: cardEnabled.checked, cardStyle: cardStyle.value, cardRadius: cardRadius.value === "none" ? "none" : cardRadius.value === "small" ? "small" : cardRadius.value === "medium" ? "medium" : cardRadius.value === "large" ? "large" : "auto", cardPadding: cardPadding.value === "tight" ? "tight" : "normal", editTrigger: editTrigger.value === "dblclick" ? "dblclick" : "click", amapKey: amapKey.value.trim(), layout: layout.value === "above" ? "above" : layout.value === "inline" ? "inline" : "below" });
             panel.dataset.value = nextValue;
             commit(nextValue);
         });
